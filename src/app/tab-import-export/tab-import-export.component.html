@@ -1,0 +1,8 @@
+<label class="display-center-block">
+    <button mat-raised-button (click)="file.click()">Import Configuration</button>
+</label>
+<input #file type="file" id="file-upload" (change)="onImportConfiguration(file.files)" />
+<br />
+<button mat-raised-button class="display-center-block" (click)="onExportConfiguration()">Export Configuration</button>
+<br />
+<button mat-raised-button class="display-center-block" (click)="onExportGraph()">Export Graph</button>

@@ -1,0 +1,25 @@
+.selected {
+    background-color: #FFD54F;
+}
+
+.li-container {
+    display: flex;
+    align-items: center;
+}
+
+.li-icon {
+    margin-left: auto;
+}
+
+.li-bar {
+    width: 0.4em;
+    height: 2em;
+    margin-right: 0.5em;
+}
+
+.fab {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 1em;
+}

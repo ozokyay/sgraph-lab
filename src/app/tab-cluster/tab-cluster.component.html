@@ -1,0 +1,21 @@
+
+
+<!-- Change detection here -->
+
+<h3>Cluster Properties</h3>
+@if (cluster) {
+  <mat-form-field>
+    <mat-label>Graph Generator</mat-label>
+    <mat-select [(value)]="cluster.data.generator" (valueChange)="onChange()">
+        <mat-option value="CL">Chung-Lu Model</mat-option>
+        <mat-option value="CM">Configuration Model</mat-option>
+    </mat-select>
+  </mat-form-field>
+  <app-vis-line-chart [series]="cluster.data.degreeDistribution" [series2]="clusterMeasures?.degreeDistribution" (seriesChange)="onChange()"></app-vis-line-chart>
+  <mat-slide-toggle [(ngModel)]="cluster.data.extractGiantComponent" (change)="onChange()">
+    Keep only largest connected component
+  </mat-slide-toggle>
+  <p></p>
+  <p class="label top-margin">Nodes: {{clusterMeasures?.nodeCount}}</p>
+  <p class="label">Edges: {{clusterMeasures?.edgeCount}}</p>
+}

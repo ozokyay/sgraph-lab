@@ -1,0 +1,23 @@
+.flexi {
+    display: flex;
+}
+
+.block {
+    display: block;
+}
+
+.flex-element {
+    margin-right: 1em;
+}
+
+.space-vert {
+    margin-bottom: 0.5em;
+}
+
+.small {
+    width: 8em;
+}
+
+.hide {
+    visibility: collapse;
+}
