@@ -8,6 +8,7 @@ import { FormsModule } from '@angular/forms';
 import { GraphMeasures } from '../graph-configuration';
 import { ConfigurationService } from '../configuration.service';
 import { Node } from '../graph';
+import { Cluster } from '../cluster';
 
 @Component({
   selector: 'app-tab-cluster',
@@ -26,19 +27,21 @@ import { Node } from '../graph';
 export class TabClusterComponent {
 
   public clusterMeasures?: GraphMeasures;
-  public cluster?: Node = undefined;
+  public clusterNode?: Node = undefined;
+  public cluster?: Cluster = undefined;
 
   constructor(private config: ConfigurationService) {
-    config.measures.subscribe(measures => this.clusterMeasures = measures.clusterMeasures.get(this.cluster?.data));
-    config.selectedCluster.subscribe(cluster => {
-      this.cluster = cluster;
-      this.clusterMeasures = config.measures.value.clusterMeasures.get(this.cluster?.data);
+    config.measures.subscribe(measures => this.clusterMeasures = measures.clusterMeasures.get(this.cluster!));
+    config.selectedCluster.subscribe(clusterNode => {
+      this.clusterNode = clusterNode;
+      this.cluster = clusterNode?.data as Cluster;
+      this.clusterMeasures = config.measures.value.clusterMeasures.get(this.cluster);
     });
   }
 
   onChange() {
     if (this.cluster != undefined) {
-      this.config.update("Change cluster " + this.cluster.id);
+      this.config.update("Change cluster " + this.clusterNode?.id);
     }
   }
 }

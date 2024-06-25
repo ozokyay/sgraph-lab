@@ -1,3 +1,6 @@
+import { Cluster } from "./cluster";
+import { Point } from "./point";
+
 export class EdgeList {
     public nodes: Node[];
     public edges: Edge[];
@@ -82,13 +85,23 @@ export class AdjacencyList {
 
 export interface Node {
     id: number,
-    data?: any
+    data?: NodeData | Cluster
 }
 
 export interface Edge {
     source: Node,
     target: Node,
-    data?: any
+    data?: any // Should also reflect that it can be assortativity distance or attributes e.g. weight
+}
+
+export interface NodeData {
+    clusterID: number,
+    layoutPosition: Point,
+    attributes: number[]
+}
+
+export interface EdgeData {
+    attributes: number[]
 }
 
 // Decisions:

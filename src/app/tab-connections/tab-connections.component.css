@@ -1,0 +1,20 @@
+mat-slider {
+    width: 250px
+}
+
+p {
+    margin-top: 10px;
+}
+
+input {
+    width: 60px;
+}
+
+.label {
+    margin-left: 10px;
+    font-size: large;
+}
+
+.vertical-item {
+    margin-top: 20px;
+}

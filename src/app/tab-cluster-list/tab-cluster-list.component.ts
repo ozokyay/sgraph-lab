@@ -35,7 +35,7 @@ export class TabClusterListComponent {
   }
 
   public getColor(cluster: Node) {
-    return d3.schemeCategory10[cluster.data.color % 10];
+    return d3.schemeCategory10[(cluster.data as Cluster).color % 10];
   }
 
   public onAddCluster() {

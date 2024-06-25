@@ -76,7 +76,7 @@ export class ConfigurationService {
     // Generate clusters
     for (const cluster of this.configuration.value.defintion.graph.nodes.keys()) {
       Utility.rand = new Rand(this.configuration.value.defintion.seed.toString() + cluster.id.toString());
-      this.configuration.value.instance.clusters.set(cluster.data, this.generateCluster(cluster.data));
+      this.configuration.value.instance.clusters.set(cluster.data as Cluster, this.generateCluster(cluster.data as Cluster));
     }
 
     // Generate connections
@@ -88,15 +88,21 @@ export class ConfigurationService {
     }
 
     // Assemble graph
-    // Tag nodes with LOCAL_ID, GLOBAL_ID, and CLUSTER_ID
-    // Add nodes and edges to EdgeList
-    for (const cluster of this.configuration.value.instance.clusters.values()) {
-      for (const node of cluster.nodes) {
-        // Set data to some proper attribute type
-        // Set IDs
+    let id = 0;
+    for (const definition of this.configuration.value.defintion.graph.nodes.keys()) {
+      const cluster = definition.data as Cluster;
+      const instance = this.configuration.value.instance.clusters.get(cluster)!;
+      for (const node of instance.nodes) {
+        node.data = {
+          clusterID: definition.id,
+          layoutPosition: { x: 0, y: 0 },
+          attributes: []
+        };
+        node.id = id;
+        id++;
       }
-      this.configuration.value.instance.graph.nodes.push(...cluster.nodes);
-      this.configuration.value.instance.graph.edges.push(...cluster.edges);
+      this.configuration.value.instance.graph.nodes.push(...instance.nodes);
+      this.configuration.value.instance.graph.edges.push(...instance.edges);
     }
     for (const connection of this.configuration.value.instance.connections.values()) {
       // Any attributes/IDs wanted here? Can always determine cluster combination from source/target
@@ -141,8 +147,8 @@ export class ConfigurationService {
 
   private generateConnection(edge: Edge): Edge[] {
     const connection: ClusterConnection = edge.data!;
-    const cluster1: Cluster = edge.source.data!;
-    const cluster2: Cluster = edge.target.data!;
+    const cluster1: Cluster = edge.source.data as Cluster;
+    const cluster2: Cluster = edge.target.data as Cluster;
     const graph1: EdgeList = this.configuration.value.instance.clusters.get(cluster1)!;
     const graph2: EdgeList = this.configuration.value.instance.clusters.get(cluster2)!;
     const count1 = Math.round(connection.nodeCount1 * graph1.nodes.length); // Actually prefer absolute node counts in cluster def - but harder to achieve precisely

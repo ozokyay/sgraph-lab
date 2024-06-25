@@ -1,0 +1,11 @@
+<h3>Cluster Connections</h3>
+@if (connections && connections.length > 0) {
+    @if (connections.length == 1 || multiEditing) {
+        <!-- UI with target as list -->
+    } @else {
+        <p>The selected links were changed. You can reset them for multi-editing.</p>
+        <button mat-button (click)="onReset()">Reset</button>
+    }
+} @else {
+    <!-- Nothing -->
+}

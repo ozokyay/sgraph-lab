@@ -8,9 +8,9 @@ import { AngularSplitModule } from 'angular-split';
 import { PythonService } from './python.service';
 import { TabImportExportComponent } from './tab-import-export/tab-import-export.component';
 import { TabClusterComponent } from './tab-cluster/tab-cluster.component';
-import { AdjacencyList, EdgeList } from './graph';
 import { ConfigurationService } from './configuration.service';
 import { TabClusterListComponent } from "./tab-cluster-list/tab-cluster-list.component";
+import { TabConnectionsComponent } from './tab-connections/tab-connections.component';
 
 @Component({
     selector: 'app-root',
@@ -26,7 +26,8 @@ import { TabClusterListComponent } from "./tab-cluster-list/tab-cluster-list.com
         MatSlideToggleModule,
         TabImportExportComponent,
         TabClusterComponent,
-        TabClusterListComponent
+        TabClusterListComponent,
+        TabConnectionsComponent
     ]
 })
 export class AppComponent implements OnInit {
