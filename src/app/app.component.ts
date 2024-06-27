@@ -11,6 +11,7 @@ import { TabClusterComponent } from './tab-cluster/tab-cluster.component';
 import { ConfigurationService } from './configuration.service';
 import { TabClusterListComponent } from "./tab-cluster-list/tab-cluster-list.component";
 import { TabConnectionsComponent } from './tab-connections/tab-connections.component';
+import { Uniform10 } from './series';
 
 @Component({
     selector: 'app-root',
@@ -35,12 +36,8 @@ export class AppComponent implements OnInit {
   public selectedTabIndex: number = 0;
   public dragging: boolean = false;
   
-  constructor(public python: PythonService, private config: ConfigurationService) {
-    // Children take directly from config
-    // What about selectedCluster?
-    // Probably also better in service because of deletion etc
-
-    // Or handle this kind of state centrally in app component? Weird mix?
+  constructor(public python: PythonService) {
+    
   }
 
   public onSelectedTabChange() {

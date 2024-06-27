@@ -26,8 +26,9 @@ export class ConfigurationService {
     message: "Initial Graph"
   });
 
-  public measures = new BehaviorSubject<GraphInstance>(EmptyInstance);
+  public measures = new BehaviorSubject<GraphInstance>(EmptyInstance); // This is just for slow measures, can publish degree distribution immediately
   public selectedCluster = new BehaviorSubject<Node | undefined>(undefined);
+  public selectedConnections = new BehaviorSubject<Edge[]>([]);
   public history = new BehaviorSubject<GraphConfiguration[]>([this.configuration.value]);
 
   constructor(private local: LocalService) {}
@@ -36,9 +37,8 @@ export class ConfigurationService {
     // Build graph
     this.build();
 
-    // Build clusters with respective generator and settings
-    // Build connnections with settings
-    // Always reset RNG in between
+    // TODO: Compute fast measures immediately
+    
     
     // Track history
     this.configuration.value.message = message;

@@ -245,4 +245,32 @@ export class Utility {
       };
       return distribution;
     }
+
+    public static arraysEqual(a: any[], b: any[]): boolean {
+      if (a.length != b.length) {
+        return false;
+      }
+      for (let i = 0; i < a.length; i++) {
+        if (a[i] != b[i]) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    public static fitDistributionToExtent(distribution: Series) {
+      // Shorten if too long
+      for (let i = 0; i < distribution.data.length; i++) {
+        const point = distribution.data[i];
+        if (point.x > distribution.xExtent[1]) {
+          distribution.data.splice(i, distribution.data.length - i);
+          break;
+        }
+      }
+      // Add end point if missing
+      let lastPoint = { x: distribution.xExtent[1], y: 0.5 };
+      if (distribution.data[distribution.data.length - 1].x < distribution.xExtent[1]) {
+        distribution.data.push(lastPoint);
+      }
+    }
 }
