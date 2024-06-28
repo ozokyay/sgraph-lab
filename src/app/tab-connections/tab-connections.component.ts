@@ -39,53 +39,66 @@ export class TabConnectionsComponent {
   constructor(private config: ConfigurationService) {
     config.selectedConnections.subscribe(edges => {
       this.connections = edges;
-      if (edges.length == 0) {
-        return;
-      }
-
-      this.multiEditing = true;
-      const first = edges[0];
-      const firstConn = first.data as ClusterConnection;
-
-      // Set values
-      this.edges = firstConn.edgeCount; // TODO: must calc, round
-      this.nodes1 = firstConn.nodeCount1; // TODO: must calc, round
-      this.nodes2 = firstConn.nodeCount2;
-      this.degreeAssortativity = firstConn.degreeAssortativity;
-      this.degreeDistribution1 = structuredClone(firstConn.degreeDistribution1);
-      this.degreeDistribution2 = structuredClone(firstConn.degreeDistribution2);
-      // Set string labels
-      this.sourceName = "community " +  first.source.id.toString();
-      if (edges.length == 1) {
-        this.targetsName = "community";
-      } else {
-        this.targetsName = "communities";
-      }
-
-      for (const edge of edges) {
-        if (edge.source != first.source) {
-          console.log("Error: Inconsistent source on current edge selection");
-          break;
-        }
-
-        const conn = edge.data as ClusterConnection;
-        if (conn.edgeCount != firstConn.edgeCount ||
-          conn.nodeCount1 != firstConn.nodeCount1 ||
-          conn.nodeCount2 != firstConn.nodeCount2 ||
-          conn.degreeAssortativity != firstConn.degreeAssortativity ||
-          Utility.arraysEqual(conn.degreeDistribution1.data, firstConn.degreeDistribution1.data) ||
-          Utility.arraysEqual(conn.degreeDistribution2.data, firstConn.degreeDistribution2.data)
-        ) {
-          this.multiEditing = false;
-        }
-
-        this.targetsName += " " + edge.target.id.toString();
-      }
+      this.render();
     });
     config.configuration.subscribe(config => {
       // TODO: Set preview distributions to product from measures cluster distributions
       // Compute
+
+      // Also rerender everything from above
+      // => render()
+
+      this.render();
     });
+  }
+
+  private render() {
+    if (this.connections.length == 0) {
+      return;
+    }
+
+    this.multiEditing = true;
+    const first = this.connections[0];
+    const firstConn = first.data as ClusterConnection;
+
+    // nodes1 = nc1 * source.nodes
+    // nodes2 = nc2 * sum target.nodes
+    // edges = ec * min(source.edges, sum target.edges, nodes1 * nodes2)
+
+    // Set values
+    this.edges = firstConn.edgeCount; // TODO: must calc, round
+    this.nodes1 = firstConn.nodeCount1; // TODO: must calc, round
+    this.nodes2 = firstConn.nodeCount2;
+    this.degreeAssortativity = firstConn.degreeAssortativity;
+    this.degreeDistribution1 = structuredClone(firstConn.degreeDistribution1);
+    this.degreeDistribution2 = structuredClone(firstConn.degreeDistribution2);
+    // Set string labels
+    this.sourceName = "community " +  first.source.id.toString();
+    if (this.connections.length == 1) {
+      this.targetsName = "community";
+    } else {
+      this.targetsName = "communities";
+    }
+
+    for (const edge of this.connections) {
+      if (edge.source != first.source) {
+        console.log("Error: Inconsistent source on current edge selection");
+        break;
+      }
+
+      const conn = edge.data as ClusterConnection;
+      if (conn.edgeCount != firstConn.edgeCount ||
+        conn.nodeCount1 != firstConn.nodeCount1 ||
+        conn.nodeCount2 != firstConn.nodeCount2 ||
+        conn.degreeAssortativity != firstConn.degreeAssortativity ||
+        Utility.arraysEqual(conn.degreeDistribution1.data, firstConn.degreeDistribution1.data) ||
+        Utility.arraysEqual(conn.degreeDistribution2.data, firstConn.degreeDistribution2.data)
+      ) {
+        this.multiEditing = false;
+      }
+
+      this.targetsName += " " + edge.target.id.toString();
+    }
   }
 
   public onReset() {
