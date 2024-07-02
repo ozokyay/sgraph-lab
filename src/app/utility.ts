@@ -272,5 +272,8 @@ export class Utility {
       if (distribution.data[distribution.data.length - 1].x < distribution.xExtent[1]) {
         distribution.data.push(lastPoint);
       }
+
+      // Sometimes one or more unnecessary in middle
+      // => Cleanup (step for) redundant points in middle
     }
 }

@@ -7,6 +7,9 @@ import { VisLineChartComponent } from '../vis-line-chart/vis-line-chart.componen
 import { Series, Uniform10 } from '../series';
 import { Edge } from '../graph';
 import { Utility } from '../utility';
+import { Cluster } from '../cluster';
+import { Point } from '../point';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 
 @Component({
   selector: 'app-tab-connections',
@@ -14,6 +17,7 @@ import { Utility } from '../utility';
   imports: [
     MatButtonModule,
     MatSliderModule,
+    MatSlideToggleModule,
     VisLineChartComponent
   ],
   templateUrl: './tab-connections.component.html',
@@ -23,18 +27,18 @@ export class TabConnectionsComponent {
   public connections: Edge[] = [];
   public multiEditing: boolean = false;
 
-  public edges: number = 0;
-  public nodes1: number = 0;
-  public nodes2: number = 0;
+  public edgeCount: number = 0;
+  public nodeCountSource: number = 0;
+  public nodeCountTarget: number = 0;
   public degreeAssortativity: number = 0;
 
   public sourceName: string = "";
   public targetsName: string = "";
 
-  public degreeDistribution1: Series = structuredClone(Uniform10);
-  public degreeDistribution2: Series = structuredClone(Uniform10);
-  public previewDistribution1: Series = structuredClone(Uniform10);
-  public previewDistribution2: Series = structuredClone(Uniform10);
+  public degreeDistributionSource?: Series = undefined;
+  public degreeDistributionTarget?: Series = undefined;
+  public actualDistributionSource: Series = structuredClone(Uniform10);
+  public actualDistributionTarget: Series = structuredClone(Uniform10);
 
   constructor(private config: ConfigurationService) {
     config.selectedConnections.subscribe(edges => {
@@ -53,25 +57,32 @@ export class TabConnectionsComponent {
   }
 
   private render() {
+    // Requires: selected clusters available in current instance (should always be: select after create)
+    
     if (this.connections.length == 0) {
       return;
     }
 
     this.multiEditing = true;
+
+    // Either only one connection or multi-editing means all are equivalent
     const first = this.connections[0];
     const firstConn = first.data as ClusterConnection;
 
-    // nodes1 = nc1 * source.nodes
-    // nodes2 = nc2 * sum target.nodes
-    // edges = ec * min(source.edges, sum target.edges, nodes1 * nodes2)
+    // Get involved cluster measures
+    const clusterSource = this.config.configuration.value.instance.clusterMeasures.get(first.source.data as Cluster)!;
+    const clusterTargets = this.connections.map(c =>
+      this.config.configuration.value.instance.clusterMeasures.get(c.target.data as Cluster)!
+    );
 
     // Set values
-    this.edges = firstConn.edgeCount; // TODO: must calc, round
-    this.nodes1 = firstConn.nodeCount1; // TODO: must calc, round
-    this.nodes2 = firstConn.nodeCount2;
+    this.nodeCountSource = firstConn.nodeCountSource * clusterSource.nodeCount;
+    this.nodeCountTarget = clusterTargets.map(c => c.nodeCount).reduce((a, b) => a + b);
+    const edgeCountTargets = clusterTargets.map(c => c.edgeCount).reduce((a, b) => a + b);
+    const edgeCount = firstConn.edgeCount * Math.min(clusterSource.edgeCount, edgeCountTargets, this.nodeCountSource * this.nodeCountTarget);
+    this.edgeCount = edgeCount;
     this.degreeAssortativity = firstConn.degreeAssortativity;
-    this.degreeDistribution1 = structuredClone(firstConn.degreeDistribution1);
-    this.degreeDistribution2 = structuredClone(firstConn.degreeDistribution2);
+
     // Set string labels
     this.sourceName = "community " +  first.source.id.toString();
     if (this.connections.length == 1) {
@@ -80,6 +91,27 @@ export class TabConnectionsComponent {
       this.targetsName = "communities";
     }
 
+    // Compute distributions
+
+    // Unset distributions must be kept updated => Just set to null in srvc? stooopid
+    // Idea: Set to null to ignore bias, use toggle to enable bias => no longer null, updated by service
+    // How many handles, what resolution? => no handles, tabular input
+    // Or: only show handles for changes => smoothing missing, very stupid stuff
+    // Compute preview from sum
+
+    // Update linechart (don't even clone - direct modifications)
+    this.degreeDistributionSource = firstConn.degreeDistributionSource;
+    this.degreeDistributionTarget = firstConn.degreeDistributionTarget;
+
+    // On enabled: copy measured distribution, show
+    // But this is still stupid when changing clusters...
+    // Which way is least stupid?
+    // => entirely custom distribution, starting with uniform, completely disconnected from current cluster distributions => actually good idea
+    // How to show actual? => from final graph
+    // preview -> actual
+    
+
+    // Check consistency and multi-editing
     for (const edge of this.connections) {
       if (edge.source != first.source) {
         console.log("Error: Inconsistent source on current edge selection");
@@ -88,11 +120,15 @@ export class TabConnectionsComponent {
 
       const conn = edge.data as ClusterConnection;
       if (conn.edgeCount != firstConn.edgeCount ||
-        conn.nodeCount1 != firstConn.nodeCount1 ||
-        conn.nodeCount2 != firstConn.nodeCount2 ||
+        conn.nodeCountSource != firstConn.nodeCountSource ||
+        conn.nodeCountTarget != firstConn.nodeCountTarget ||
         conn.degreeAssortativity != firstConn.degreeAssortativity ||
-        Utility.arraysEqual(conn.degreeDistribution1.data, firstConn.degreeDistribution1.data) ||
-        Utility.arraysEqual(conn.degreeDistribution2.data, firstConn.degreeDistribution2.data)
+        (conn.degreeDistributionSource && !firstConn.degreeDistributionSource) || // Stooopid
+        (conn.degreeDistributionTarget && !firstConn.degreeDistributionTarget) ||
+        (!conn.degreeDistributionSource && firstConn.degreeDistributionSource) ||
+        (!conn.degreeDistributionTarget && firstConn.degreeDistributionTarget) ||
+        conn.degreeDistributionSource && firstConn.degreeDistributionSource && !Utility.arraysEqual(conn.degreeDistributionSource!.data, firstConn.degreeDistributionSource!.data) ||
+        conn.degreeDistributionTarget && firstConn.degreeDistributionTarget && !Utility.arraysEqual(conn.degreeDistributionTarget!.data, firstConn.degreeDistributionTarget!.data)
       ) {
         this.multiEditing = false;
       }
@@ -108,20 +144,20 @@ export class TabConnectionsComponent {
     }
 
     // Set all variables to 0
-    this.edges = 0;
-    this.nodes1 = 0;
-    this.nodes2 = 0;
+    this.edgeCount = 0;
+    this.nodeCountSource = 0;
+    this.nodeCountTarget = 0;
     this.degreeAssortativity = 0;
-    this.degreeDistribution1 = structuredClone(Uniform10);
-    this.degreeDistribution2 = structuredClone(Uniform10);
+    this.degreeDistributionSource = undefined;
+    this.degreeDistributionTarget = undefined;
     for (const edge of this.connections) {
       const conn = edge.data as ClusterConnection;
-      conn.edgeCount = this.edges;
-      conn.nodeCount1 = this.nodes1;
-      conn.nodeCount2 = this.nodes2;
+      conn.edgeCount = this.edgeCount;
+      conn.nodeCountSource = this.nodeCountSource;
+      conn.nodeCountTarget = this.nodeCountTarget;
       conn.degreeAssortativity = this.degreeAssortativity;
-      conn.degreeDistribution1 = structuredClone(this.degreeDistribution1);
-      conn.degreeDistribution2 = structuredClone(this.degreeDistribution2);
+      conn.degreeDistributionSource = undefined;
+      conn.degreeDistributionTarget = undefined;
     }
     this.multiEditing = true;
     this.onChange();
@@ -136,14 +172,23 @@ export class TabConnectionsComponent {
     // Apply variables to all
     for (const edge of this.connections) {
       const conn = edge.data as ClusterConnection;
-      // TODO
-      // Fast measures will be available for sure
-      // Add distributions
-      // Copy if necessary
-      // Fit extents
-      // Compute?
+      conn.edgeCount = this.edgeCount;
+      conn.nodeCountSource = this.nodeCountSource;
+      conn.nodeCountTarget = this.nodeCountTarget;
+      conn.degreeAssortativity = this.degreeAssortativity;
+      conn.degreeDistributionSource = structuredClone(this.degreeDistributionSource);
+      conn.degreeDistributionTarget = structuredClone(this.degreeDistributionTarget);
     }
 
     this.config.update("Changed connections");
+  }
+
+  public onChangeDistributionSource(value: boolean) {
+    console.log("changed on render()");
+    // if value then set to uniform with correct extent else set to undefined
+  }
+
+  public onChangeDistributionTarget(value: boolean) {
+
   }
 }

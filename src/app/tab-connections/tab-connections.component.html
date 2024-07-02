@@ -4,25 +4,25 @@
         <h2>Edges</h2>
         <span>
             <mat-slider #sliderEdges discrete min="0" max="1" step="0.01">
-                <input matSliderThumb [(value)]="edges" (valueChange)="onChange()">
+                <input matSliderThumb [(value)]="edgeCount" (valueChange)="onChange()">
             </mat-slider>
-            <span class="label">{{edges}}</span>
+            <span class="label">{{edgeCount}}</span>
         </span>
         
         <h2 class="vertical-item">Nodes from {{sourceName}}</h2>
         <span>
             <mat-slider discrete min="0" max="1" step="0.01">
-                <input matSliderThumb [(value)]="nodes1" (valueChange)="onChange()">
+                <input matSliderThumb [(value)]="nodeCountSource" (valueChange)="onChange()">
             </mat-slider>
-            <span class="label">{{nodes1}}</span>
+            <span class="label">{{nodeCountSource}}</span>
         </span>
     
         <h2 class="vertical-item">Nodes from {{targetsName}}</h2>
         <span>
             <mat-slider discrete min="0" max="1" step="0.01">
-                <input matSliderThumb [(value)]="nodes2" (valueChange)="onChange()">
+                <input matSliderThumb [(value)]="nodeCountTarget" (valueChange)="onChange()">
             </mat-slider>
-            <span class="label">{{nodes2}}</span>
+            <span class="label">{{nodeCountTarget}}</span>
         </span>
     
         <h2 class="vertical-item">Degree Assortativity</h2>
@@ -34,10 +34,18 @@
             1
         </span>
         
-        <h2 class="vertical-item">Node Degree Bias for {{sourceName}}</h2>
-        <app-vis-line-chart yLabel="Node frequency" [allowAxisScaling]="false" [(series)]="degreeDistribution1" [series2]="previewDistribution1" (seriesChange)="onChange()"></app-vis-line-chart>
-        <h2 class="vertical-item">Node Degree Bias for {{targetsName}}</h2>
-        <app-vis-line-chart yLabel="Node frequency" [allowAxisScaling]="false" [(series)]="degreeDistribution2" [series2]="previewDistribution2" (seriesChange)="onChange()"></app-vis-line-chart>
+        <mat-slide-toggle [checked]="degreeDistributionTarget != undefined" (change)="onChangeDistributionSource($event.checked)">
+            Custom degree distribution for nodes from {{sourceName}}
+        </mat-slide-toggle>
+        @if (degreeDistributionSource != undefined) {
+            <app-vis-line-chart yLabel="Node frequency" [(series)]="degreeDistributionSource" [series2]="actualDistributionSource" (seriesChange)="onChange()"></app-vis-line-chart>
+        }
+        <mat-slide-toggle [checked]="degreeDistributionSource != undefined" (change)="onChangeDistributionTarget($event.checked)">
+            Custom degree distribution for nodes from {{targetsName}}
+        </mat-slide-toggle>
+        @if (degreeDistributionTarget != undefined) {
+            <app-vis-line-chart yLabel="Node frequency" [(series)]="degreeDistributionTarget" [series2]="actualDistributionTarget" (seriesChange)="onChange()"></app-vis-line-chart>
+        }
     } @else {
         <p>The selected connections are inconsistent. You can reset them for multi-editing.</p>
         <button mat-button (click)="onReset()">Reset</button>

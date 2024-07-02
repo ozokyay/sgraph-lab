@@ -1,10 +1,10 @@
 import { Series } from "./series";
 
 export interface ClusterConnection {
-    nodeCount1: number,
-    nodeCount2: number,
+    nodeCountSource: number,
+    nodeCountTarget: number,
     edgeCount: number,
-    degreeDistribution1: Series,
-    degreeDistribution2: Series,
+    degreeDistributionSource?: Series,
+    degreeDistributionTarget?: Series,
     degreeAssortativity: number
 }

@@ -79,6 +79,9 @@ export class ConfigurationService {
       this.configuration.value.instance.clusters.set(cluster.data as Cluster, this.generateCluster(cluster.data as Cluster));
     }
 
+    // Fit connections' degree distributions to new xExtents
+    // Need for connection UI => Do in connection component? Can be ignored at multiply (=1)?
+
     // Generate connections
     for (const edges of this.configuration.value.defintion.graph.nodes.values()) {
       for (const [edge, _] of edges) {
@@ -151,22 +154,59 @@ export class ConfigurationService {
     const cluster2: Cluster = edge.target.data as Cluster;
     const graph1: EdgeList = this.configuration.value.instance.clusters.get(cluster1)!;
     const graph2: EdgeList = this.configuration.value.instance.clusters.get(cluster2)!;
-    const count1 = Math.round(connection.nodeCount1 * graph1.nodes.length); // Actually prefer absolute node counts in cluster def - but harder to achieve precisely
-    const count2 = Math.round(connection.nodeCount2 * graph2.nodes.length);
+    const count1 = Math.round(connection.nodeCountSource * graph1.nodes.length); // Actually prefer absolute node counts in cluster def - but harder to achieve precisely
+    const count2 = Math.round(connection.nodeCountTarget * graph2.nodes.length);
     const degrees1 = Utility.computeNodeDegrees(graph1);
     const degrees2 = Utility.computeNodeDegrees(graph2);
     const buckets1 = Utility.sortNodeDegrees(degrees1);
     const buckets2 = Utility.sortNodeDegrees(degrees2);
 
     // Degree distribution
-    const proportions1 = Utility.computeBiasedProportions(cluster1.degreeDistribution, connection.degreeDistribution1);
-    const proportions2 = Utility.computeBiasedProportions(cluster2.degreeDistribution, connection.degreeDistribution2);
-    Utility.multiplyPointValues(proportions1, count1);
-    Utility.multiplyPointValues(proportions2, count2);
-    proportions1.sort((a, b) => b.y - a.y);
-    proportions2.sort((a, b) => b.y - a.y);
-    const nodes1 = Utility.drawProportionally(count1, buckets1, proportions1);
-    const nodes2 = Utility.drawProportionally(count2, buckets2, proportions2);
+
+    // If null, draw random count nodes (= drawing from actual distribution)
+    // If not null, draw according to distribution
+    // => Stratify or draw from prepared distribution?
+    // => Stratification makes a bit more sense, but is much harder to achieve and not needed rn
+
+    // TODO: Drawing according to given distribution, no computation and multiplication
+    // Drawing works simply by
+    // - Copy data
+    // - Multiply for correct counts
+    // - Draw from probability distribution
+    // - Repeat if cannot be satisfied (takes too long toward the end?)
+    // - Repeat until count satisfied
+
+    // Instead of this, create correct distributions and draw randomly
+    // const proportions1 = Utility.computeBiasedProportions(cluster1.degreeDistribution, connection.degreeDistributionSource!);
+    // const proportions2 = Utility.computeBiasedProportions(cluster2.degreeDistribution, connection.degreeDistributionTarget!);
+    // Utility.multiplyPointValues(proportions1, count1);
+    // Utility.multiplyPointValues(proportions2, count2);
+    // proportions1.sort((a, b) => b.y - a.y);
+    // proportions2.sort((a, b) => b.y - a.y);
+    // const nodes1 = Utility.drawProportionally(count1, buckets1, proportions1);
+    // const nodes2 = Utility.drawProportionally(count2, buckets2, proportions2);
+
+    let nodes1: Node[] = [...graph1.nodes];
+    let nodes2: Node[] = [...graph2.nodes];
+    if (connection.degreeDistributionSource == undefined) {
+      Utility.shuffleArray(nodes1);
+      nodes1 = nodes1.slice(0, count1);
+    } else {
+      const sum = connection.degreeDistributionSource.data.reduce((a, b) => a + b.y, 0);
+      const scaled = [...connection.degreeDistributionSource.data];
+      Utility.multiplyPointValues(scaled, count1 / sum);
+      nodes1 = Utility.drawProportionally(count1, buckets1, scaled);
+    }
+    if (connection.degreeDistributionTarget == undefined) {
+      Utility.shuffleArray(nodes2);
+      nodes2 = nodes2.slice(0, count2);
+    } else {
+      const sum = connection.degreeDistributionTarget.data.reduce((a, b) => a + b.y, 0);
+      const scaled = [...connection.degreeDistributionTarget.data];
+      Utility.multiplyPointValues(scaled, count2 / sum);
+      nodes2 = Utility.drawProportionally(count2, buckets2, scaled);
+    }
+    
 
     // Assortativity
     const candidateDegrees1: number[] = nodes1.map(n => degrees1.get(n)!);
