@@ -76,7 +76,7 @@ export class ConfigurationService {
     // Generate clusters
     for (const cluster of this.configuration.value.defintion.graph.nodes.keys()) {
       Utility.rand = new Rand(this.configuration.value.defintion.seed.toString() + cluster.id.toString());
-      this.configuration.value.instance.clusters.set(cluster.data as Cluster, this.generateCluster(cluster.data as Cluster));
+      this.configuration.value.instance.clusters.set(cluster.data as Cluster, this.generateCluster(cluster));
     }
 
     // Fit connections' degree distributions to new xExtents
@@ -104,16 +104,18 @@ export class ConfigurationService {
         node.id = id;
         id++;
       }
-      this.configuration.value.instance.graph.nodes.push(...instance.nodes);
-      this.configuration.value.instance.graph.edges.push(...instance.edges);
+
+      this.configuration.value.instance.graph.nodes = this.configuration.value.instance.graph.nodes.concat(instance.nodes);
+      this.configuration.value.instance.graph.edges = this.configuration.value.instance.graph.edges.concat(instance.edges);
     }
     for (const connection of this.configuration.value.instance.connections.values()) {
       // Any attributes/IDs wanted here? Can always determine cluster combination from source/target
-      this.configuration.value.instance.graph.edges.push(...connection);
+      this.configuration.value.instance.graph.edges = this.configuration.value.instance.graph.edges.concat(connection);
     }
   }
 
-  private generateCluster(cluster: Cluster): EdgeList {
+  private generateCluster(node: Node): EdgeList {
+    const cluster = node.data as Cluster;
     // Convert series to distribution
     const distribution = Utility.computeDistribution(cluster.degreeDistribution);
 
@@ -143,6 +145,14 @@ export class ConfigurationService {
     }
     if (cluster.extractGiantComponent) {
       g = this.local.extractGiantComponent(new AdjacencyList(g));
+    }
+
+    for (const n of g.nodes) {
+      n.data = {
+        clusterID: node.id,
+        layoutPosition: { x: 0, y: 0 },
+        attributes: []
+      }
     }
 
     return g;

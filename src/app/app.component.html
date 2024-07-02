@@ -10,10 +10,11 @@
       </div>
     </as-split-area>
     <as-split-area size="50">
-      <div class="settings-container">
+      <app-vis-node-link #nodeLinkDiagram></app-vis-node-link>
+      <!-- <div class="settings-container"> -->
         <!-- Settings panel -->
         <!-- Node link diagram -->
-      </div>
+      <!-- </div> -->
     </as-split-area>
     <as-split-area size="*" class="noscroll">
       <mat-tab-group class="scroll" (selectedTabChange)="onSelectedTabChange()" [(selectedIndex)]="selectedTabIndex">

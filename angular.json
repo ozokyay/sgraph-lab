@@ -13,6 +13,9 @@
         "build": {
           "builder": "@angular-devkit/build-angular:application",
           "options": {
+            "loader": {
+              ".wgsl": "text"
+            },
             "outputPath": "dist/network-builder",
             "index": "src/index.html",
             "browser": "src/main.ts",

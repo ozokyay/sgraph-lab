@@ -1,4 +1,4 @@
-import { Component, HostListener, OnInit } from '@angular/core';
+import { Component, HostListener, OnInit, ViewChild } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle'
 import { MatTabsModule } from '@angular/material/tabs';
@@ -12,6 +12,7 @@ import { ConfigurationService } from './configuration.service';
 import { TabClusterListComponent } from "./tab-cluster-list/tab-cluster-list.component";
 import { TabConnectionsComponent } from './tab-connections/tab-connections.component';
 import { Uniform10 } from './series';
+import { VisNodeLinkComponent } from './vis-node-link/vis-node-link.component';
 
 @Component({
     selector: 'app-root',
@@ -28,13 +29,17 @@ import { Uniform10 } from './series';
         TabImportExportComponent,
         TabClusterComponent,
         TabClusterListComponent,
-        TabConnectionsComponent
+        TabConnectionsComponent,
+        VisNodeLinkComponent
     ]
 })
 export class AppComponent implements OnInit {
 
   public selectedTabIndex: number = 0;
   public dragging: boolean = false;
+
+  @ViewChild('nodeLinkDiagram')
+  private nodeLinkDiagram!: VisNodeLinkComponent;
   
   constructor(public python: PythonService) {
     
@@ -59,7 +64,7 @@ export class AppComponent implements OnInit {
   @HostListener('document:mousemove')
   onMouseMove() {
     if (this.dragging) {
-      // this.graphDiagram.resize();
+      this.nodeLinkDiagram.resize();
     }
   }
 }
