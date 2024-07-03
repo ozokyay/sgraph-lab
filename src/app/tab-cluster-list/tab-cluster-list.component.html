@@ -3,7 +3,7 @@
     <mat-list-item role="listitem" *ngFor="let cluster of clusters" [activated]="selectedCluster === cluster" (click)="onSelectCluster(cluster)">
         <div class="li-container">
             <div class="li-bar" [style.background-color]="getColor(cluster)"></div>
-            Cluster {{cluster.id}}
+            Cluster {{cluster.id.toString() | clusterid}}
             <button mat-icon-button class="li-icon" title="delete hero" (click)="onRemoveCluster($event, cluster)">
                 <mat-icon>delete</mat-icon>
             </button>

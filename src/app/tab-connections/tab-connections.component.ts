@@ -10,6 +10,7 @@ import { Utility } from '../utility';
 import { Cluster } from '../cluster';
 import { Point } from '../point';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { ClusterIDPipe } from '../cluster-id-pipe';
 
 @Component({
   selector: 'app-tab-connections',
@@ -18,7 +19,8 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
     MatButtonModule,
     MatSliderModule,
     MatSlideToggleModule,
-    VisLineChartComponent
+    VisLineChartComponent,
+    ClusterIDPipe
   ],
   templateUrl: './tab-connections.component.html',
   styleUrl: './tab-connections.component.css'

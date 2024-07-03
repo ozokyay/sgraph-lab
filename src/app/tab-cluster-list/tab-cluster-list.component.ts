@@ -8,6 +8,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import { NgClass, NgFor } from '@angular/common';
 import { Node } from '../graph';
+import { ClusterIDPipe } from '../cluster-id-pipe';
 
 @Component({
   selector: 'app-tab-cluster-list',
@@ -17,7 +18,8 @@ import { Node } from '../graph';
     MatButtonModule,
     MatIconModule,
     NgClass,
-    NgFor
+    NgFor,
+    ClusterIDPipe
   ],
   templateUrl: './tab-cluster-list.component.html',
   styleUrl: './tab-cluster-list.component.css'
