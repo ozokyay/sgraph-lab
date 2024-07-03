@@ -8,9 +8,7 @@ import { Series, Uniform10 } from '../series';
 import { Edge } from '../graph';
 import { Utility } from '../utility';
 import { Cluster } from '../cluster';
-import { Point } from '../point';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { ClusterIDPipe } from '../cluster-id-pipe';
 
 @Component({
   selector: 'app-tab-connections',
@@ -19,8 +17,7 @@ import { ClusterIDPipe } from '../cluster-id-pipe';
     MatButtonModule,
     MatSliderModule,
     MatSlideToggleModule,
-    VisLineChartComponent,
-    ClusterIDPipe
+    VisLineChartComponent
   ],
   templateUrl: './tab-connections.component.html',
   styleUrl: './tab-connections.component.css'
@@ -86,12 +83,8 @@ export class TabConnectionsComponent {
     this.degreeAssortativity = firstConn.degreeAssortativity;
 
     // Set string labels
-    this.sourceName = "community " +  first.source.id.toString();
-    if (this.connections.length == 1) {
-      this.targetsName = "community";
-    } else {
-      this.targetsName = "communities";
-    }
+    this.sourceName = (first.data as Cluster).name;
+    this.targetsName = "";
 
     // Compute distributions
 
@@ -135,7 +128,7 @@ export class TabConnectionsComponent {
         this.multiEditing = false;
       }
 
-      this.targetsName += " " + edge.target.id.toString();
+      this.targetsName += (edge.target.data as Cluster).name + " ";
     }
   }
 

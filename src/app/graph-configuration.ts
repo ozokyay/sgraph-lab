@@ -4,7 +4,7 @@ import { AdjacencyList, Edge, EdgeList } from "./graph";
 import { Series } from "./series";
 
 export interface GraphConfiguration {
-    defintion: GraphDefintion,
+    definition: GraphDefintion,
     instance: GraphInstance,
     message: string
 }

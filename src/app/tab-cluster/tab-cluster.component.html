@@ -1,9 +1,10 @@
-
-
-<!-- Change detection here -->
-
 <h3>Cluster Properties</h3>
 @if (cluster) {
+  <mat-form-field>
+    <mat-label>Cluster name</mat-label>
+    <input matInput placeholder="Enter a name" [(ngModel)]="cluster.name" (change)="onChangeName()">
+  </mat-form-field>
+  <br>
   <mat-form-field>
     <mat-label>Graph Generator</mat-label>
     <mat-select [(value)]="cluster.generator" (valueChange)="onChange()">

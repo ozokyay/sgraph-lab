@@ -38,7 +38,7 @@ export class AdjacencyList {
     public nodes: Map<Node, [Edge, Node][]>;
     public nodeDictionary: Map<number, Node>; // Kinda bad for performance I guess
 
-    constructor (edgeList?: EdgeList) {
+    constructor (edgeList?: EdgeList, restoreNodeReferences: boolean = false) {
         this.nodes = new Map();
         this.nodeDictionary = new Map();
         if (edgeList != undefined) {
@@ -47,6 +47,10 @@ export class AdjacencyList {
                 this.nodeDictionary.set(node.id, node);
             }
             for (const edge of edgeList.edges) {
+                if (restoreNodeReferences) {
+                    edge.source = this.nodeDictionary.get(edge.source.id)!;
+                    edge.target = this.nodeDictionary.get(edge.target.id)!;
+                }
                 this.nodes.get(edge.source)!.push([edge, edge.target]);
                 this.nodes.get(edge.target)!.push([edge, edge.source]);
             }
@@ -75,6 +79,10 @@ export class AdjacencyList {
     }
 
     public removeNode(node: Node) {
+        for (const [edge, neighbor] of this.nodes.get(node)!) {
+            const neighborNodes = this.nodes.get(neighbor)!;
+            neighborNodes.splice(neighborNodes.findIndex(e => e[1] == node), 1);
+        }
         this.nodes.delete(node);
         this.nodeDictionary.delete(node.id);
     }

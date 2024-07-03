@@ -8,7 +8,6 @@ import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import { NgClass, NgFor } from '@angular/common';
 import { Node } from '../graph';
-import { ClusterIDPipe } from '../cluster-id-pipe';
 
 @Component({
   selector: 'app-tab-cluster-list',
@@ -18,44 +17,39 @@ import { ClusterIDPipe } from '../cluster-id-pipe';
     MatButtonModule,
     MatIconModule,
     NgClass,
-    NgFor,
-    ClusterIDPipe
+    NgFor
   ],
   templateUrl: './tab-cluster-list.component.html',
   styleUrl: './tab-cluster-list.component.css'
 })
 export class TabClusterListComponent {
 
-  public clusters: Node[] = [];
-  public selectedCluster?: Node = undefined;
-
-  private colors: number[] = [];
+  public clusters: Cluster[] = [];
+  public selectedCluster?: Cluster = undefined;
 
   constructor(private config: ConfigurationService) {
-    config.configuration.subscribe(config => this.clusters = config.defintion.graph.getNodes());
+    config.configuration.subscribe(configuration => this.clusters = configuration.definition.graph.getNodes().map(n => n.data as Cluster));
     config.selectedCluster.subscribe(cluster => this.selectedCluster = cluster);
   }
 
-  public getColor(cluster: Node) {
-    return d3.schemeCategory10[(cluster.data as Cluster).color % 10];
+  public getColor(cluster: Cluster) {
+    return d3.schemeCategory10[cluster.color % 10];
   }
 
   public onAddCluster() {
-    // use colors like ids, but reorder to quickly find next
-    const colors = [...this.colors]
+    // Use colors like ids, but reorder to quickly find next
+    const colors = [...this.clusters.map(c => c.color)]
     colors.sort();
-    let col = 0;
-    for (const color of colors) {
-      if (color == col) {
+    let col: number = 0;
+    for (const c of colors) {
+      if (c == col) {
         col++;
       } else {
         break;
       }
     }
-    this.colors.push(col);
 
-    const clusters = this.config.configuration.value.defintion.graph.getNodes();
-    const id = clusters.length > 0 ? clusters[clusters.length - 1].id + 1 : 0;
+    const id = this.clusters.length > 0 ? this.clusters[this.clusters.length - 1].id + 1 : 0;
     const series: Series = {
       data: [
         { x: 1, y: 50 },
@@ -73,26 +67,40 @@ export class TabClusterListComponent {
       yExtent: [0, 50]
     }
 
-    const data: Cluster = { generator: "CL", color: col, degreeDistribution: series, extractGiantComponent: true }
-    const cluster: Node = { id: id, data: data };
-    this.config.configuration.value.defintion.graph.addNode(cluster);
+    const cluster: Cluster = { id: id,
+      generator: "CL",
+      color: col,
+      degreeDistribution: series,
+      extractGiantComponent: true,
+      name: "Cluster " + this.numberToLetters(id + 1)
+    };
+    const node: Node = { id: id, data: cluster };
+    this.config.configuration.value.definition.graph.addNode(node);
     this.config.selectedCluster.next(cluster);
     this.config.update("Add cluster " + id);
   }
 
-  public onRemoveCluster(event: MouseEvent, cluster: Node) {
+  public onRemoveCluster(event: MouseEvent, cluster: Cluster) {
     event.stopPropagation();
-    if (cluster === this.selectedCluster) {
+    if (cluster == this.selectedCluster) {
       this.config.selectedCluster.next(undefined);
     }
-    const nodes = this.config.configuration.value.defintion.graph.getNodes();
-    const index = nodes.indexOf(cluster);
-    this.colors.splice(index, 1);
-    this.config.configuration.value.defintion.graph.removeNode(cluster);
-    this.config.update("Remove cluster " + cluster.id);
+    const node = this.config.configuration.value.definition.graph.nodeDictionary.get(cluster.id)!;
+    this.config.configuration.value.definition.graph.removeNode(node);
+    this.config.update("Remove cluster " + node.id);
   }
 
-  public onSelectCluster(cluster: Node) {
+  public onSelectCluster(cluster: Cluster) {
     this.config.selectedCluster.next(cluster);
   }
+
+  private numberToLetters(value: number): string {
+    let letters: string = "";
+    while (value > 0) {
+        const modulo: number = (value - 1) % 26;
+        letters = String.fromCharCode(65 + modulo) + letters;
+        value = Math.floor((value - modulo) / 26);
+    }
+    return letters;
+}
 }

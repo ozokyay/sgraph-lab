@@ -21,13 +21,13 @@ export class ConfigurationService {
   // - currently: publish all at once, very slow measures later
 
   public configuration = new BehaviorSubject<GraphConfiguration>({
-    defintion: EmptyDefinition,
+    definition: EmptyDefinition,
     instance: EmptyInstance,
-    message: "Initial Graph"
+    message: "Empty graph"
   });
 
   public measures = new BehaviorSubject<GraphInstance>(EmptyInstance); // This is just for slow measures, can publish degree distribution immediately
-  public selectedCluster = new BehaviorSubject<Node | undefined>(undefined);
+  public selectedCluster = new BehaviorSubject<Cluster | undefined>(undefined);
   public selectedConnections = new BehaviorSubject<Edge[]>([]);
   public history = new BehaviorSubject<GraphConfiguration[]>([this.configuration.value]);
 
@@ -36,17 +36,13 @@ export class ConfigurationService {
   public update(message: string) {
     // Build graph
     this.configuration.value.message = message;
-    this.build(this.configuration.value);
+    this.build(this.configuration.value, false);
 
     // TODO: Compute fast measures immediately
     
     
     // Track history without instance
-    this.history.value.push(structuredClone({
-      defintion: this.configuration.value.defintion,
-      instance: EmptyInstance,
-      message: this.configuration.value.message
-    }));
+    this.trackHistory(message);
 
     // Publish
     this.configuration.next(this.configuration.value);
@@ -55,9 +51,16 @@ export class ConfigurationService {
     // Per cluster
     // Global
     // Can do fast measures before
+  }
 
+  public trackHistory(message: string) {
     console.log(message);
-    console.log(this.configuration.value);
+    this.configuration.value.message = message;
+    this.history.value.push(structuredClone({
+      definition: this.configuration.value.definition,
+      instance: EmptyInstance,
+      message: this.configuration.value.message
+    }));
   }
 
   public undo() {
@@ -68,62 +71,56 @@ export class ConfigurationService {
     this.history.value.pop();
     const latest = this.history.value[this.history.value.length - 1];
     this.history.next(this.history.value);
-    this.build(latest);
+    this.build(latest, true);
     this.configuration.next(latest);
   }
 
-  private build(configuration: GraphConfiguration) {
+  private build(configuration: GraphConfiguration, undo: boolean) {
     // Clear instance
     configuration.instance.connections = new Map();
     configuration.instance.graph = new EdgeList();
 
     // Generate clusters
-    if (configuration.message.startsWith("Add cluster") ||
-        configuration.message.startsWith("Change cluster")) {
-      const id = parseInt(configuration.message.split(" ").pop()!);
-      const node = configuration.defintion.graph.nodeDictionary.get(id)!;
-      Utility.rand = new Rand(configuration.defintion.seed.toString() + id.toString());
-      configuration.instance.clusters.set(node.data as Cluster, this.generateCluster(node));
-    } else if (configuration.message.startsWith("Remove cluster")) {
-      const clusters: [Cluster, EdgeList][] = [];
-      for (const node of configuration.defintion.graph.nodes.keys()) {
-        const cluster = node.data as Cluster;
-        clusters.push([cluster, configuration.instance.clusters.get(cluster)!]);
-      }
-      configuration.instance.clusters.clear();
-      for (const [cluster, graph] of clusters) {
-        configuration.instance.clusters.set(cluster, graph);
-      }
-    } else if (configuration.message.startsWith("Import")) {
+    if (undo || configuration.message.startsWith("Import")) {
       configuration.instance.clusters = new Map();
-      for (const node of configuration.defintion.graph.nodes.keys()) {
-        Utility.rand = new Rand(configuration.defintion.seed.toString() + node.id.toString());
+      for (const node of configuration.definition.graph.nodes.keys()) {
+        Utility.rand = new Rand(configuration.definition.seed.toString() + node.id.toString());
         configuration.instance.clusters.set(node.data as Cluster, this.generateCluster(node));
       }
+    } else if (configuration.message.startsWith("Add cluster") ||
+        configuration.message.startsWith("Change cluster")) {
+      const id = parseInt(configuration.message.split(" ").pop()!);
+      const node = configuration.definition.graph.nodeDictionary.get(id)!;
+      Utility.rand = new Rand(configuration.definition.seed.toString() + id.toString());
+      configuration.instance.clusters.set(node.data as Cluster, this.generateCluster(node));
+    } else if (configuration.message.startsWith("Remove cluster")) {
+      const id = parseInt(configuration.message.split(" ").pop()!);
+      const cluster = [...configuration.instance.clusters.keys()].find(c => c.id == id)!;
+      configuration.instance.clusters.delete(cluster);
     }
 
     // Generate connections
-    for (const edges of configuration.defintion.graph.nodes.values()) {
+    for (const edges of configuration.definition.graph.nodes.values()) {
       for (const [edge, _] of edges) {
-        Utility.rand = new Rand(configuration.defintion.seed.toString() + edge.source.id.toString() + (edge.target.id << 16).toString());
+        Utility.rand = new Rand(configuration.definition.seed.toString() + edge.source.id.toString() + (edge.target.id << 16).toString());
         configuration.instance.connections.set(edge.data, this.generateConnection(edge));
       }
     }
 
     // Assemble graph
-    let id = 0;
     for (const instance of configuration.instance.clusters.values()) {
-      for (const node of instance.nodes) {
-        node.id = id;
-        id++;
-      }
-
       configuration.instance.graph.nodes = configuration.instance.graph.nodes.concat(instance.nodes);
       configuration.instance.graph.edges = configuration.instance.graph.edges.concat(instance.edges);
     }
     for (const connection of configuration.instance.connections.values()) {
       // Any attributes/IDs wanted here? Can always determine cluster combination from source/target
       configuration.instance.graph.edges = configuration.instance.graph.edges.concat(connection);
+    }
+
+    let id = 0;
+    for (const node of configuration.instance.graph.nodes) {
+      node.id = id;
+      id++;
     }
   }
 
@@ -162,7 +159,7 @@ export class ConfigurationService {
 
     for (const n of g.nodes) {
       n.data = {
-        clusterID: node.id,
+        clusterID: cluster.id,
         layoutPosition: { x:0, y: 0 },
         attributes: []
       }

@@ -4,6 +4,9 @@ import { ForceDirected } from '../graphwagu/webgpu/force_directed';
 import { EdgeData, EdgeList, Node, NodeData } from '../graph';
 import * as PIXI from 'pixi.js';
 import * as d3 from 'd3';
+import { Utility } from '../utility';
+import Rand from 'rand-seed';
+import { Cluster } from '../cluster';
 
 @Component({
   selector: 'app-vis-node-link',
@@ -68,43 +71,35 @@ export class VisNodeLinkComponent {
     const sourceEdges: Array<number> = [];
     const targetEdges: Array<number> = [];
 
-    const nodesToIndex = new Map<Node, number>();
-
+    Utility.rand = new Rand(this.config.configuration.value.definition.seed.toString());
     for (let i = 0; i < graph.nodes.length; i++) {
       const node = graph.nodes[i];
       const data = node.data as NodeData;
       if (data.layoutPosition.x == 0 && data.layoutPosition.y == 0) {
         data.layoutPosition = {
-          x: Math.random() - 0.5,
-          y: Math.random() - 0.5
+          x: Utility.rand.next() - 0.5,
+          y: Utility.rand.next() - 0.5
         }
       }
       nodeData.push(0.0, data.layoutPosition.x, data.layoutPosition.y, 1.0);
-      nodesToIndex.set(node, i);
     }
     for (let i = 0; i < graph.edges.length; i++) {
       const source = graph.edges[i].source;
       const target = graph.edges[i].target;
-      const s = nodesToIndex.get(source)!;
-      const t = nodesToIndex.get(target)!;
-      edgeData.push(s, t);
+      edgeData.push(source.id, target.id);
     }
 
     graph.edges.sort(function (a, b) { return (a.source.id > b.source.id) ? 1 : ((b.source.id > a.source.id) ? -1 : 0); });
     for (let i = 0; i < graph.edges.length; i++) {
       const source = graph.edges[i].source;
       const target = graph.edges[i].target;
-      const s = nodesToIndex.get(source)!;
-      const t = nodesToIndex.get(target)!;
-      sourceEdges.push(s, t);
+      sourceEdges.push(source.id, target.id);
     }
     graph.edges.sort(function (a, b) { return (a.target.id > b.target.id) ? 1 : ((b.target.id > a.target.id) ? -1 : 0); });
     for (let i = 0; i < graph.edges.length; i++) {
       const source = graph.edges[i].source;
       const target = graph.edges[i].target;
-      const s = nodesToIndex.get(source)!;
-      const t = nodesToIndex.get(target)!;
-      targetEdges.push(s, t);
+      targetEdges.push(source.id, target.id);
     }
 
     const nodeDataBuffer = this.device.createBuffer({
@@ -243,10 +238,13 @@ export class VisNodeLinkComponent {
 
   private getNodeColor(node: Node, communityColor: boolean = true): number | string {
     const data = node.data as NodeData;
+    const clusterNode = this.config.configuration.value.definition.graph.nodeDictionary.get(data.clusterID)!;
+    const cluster = clusterNode.data as Cluster;
+
     // If selected
     // return 0xFF00FF
     if (communityColor) {
-      return d3.schemeCategory10[data.clusterID % 10];
+      return d3.schemeCategory10[cluster.color % 10];
     } else {
       return 0x000000
     }

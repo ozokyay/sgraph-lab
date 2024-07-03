@@ -9,7 +9,7 @@
             <span class="label">{{edgeCount}}</span>
         </span>
         
-        <h2 class="vertical-item">Nodes from {{sourceName | clusterid}}</h2>
+        <h2 class="vertical-item">Nodes from {{sourceName}}</h2>
         <span>
             <mat-slider discrete min="0" max="1" step="0.01">
                 <input matSliderThumb [(value)]="nodeCountSource" (valueChange)="onChange()">
@@ -17,7 +17,7 @@
             <span class="label">{{nodeCountSource}}</span>
         </span>
     
-        <h2 class="vertical-item">Nodes from {{targetsName | clusterid}}</h2>
+        <h2 class="vertical-item">Nodes from {{targetsName}}</h2>
         <span>
             <mat-slider discrete min="0" max="1" step="0.01">
                 <input matSliderThumb [(value)]="nodeCountTarget" (valueChange)="onChange()">
@@ -35,13 +35,13 @@
         </span>
         
         <mat-slide-toggle [checked]="degreeDistributionTarget != undefined" (change)="onChangeDistributionSource($event.checked)">
-            Custom degree distribution for nodes from {{sourceName | clusterid}}
+            Custom degree distribution for nodes from {{sourceName}}
         </mat-slide-toggle>
         @if (degreeDistributionSource != undefined) {
             <app-vis-line-chart yLabel="Node frequency" [(series)]="degreeDistributionSource" [series2]="actualDistributionSource" (seriesChange)="onChange()"></app-vis-line-chart>
         }
         <mat-slide-toggle [checked]="degreeDistributionSource != undefined" (change)="onChangeDistributionTarget($event.checked)">
-            Custom degree distribution for nodes from {{targetsName | clusterid}}
+            Custom degree distribution for nodes from {{targetsName}}
         </mat-slide-toggle>
         @if (degreeDistributionTarget != undefined) {
             <app-vis-line-chart yLabel="Node frequency" [(series)]="degreeDistributionTarget" [series2]="actualDistributionTarget" (seriesChange)="onChange()"></app-vis-line-chart>

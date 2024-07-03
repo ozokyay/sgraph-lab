@@ -1,4 +1,4 @@
-import { EdgeList, Edge, Node } from "./graph";
+import { EdgeList, Edge, Node, AdjacencyList } from "./graph";
 import { Point } from "./point";
 import { Series } from "./series";
 import Rand from 'rand-seed';
@@ -14,15 +14,22 @@ export class Utility {
           dataType: 'Map',
           value: Array.from(value.entries()), // or with spread: value: [...value]
         };
+      } else if (value instanceof AdjacencyList) {
+        return {
+          dataType: 'AdjacencyList',
+          value: new EdgeList(value)
+        };
       } else {
         return value;
       }
     }
 
     private static reviver(key: string, value: any) {
-      if(typeof value === 'object' && value !== null) {
+      if (typeof value === 'object' && value !== null) {
         if (value.dataType === 'Map') {
           return new Map(value.value);
+        } else if (value.dataType == 'AdjacencyList') {
+          return new AdjacencyList(value.value, true);
         }
       }
       return value;

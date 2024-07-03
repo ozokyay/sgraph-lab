@@ -1,5 +1,9 @@
 import { Component } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { ConfigurationService } from '../configuration.service';
+import { NodeData } from '../graph';
+import { Utility } from '../utility';
+import { EmptyInstance } from '../graph-configuration';
 
 @Component({
   selector: 'app-tab-import-export',
@@ -12,6 +16,8 @@ import { MatButtonModule } from '@angular/material/button';
 })
 export class TabImportExportComponent {
 
+  constructor(private config: ConfigurationService) {}
+
   public onImportConfiguration(files: FileList | null) {
     if (files == null) {
       return;
@@ -23,33 +29,44 @@ export class TabImportExportComponent {
       if (e.target?.result == null) {
         return;
       }
-      // const { clusters, links } = Utility.parse(e.target.result.toString());
 
-      console.log(e.target.result.toString().length);
+      const definition = Utility.parse(e.target.result.toString());
 
-      // Can implement when cluster class is available
-
+      this.config.configuration.value.definition = definition;
+      this.config.configuration.value.instance = EmptyInstance;
+      this.config.history.next([]);
+      this.config.update("Import graph");
     }
     reader.readAsText(file);
   }
 
   public onExportConfiguration() {
-    // all random seeds (sampling, layout)
-    // const settings = { clusters: this.config.communities.value, links: this.config.communityLinks.value };
-    // const str = Utility.stringify(settings);
-    // this.download("export.json", str, "application/json");
+    const str = Utility.stringify(this.config.configuration.value.definition);
+    this.download("export.json", str, "application/json");
   }
 
   public onExportGraph() {
-    // if (this.mainGraph == undefined || this.mainGraph.nodes.length == 0) {
-    //   alert("No graph!");
-    //   return;
-    // }
-    // const csv: string[] = ["node1,node2,community1,community2"];
-    // for (const e of this.mainGraph.edges as ReferenceEdge[]) {
-    //   csv.push(`${e.source},${e.target},${e.sourceNode.data.id},${e.targetNode.data.id}`);
-    // }
-    // const str = csv.join("\n");
-    // this.download("graph.csv", str, "text/csv");
+    if (this.config.configuration.value.instance.graph.nodes.length == 0) {
+      alert("No graph!");
+      return;
+    }
+    const csv: string[] = ["node1,node2,cluster1,cluster2"];
+    for (const e of this.config.configuration.value.instance.graph.edges) {
+      const sourceData = e.source.data as NodeData;
+      const targetData = e.target.data as NodeData;
+      csv.push(`${e.source.id},${e.target.id},${sourceData.clusterID},${targetData.clusterID}`);
+    }
+    const str = csv.join("\n");
+    this.download("graph.csv", str, "text/csv");
+  }
+
+  private download(name: string, str: string, type: string) {
+    const blob = new Blob([str], { type: type });
+    const data = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = data;
+    link.download = name;
+    link.click();
+    link.remove();
   }
 }
