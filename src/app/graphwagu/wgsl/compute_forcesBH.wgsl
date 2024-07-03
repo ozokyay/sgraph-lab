@@ -21,6 +21,7 @@ struct Uniforms {
     edges_length : u32,
     cooling_factor : f32,
     ideal_length : f32,
+    gravity : f32,
 };
 struct Rectangle {
     x : f32,
@@ -108,7 +109,7 @@ fn main(@builtin(global_invocation_id) global_id : vec3<u32>) {
         } 
         stack_index = stack_index + 1u;
     }
-    var force : vec2<f32> = (a_force + r_force);
+    var force : vec2<f32> = (a_force + r_force); // r_force * uniforms.gravity
     var localForceMag: f32 = length(force); 
     if (localForceMag>0.000000001) {
         force = normalize(force) * min(uniforms.cooling_factor, length(force));

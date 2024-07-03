@@ -27,6 +27,7 @@ struct Uniforms {
     edges_length : u32,
     cooling_factor : f32,
     ideal_length : f32,
+    gravity : f32,
 };
 
 @group(0) @binding(0) var<storage, read_write> edge_info : EdgeInfoArray;
@@ -60,6 +61,11 @@ fn main(@builtin(global_invocation_id) global_id : vec3<u32>) {
             a_force = a_force + ((dist * dist) / l) * dir;
         }
     }
-    forces.forces[global_id.x * 2u] = a_force.x;
-    forces.forces[global_id.x * 2u + 1u] = a_force.y;
+
+    // Gravity
+    // let d : f32 = sqrt(node.x * node.x + node.y * node.y);
+    let g_force : vec2<f32> = vec2<f32>(-node.x, -node.y) * uniforms.gravity * 1.0 / uniforms.cooling_factor * 0.01; // Could divide by d
+
+    forces.forces[global_id.x * 2u] = a_force.x + g_force.x;
+    forces.forces[global_id.x * 2u + 1u] = a_force.y + g_force.y;
 }

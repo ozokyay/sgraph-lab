@@ -1,6 +1,6 @@
 <h3>Clusters</h3>
 <mat-nav-list role="list">
-    <mat-list-item role="listitem" *ngFor="let cluster of clusters" [ngClass]="{selected: selectedCluster === cluster}" (click)="onSelectCluster(cluster)">
+    <mat-list-item role="listitem" *ngFor="let cluster of clusters" [activated]="selectedCluster === cluster" (click)="onSelectCluster(cluster)">
         <div class="li-container">
             <div class="li-bar" [style.background-color]="getColor(cluster)"></div>
             Cluster {{cluster.id}}

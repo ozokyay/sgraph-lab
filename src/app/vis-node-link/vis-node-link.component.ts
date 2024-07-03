@@ -14,6 +14,9 @@ import * as d3 from 'd3';
 })
 export class VisNodeLinkComponent {
 
+  private edgeScale = 400;
+  private nodeRadius: number = 4;
+
   private app!: PIXI.Application;
   private stage!: PIXI.Container;
   private rect!: DOMRect;
@@ -21,6 +24,8 @@ export class VisNodeLinkComponent {
   private height: number = 0;
   private transform = new d3.ZoomTransform(1, 0, 0);
   private zoom = d3.zoom();
+  private nodeDict: Map<Node, PIXI.Graphics> = new Map();
+  private edgeGraphics?: PIXI.Graphics = undefined;
 
   @ViewChild('container')
   private container!: ElementRef;
@@ -51,6 +56,13 @@ export class VisNodeLinkComponent {
       return;
     }
 
+    this.prepare();
+
+    if (graph.nodes.length == 0) {
+      this.render();
+      return;
+    }
+
     const nodeData: Array<number> = [];
     const edgeData: Array<number> = [];
     const sourceEdges: Array<number> = [];
@@ -59,8 +71,16 @@ export class VisNodeLinkComponent {
     const nodesToIndex = new Map<Node, number>();
 
     for (let i = 0; i < graph.nodes.length; i++) {
-      nodeData.push(0.0, Math.random(), Math.random(), 1.0);
-      nodesToIndex.set(graph.nodes[i], i);
+      const node = graph.nodes[i];
+      const data = node.data as NodeData;
+      if (data.layoutPosition.x == 0 && data.layoutPosition.y == 0) {
+        data.layoutPosition = {
+          x: Math.random() - 0.5,
+          y: Math.random() - 0.5
+        }
+      }
+      nodeData.push(0.0, data.layoutPosition.x, data.layoutPosition.y, 1.0);
+      nodesToIndex.set(node, i);
     }
     for (let i = 0; i < graph.edges.length; i++) {
       const source = graph.edges[i].source;
@@ -120,30 +140,26 @@ export class VisNodeLinkComponent {
     new Uint32Array(targetEdgeDataBuffer.getMappedRange()).set(targetEdges);
     targetEdgeDataBuffer.unmap();
 
-    const frame = () => {
-      // Should update positions first
-      // this.render();
+    const frame = (positions: number[]) => {
+      // Assemble node data
+      for (let i = 0; i < 4 * nodeLength; i = i + 4) {
+        (graph.nodes[i / 4].data as NodeData).layoutPosition = {
+            x: positions[i + 1],
+            y: positions[i + 2]
+        };
+      }
+
+      this.render();
     };
 
-    const positions = await this.layout.runForces(
+    await this.layout.runForces(
       nodeDataBuffer, edgeDataBuffer,
       nodeLength, edgeLength,
-      0.9, 0.05, 1000, 100,
+      0.5, 0.05, 100, 1,
       sourceEdgeDataBuffer, targetEdgeDataBuffer, frame
     );
 
-    if (positions == undefined) {
-      console.log("Layout computation failed.");
-      return;
-    }
-
-    // Assemble node data
-    for (let i = 0; i < 4 * nodeLength; i = i + 4) {
-      (graph.nodes[i / 4].data as NodeData).layoutPosition = {
-          x: positions[i + 1],
-          y: positions[i + 2]
-      };
-    }
+    // Layout finished
   }
 
   private async initWebGPU() {
@@ -166,13 +182,26 @@ export class VisNodeLinkComponent {
     console.log("Layout intialized.");
   }
 
-  private render() {
+  private prepare() {
     this.stage?.destroy(true);
     this.stage = new PIXI.Container({
       isRenderGroup: true
     });
     this.app.stage.addChild(this.stage);
 
+    this.nodeDict.clear();
+    for (const node of this.config.configuration.value.instance.graph.nodes) {
+      const gfx = new PIXI.Graphics({ zIndex: 1 });
+      gfx.circle(0, 0, this.nodeRadius);
+      gfx.stroke({ width: 1, color: 'black' });
+      gfx.fill({ color: this.getNodeColor(node) });
+      this.nodeDict.set(node, gfx);
+      this.stage.addChild(gfx);
+    }
+  }
+
+  private render() {
+    // Zoom and pan
     const zoom = (e: any) => {
       this.transform = e.transform;
       this.stage.scale = { x: e.transform.k, y: e.transform.k };
@@ -181,16 +210,7 @@ export class VisNodeLinkComponent {
     zoom({ transform: this.transform });
 
     let zooming = d3.select(this.app.canvas as any)
-      // .call(d3.drag()
-      //   .container(this.app.canvas as any)
-      //   .subject(d => this.simulation?.find(calculateTransformedX(d.x), calculateTransformedY(d.y), 10))
-      //   .on('start', dragstarted)
-      //   .on('drag', dragged)
-      //   .on('end', dragended)
-      // )
-      .call(this.zoom
-        .on('zoom', zoom)
-      );
+      .call(this.zoom.on('zoom', zoom));
     
     // Initial zoom
     if (this.transform.x == 0 && this.transform.y == 0) {
@@ -198,27 +218,37 @@ export class VisNodeLinkComponent {
     }
 
 
-    // Render graph
-    const graphics = new PIXI.Graphics();
-    this.stage.addChild(graphics);
-
+    // Render edges
+    this.edgeGraphics?.destroy();
+    this.edgeGraphics = new PIXI.Graphics();
+    this.stage.addChild(this.edgeGraphics);
     for (const edge of this.config.configuration.value.instance.graph.edges) {
       const data = edge.data as EdgeData;
       const source = edge.source.data as NodeData;
       const target = edge.target.data as NodeData;
-      graphics.moveTo(source.layoutPosition.x * 1000, source.layoutPosition.y * 1000);
-      graphics.lineTo(target.layoutPosition.x * 1000, target.layoutPosition.y * 1000);
+      this.edgeGraphics.moveTo(source.layoutPosition.x * this.edgeScale, source.layoutPosition.y * this.edgeScale);
+      this.edgeGraphics.lineTo(target.layoutPosition.x * this.edgeScale, target.layoutPosition.y * this.edgeScale);
     }
-
-    graphics.stroke({width: 4, color: 'black'});
-
+    this.edgeGraphics.stroke({width: 2, color: 'black'});
+    // Set node positions
     for (const node of this.config.configuration.value.instance.graph.nodes) {
       const data = node.data as NodeData;
-      const gfx = new PIXI.Graphics();
-      gfx.circle(data.layoutPosition.x * 1000, data.layoutPosition.y * 1000, 10);
-      gfx.stroke({width: 1, color: 'black'});
-      gfx.fill({color: 'gray'});
-      this.stage.addChild(gfx);
+      let gfx = this.nodeDict.get(node)!;
+      gfx.position = {
+        x: data.layoutPosition.x * this.edgeScale,
+        y: data.layoutPosition.y * this.edgeScale
+      };
+    }
+  }
+
+  private getNodeColor(node: Node, communityColor: boolean = true): number | string {
+    const data = node.data as NodeData;
+    // If selected
+    // return 0xFF00FF
+    if (communityColor) {
+      return d3.schemeCategory10[data.clusterID % 10];
+    } else {
+      return 0x000000
     }
   }
 

@@ -29,8 +29,7 @@ export class ForceDirected {
     public computeAttractForcesPipeline: GPUComputePipeline;
     public applyForcesPipeline: GPUComputePipeline;
     public iterationCount: number = 10000;
-    public threshold: number = 100;
-    public force: number = 1000.0;
+    public gravity: number = 1;
 
     constructor(device: GPUDevice) {
         this.device = device;
@@ -157,7 +156,7 @@ export class ForceDirected {
 
         // Create a buffer to store the params, output, and min/max
         this.paramsBuffer = device.createBuffer({
-            size: 4 * 4,
+            size: 5 * 4,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
     }
@@ -204,11 +203,11 @@ export class ForceDirected {
         nodeLength: number = 0, edgeLength: number = 0,
         coolingFactor = this.coolingFactor, l = 0.01,
         iterationCount = this.iterationCount,
-        threshold = this.threshold,
+        gravity = this.gravity,
         sourceEdgeBuffer: GPUBuffer | null,
         targetEdgeBuffer: GPUBuffer | null,
-        frame: FrameRequestCallback,
-    ): Promise<number[] | void> {
+        frame: (positions: number[]) => void,
+    ) {
         // coolingFactor = 0.995;
         // l = 0.01;
         if (nodeLength === 0 || edgeLength === 0 || nodeDataBuffer === null || edgeDataBuffer === null) {
@@ -219,8 +218,8 @@ export class ForceDirected {
         this.coolingFactor = coolingFactor;
         this.nodeDataBuffer = nodeDataBuffer;
         this.edgeDataBuffer = edgeDataBuffer;
-        this.threshold = threshold;
-        this.force = 100000;
+        this.gravity = gravity;
+        
         const rangeBuffer = this.device.createBuffer({
             size: 4 * 4,
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
@@ -242,17 +241,17 @@ export class ForceDirected {
 
         // Set up params (node length, edge length) for creating adjacency matrix
         const uploadBuffer = this.device.createBuffer({
-            size: 4 * 4,
+            size: 5 * 4,
             usage: GPUBufferUsage.COPY_SRC,
             mappedAtCreation: true,
         });
         mapping = uploadBuffer.getMappedRange();
         new Uint32Array(mapping).set([nodeLength, edgeLength]);
-        new Float32Array(mapping).set([this.coolingFactor, l], 2);
+        new Float32Array(mapping).set([this.coolingFactor, l, gravity], 2);
         uploadBuffer.unmap();
 
         commandEncoder = this.device.createCommandEncoder();
-        commandEncoder.copyBufferToBuffer(uploadBuffer, 0, this.paramsBuffer, 0, 4 * 4);
+        commandEncoder.copyBufferToBuffer(uploadBuffer, 0, this.paramsBuffer, 0, 5 * 4);
 
         this.device.queue.submit([commandEncoder.finish()]);
 
@@ -437,7 +436,7 @@ export class ForceDirected {
             size: nodeLength * 4 * 4,
             usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
         });
-        iterationCount = 2000;
+        // iterationCount = 2000;
         let numIterations = 0;
         // const querySet = this.device.createQuerySet({
         //     type: "timestamp",
@@ -452,7 +451,7 @@ export class ForceDirected {
         //     usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
         // });
         let start, end : number;
-        while (iterationCount > 0 && this.coolingFactor > 0.0001 && this.force >= 0) {
+        while (iterationCount > 0 && (this.coolingFactor > 0.0001 || true)) {
             numIterations++;
             iterationCount--;
             // Set up params (node length, edge length)
@@ -708,7 +707,7 @@ export class ForceDirected {
             start = performance.now();
             await this.device.queue.onSubmittedWorkDone();
             end = performance.now();
-            console.log(`iteration time ${end - start}`)
+            // console.log(`iteration time ${end - start}`)
             // iterationTimes.push(end - start);
 
             // this.maxForceResultBuffer.unmap();
@@ -743,13 +742,20 @@ export class ForceDirected {
             //     break;
             // }
             stackBuffer.destroy();
-            this.coolingFactor = this.coolingFactor * coolingFactor;
-            requestAnimationFrame(frame);
+            this.coolingFactor = Math.max(0.01, this.coolingFactor * coolingFactor);
+
+            await positionReadBuffer.mapAsync(GPUMapMode.READ);
+            let positionArrayBuffer = positionReadBuffer.getMappedRange();
+            let positionList: number[] = [...new Float32Array(positionArrayBuffer)];
+            await this.device.queue.onSubmittedWorkDone();
+            positionReadBuffer.unmap();
+
+            requestAnimationFrame(() => frame(positionList));
         }
-        await positionReadBuffer.mapAsync(GPUMapMode.READ);
-        let positionArrayBuffer = positionReadBuffer.getMappedRange();
-        let positionList = new Float32Array(positionArrayBuffer);
-        await this.device.queue.onSubmittedWorkDone();
+        // await positionReadBuffer.mapAsync(GPUMapMode.READ);
+        // let positionArrayBuffer = positionReadBuffer.getMappedRange();
+        // let positionList: number[] = new Float32Array(positionArrayBuffer) as any;
+        // await this.device.queue.onSubmittedWorkDone();
 
         const totalEnd = performance.now();
         // const iterAvg : number = iterationTimes.reduce(function(a, b) {return a + b}) / iterationTimes.length;
@@ -780,9 +786,10 @@ export class ForceDirected {
         // document.body.appendChild(element2); 
         // element.click();
 
+        // console.log(positionList);
 
-        requestAnimationFrame(frame);
+        // requestAnimationFrame(() => frame(positionList));
 
-        return positionList as any;
+        // return positionList;
     }
 }

@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Subject } from 'rxjs';
+import { BehaviorSubject } from 'rxjs';
 import { GraphConfiguration, GraphInstance, EmptyInstance, EmptyDefinition } from './graph-configuration';
 import { AdjacencyList, Edge, EdgeList, Node } from './graph';
 import { Cluster } from './cluster';
@@ -35,14 +35,18 @@ export class ConfigurationService {
    
   public update(message: string) {
     // Build graph
-    this.build();
+    this.configuration.value.message = message;
+    this.build(this.configuration.value);
 
     // TODO: Compute fast measures immediately
     
     
-    // Track history
-    this.configuration.value.message = message;
-    this.history.value.push(structuredClone(this.configuration.value));
+    // Track history without instance
+    this.history.value.push(structuredClone({
+      defintion: this.configuration.value.defintion,
+      instance: EmptyInstance,
+      message: this.configuration.value.message
+    }));
 
     // Publish
     this.configuration.next(this.configuration.value);
@@ -58,59 +62,68 @@ export class ConfigurationService {
 
   public undo() {
     // TODO: CTRL+Y, selection history
-    if (this.history.value.length < 2) {
+    if (this.history.value.length == 1) {
       return;
     }
-    const latest = this.history.value.pop()!;
+    this.history.value.pop();
+    const latest = this.history.value[this.history.value.length - 1];
     this.history.next(this.history.value);
+    this.build(latest);
     this.configuration.next(latest);
-    this.measures.next(latest.instance);
   }
 
-  private build() {
+  private build(configuration: GraphConfiguration) {
     // Clear instance
-    this.configuration.value.instance.clusters = new Map();
-    this.configuration.value.instance.connections = new Map();
-    this.configuration.value.instance.graph = new EdgeList();
+    configuration.instance.connections = new Map();
+    configuration.instance.graph = new EdgeList();
 
     // Generate clusters
-    for (const cluster of this.configuration.value.defintion.graph.nodes.keys()) {
-      Utility.rand = new Rand(this.configuration.value.defintion.seed.toString() + cluster.id.toString());
-      this.configuration.value.instance.clusters.set(cluster.data as Cluster, this.generateCluster(cluster));
+    if (configuration.message.startsWith("Add cluster") ||
+        configuration.message.startsWith("Change cluster")) {
+      const id = parseInt(configuration.message.split(" ").pop()!);
+      const node = configuration.defintion.graph.nodeDictionary.get(id)!;
+      Utility.rand = new Rand(configuration.defintion.seed.toString() + id.toString());
+      configuration.instance.clusters.set(node.data as Cluster, this.generateCluster(node));
+    } else if (configuration.message.startsWith("Remove cluster")) {
+      const clusters: [Cluster, EdgeList][] = [];
+      for (const node of configuration.defintion.graph.nodes.keys()) {
+        const cluster = node.data as Cluster;
+        clusters.push([cluster, configuration.instance.clusters.get(cluster)!]);
+      }
+      configuration.instance.clusters.clear();
+      for (const [cluster, graph] of clusters) {
+        configuration.instance.clusters.set(cluster, graph);
+      }
+    } else if (configuration.message.startsWith("Import")) {
+      configuration.instance.clusters = new Map();
+      for (const node of configuration.defintion.graph.nodes.keys()) {
+        Utility.rand = new Rand(configuration.defintion.seed.toString() + node.id.toString());
+        configuration.instance.clusters.set(node.data as Cluster, this.generateCluster(node));
+      }
     }
 
-    // Fit connections' degree distributions to new xExtents
-    // Need for connection UI => Do in connection component? Can be ignored at multiply (=1)?
-
     // Generate connections
-    for (const edges of this.configuration.value.defintion.graph.nodes.values()) {
+    for (const edges of configuration.defintion.graph.nodes.values()) {
       for (const [edge, _] of edges) {
-        Utility.rand = new Rand(this.configuration.value.defintion.seed.toString() + edge.source.id.toString() + (edge.target.id << 16).toString());
-        this.configuration.value.instance.connections.set(edge.data, this.generateConnection(edge));
+        Utility.rand = new Rand(configuration.defintion.seed.toString() + edge.source.id.toString() + (edge.target.id << 16).toString());
+        configuration.instance.connections.set(edge.data, this.generateConnection(edge));
       }
     }
 
     // Assemble graph
     let id = 0;
-    for (const definition of this.configuration.value.defintion.graph.nodes.keys()) {
-      const cluster = definition.data as Cluster;
-      const instance = this.configuration.value.instance.clusters.get(cluster)!;
+    for (const instance of configuration.instance.clusters.values()) {
       for (const node of instance.nodes) {
-        node.data = {
-          clusterID: definition.id,
-          layoutPosition: { x: 0, y: 0 },
-          attributes: []
-        };
         node.id = id;
         id++;
       }
 
-      this.configuration.value.instance.graph.nodes = this.configuration.value.instance.graph.nodes.concat(instance.nodes);
-      this.configuration.value.instance.graph.edges = this.configuration.value.instance.graph.edges.concat(instance.edges);
+      configuration.instance.graph.nodes = configuration.instance.graph.nodes.concat(instance.nodes);
+      configuration.instance.graph.edges = configuration.instance.graph.edges.concat(instance.edges);
     }
-    for (const connection of this.configuration.value.instance.connections.values()) {
+    for (const connection of configuration.instance.connections.values()) {
       // Any attributes/IDs wanted here? Can always determine cluster combination from source/target
-      this.configuration.value.instance.graph.edges = this.configuration.value.instance.graph.edges.concat(connection);
+      configuration.instance.graph.edges = configuration.instance.graph.edges.concat(connection);
     }
   }
 
@@ -150,7 +163,7 @@ export class ConfigurationService {
     for (const n of g.nodes) {
       n.data = {
         clusterID: node.id,
-        layoutPosition: { x: 0, y: 0 },
+        layoutPosition: { x:0, y: 0 },
         attributes: []
       }
     }

@@ -37,15 +37,14 @@ export class EdgeList {
 export class AdjacencyList {
     public nodes: Map<Node, [Edge, Node][]>;
     public nodeDictionary: Map<number, Node>; // Kinda bad for performance I guess
-    public edgeDictionary: Map<number, Edge>;
 
     constructor (edgeList?: EdgeList) {
         this.nodes = new Map();
         this.nodeDictionary = new Map();
-        this.edgeDictionary = new Map();
         if (edgeList != undefined) {
             for (const node of edgeList.nodes) {
                 this.nodes.set(node, []);
+                this.nodeDictionary.set(node.id, node);
             }
             for (const edge of edgeList.edges) {
                 this.nodes.get(edge.source)!.push([edge, edge.target]);
@@ -72,10 +71,12 @@ export class AdjacencyList {
 
     public addNode(node: Node) {
         this.nodes.set(node, []);
+        this.nodeDictionary.set(node.id, node);
     }
 
     public removeNode(node: Node) {
         this.nodes.delete(node);
+        this.nodeDictionary.delete(node.id);
     }
 
     public clear() {
