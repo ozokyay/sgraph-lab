@@ -150,7 +150,7 @@ export class VisNodeLinkComponent {
     await this.layout.runForces(
       nodeDataBuffer, edgeDataBuffer,
       nodeLength, edgeLength,
-      0.5, 0.05, 100, 1,
+      0.5, 0.07, 100, 1,
       sourceEdgeDataBuffer, targetEdgeDataBuffer, frame
     );
 
@@ -188,7 +188,7 @@ export class VisNodeLinkComponent {
     for (const node of this.config.configuration.value.instance.graph.nodes) {
       const gfx = new PIXI.Graphics({ zIndex: 1 });
       gfx.circle(0, 0, this.nodeRadius);
-      gfx.stroke({ width: 1, color: 'black' });
+      gfx.stroke({ width: 4, color: 'black' });
       gfx.fill({ color: this.getNodeColor(node) });
       this.nodeDict.set(node, gfx);
       this.stage.addChild(gfx);
@@ -212,7 +212,6 @@ export class VisNodeLinkComponent {
       zooming.call(this.zoom.transform, d3.zoomIdentity.translate(this.width / 2, this.height / 2))
     }
 
-
     // Render edges
     this.edgeGraphics?.destroy();
     this.edgeGraphics = new PIXI.Graphics();
@@ -221,10 +220,18 @@ export class VisNodeLinkComponent {
       const data = edge.data as EdgeData;
       const source = edge.source.data as NodeData;
       const target = edge.target.data as NodeData;
+      const middle = {
+        x: (source.layoutPosition.x + target.layoutPosition.x) / 2,
+        y: (source.layoutPosition.y + target.layoutPosition.y) / 2
+      };
       this.edgeGraphics.moveTo(source.layoutPosition.x * this.edgeScale, source.layoutPosition.y * this.edgeScale);
+      this.edgeGraphics.lineTo(middle.x * this.edgeScale, middle.y * this.edgeScale);
+      this.edgeGraphics.stroke({width: 1, color: this.getNodeColor(edge.source) });
+      this.edgeGraphics.moveTo(middle.x * this.edgeScale, middle.y * this.edgeScale);
       this.edgeGraphics.lineTo(target.layoutPosition.x * this.edgeScale, target.layoutPosition.y * this.edgeScale);
+      this.edgeGraphics.stroke({width: 1, color: this.getNodeColor(edge.target) });
     }
-    this.edgeGraphics.stroke({width: 2, color: 'black'});
+    
     // Set node positions
     for (const node of this.config.configuration.value.instance.graph.nodes) {
       const data = node.data as NodeData;

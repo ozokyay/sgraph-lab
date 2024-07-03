@@ -103,7 +103,7 @@ export class ConfigurationService {
     for (const edges of configuration.definition.graph.nodes.values()) {
       for (const [edge, _] of edges) {
         Utility.rand = new Rand(configuration.definition.seed.toString() + edge.source.id.toString() + (edge.target.id << 16).toString());
-        configuration.instance.connections.set(edge.data, this.generateConnection(edge));
+        configuration.instance.connections.set(edge.data as ClusterConnection, this.generateConnection(edge));
       }
     }
 
@@ -169,7 +169,7 @@ export class ConfigurationService {
   }
 
   private generateConnection(edge: Edge): Edge[] {
-    const connection: ClusterConnection = edge.data!;
+    const connection: ClusterConnection = edge.data as ClusterConnection;
     const cluster1: Cluster = edge.source.data as Cluster;
     const cluster2: Cluster = edge.target.data as Cluster;
     const graph1: EdgeList = this.configuration.value.instance.clusters.get(cluster1)!;
@@ -247,7 +247,7 @@ export class ConfigurationService {
     Utility.shuffleArray(combinations);
     finalEdges.push(...combinations.splice(0, random));
     // Take rest from sorted
-    combinations.sort((a, b) => (a.data - b.data) * Math.sign(connection.degreeAssortativity));
+    combinations.sort((a, b) => ((a.data as number) - (b.data as number)) * Math.sign(connection.degreeAssortativity));
     finalEdges.push(...combinations.slice(0, assortative));
 
     return finalEdges.slice(0, edges);

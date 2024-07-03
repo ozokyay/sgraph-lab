@@ -83,7 +83,7 @@ export class TabConnectionsComponent {
     this.degreeAssortativity = firstConn.degreeAssortativity;
 
     // Set string labels
-    this.sourceName = (first.data as Cluster).name;
+    this.sourceName = (first.source.data as Cluster).name;
     this.targetsName = "";
 
     // Compute distributions

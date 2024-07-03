@@ -1,4 +1,5 @@
 import { Cluster } from "./cluster";
+import { ClusterConnection } from "./cluster-connection";
 import { Point } from "./point";
 
 export class EdgeList {
@@ -100,7 +101,7 @@ export interface Node {
 export interface Edge {
     source: Node,
     target: Node,
-    data?: any // Should also reflect that it can be assortativity distance or attributes e.g. weight
+    data?: EdgeData | ClusterConnection | number // Should also reflect that it can be assortativity distance or attributes e.g. weight
 }
 
 export interface NodeData {
