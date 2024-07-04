@@ -17,8 +17,8 @@ import { Cluster } from '../cluster';
 })
 export class VisNodeLinkComponent {
 
-  private edgeScale = 400;
-  private nodeRadius: number = 4;
+  private edgeScale = 500;
+  private nodeRadius: number = 3;
 
   private app!: PIXI.Application;
   private stage!: PIXI.Container;
@@ -150,7 +150,7 @@ export class VisNodeLinkComponent {
     await this.layout.runForces(
       nodeDataBuffer, edgeDataBuffer,
       nodeLength, edgeLength,
-      0.5, 0.07, 100, 1,
+      0.5, 0.05, 100, 1,
       sourceEdgeDataBuffer, targetEdgeDataBuffer, frame
     );
 
@@ -241,6 +241,21 @@ export class VisNodeLinkComponent {
         y: data.layoutPosition.y * this.edgeScale
       };
     }
+
+    // Render convex hull
+    const cluster1 = [...this.config.configuration.value.instance.clusters.values()][0].nodes;
+    const points: [number, number][] = cluster1.map(n => {
+      const data = n.data as NodeData;
+      return [data.layoutPosition.x, data.layoutPosition.y];
+    });
+    const hull = d3.polygonHull(points)!;
+    for (let i = 0; i < hull.length; i++) {
+      const point1 = hull[i];
+      const point2 = hull[i == hull.length - 1 ? 0 : (i + 1)];
+      this.edgeGraphics.moveTo(point1[0] * this.edgeScale, point1[1] * this.edgeScale);
+      this.edgeGraphics.lineTo(point2[0] * this.edgeScale, point2[1] * this.edgeScale);
+    }
+    this.edgeGraphics.stroke({width: 4, color: 'gray'});
   }
 
   private getNodeColor(node: Node, communityColor: boolean = true): number | string {
