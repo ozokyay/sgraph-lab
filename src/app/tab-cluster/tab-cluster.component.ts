@@ -29,13 +29,21 @@ export class TabClusterComponent {
   public cluster?: Cluster = undefined;
 
   constructor(private config: ConfigurationService) {
-    config.measures.subscribe(measures => this.clusterMeasures = measures.clusterMeasures.get(this.cluster!));
+    config.measures.subscribe(measures => {
+      if (this.cluster != undefined) {
+        this.clusterMeasures = measures.clusterMeasures.get(this.cluster!)
+      }
+    });
+    config.configuration.subscribe(config => {
+      if (this.cluster != undefined) {
+        this.clusterMeasures = config.instance.clusterMeasures.get(this.cluster!)
+      }
+    });
     config.selectedCluster.subscribe(cluster => {
       this.cluster = cluster;
-      if (this.cluster == undefined) {
-        return;
+      if (this.cluster != undefined) {
+        this.clusterMeasures = config.measures.value.clusterMeasures.get(this.cluster);
       }
-      this.clusterMeasures = config.measures.value.clusterMeasures.get(this.cluster);
     });
   }
 

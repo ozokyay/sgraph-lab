@@ -51,19 +51,18 @@ export class Utility {
         }
     }
 
-    public static sampleRandomEdgeNode(input: EdgeList, edgeCount: number): EdgeList {
-        const nodes = new Set<Node>();
-        const edges = new Set<Edge>();
-        const allEdges = [...input.edges] as Edge[];
+    public static sampleRandomEdges(input: EdgeList, edgeCount: number): EdgeList {
+        const nodes: Node[] = [];
+        const edges: Edge[] = [];
+        const allEdges = [...input.edges];
     
         // Random edge sampling
         Utility.shuffleArray(allEdges);
         const sample = allEdges.slice(0, edgeCount)
         for (const e of sample) {
           const edge = e;
-          nodes.add(edge.source);
-          nodes.add(edge.target);
-          edges.add(e);
+          nodes.push(edge.source, edge.target);
+          edges.push(e);
         }
         // Induced subgraph
         // for (const e of allEdges) {
@@ -71,7 +70,7 @@ export class Utility {
         //     edges.add(e);
         //   }
         // }
-        return { nodes: [...nodes], edges: [...edges] }
+        return { nodes: nodes, edges: sample };
     }
 
     public static addDistributions(d1: Series, d2: Series): Series {
@@ -234,9 +233,8 @@ export class Utility {
       return nodes;
     }
 
-    public static getDegreeDistribution(graph: EdgeList): Series {
-      const nodeDegrees = Utility.computeNodeDegrees(graph);
-      const degreeBuckets = Utility.sortNodeDegrees(nodeDegrees);
+    public static getDegreeDistribution(degrees: Map<Node, number>): Series {
+      const degreeBuckets = Utility.sortNodeDegrees(degrees);
       const degreePoints: Point[] = [];
       for (const [d, b] of degreeBuckets) {
         degreePoints.push({

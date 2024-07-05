@@ -18,7 +18,8 @@ import { Cluster } from '../cluster';
 export class VisNodeLinkComponent {
 
   private edgeScale = 500;
-  private nodeRadius: number = 3;
+  private nodeRadius = 3;
+  private nodeRadiusRange = [1, 6];
 
   private app!: PIXI.Application;
   private stage!: PIXI.Container;
@@ -29,6 +30,7 @@ export class VisNodeLinkComponent {
   private zoom = d3.zoom();
   private nodeDict: Map<Node, PIXI.Graphics> = new Map();
   private edgeGraphics?: PIXI.Graphics = undefined;
+  private graph?: EdgeList = undefined;
 
   @ViewChild('container')
   private container!: ElementRef;
@@ -48,9 +50,85 @@ export class VisNodeLinkComponent {
         return;
       }
 
-      await this.runLayout(config.instance.graph);
-      this.render();
+      this.graph = this.prepare(config.instance.graph);
+      await this.runLayout(this.graph);
     });
+    config.layoutSettings.subscribe(async () => {
+      if (config.configuration.value.instance.graph.nodes.length > 0) {
+        this.graph = this.prepare(config.configuration.value.instance.graph);
+        await this.runLayout(config.configuration.value.instance.graph);
+      }
+    });
+    config.graphicsSettings.subscribe(() => {
+      if (config.configuration.value.instance.graph.nodes.length > 0 && this.graph != undefined) {
+        this.createNodes(this.graph);
+        this.render(this.graph);
+      }
+    });
+  }
+
+  private async initWebGPU() {
+    if (!navigator.gpu) {
+      alert("NetworkBuilder requires WebGPU. You may be using an incompatible Browser.");
+      return;
+    }
+    const adapter = (await navigator.gpu.requestAdapter({ powerPreference: "high-performance" }))!;
+    if (!adapter) {
+      alert("NetworkBuilder requires WebGPU. You may be using an incompatible Browser.");
+      return;
+    }
+    this.device = await adapter.requestDevice({
+      requiredLimits: {
+          "maxStorageBufferBindingSize": adapter.limits.maxStorageBufferBindingSize,
+          "maxComputeWorkgroupsPerDimension": adapter.limits.maxComputeWorkgroupsPerDimension
+      }
+    });
+    this.layout = new ForceDirected(this.device);
+    console.log("Layout intialized.");
+  }
+
+  private prepare(graph: EdgeList): EdgeList {
+    // Prepare stage
+    this.stage?.destroy(true);
+    this.stage = new PIXI.Container({
+      isRenderGroup: true
+    });
+    this.app.stage.addChild(this.stage);
+
+    // Prepare graph
+    const settings = this.config.layoutSettings.value;
+    Utility.rand = new Rand(this.config.configuration.value.definition.seed.toString());
+    if (settings.sampling < 1) {
+      graph = Utility.sampleRandomEdges(graph, settings.sampling * graph.edges.length);
+    }
+
+    // Prepare nodes
+    this.createNodes(graph);
+
+    return graph;
+  }
+
+  private createNodes(graph: EdgeList) {
+    for (const gfx of this.nodeDict.values()) {
+      gfx.destroy();
+    }
+    this.nodeDict.clear();
+
+    const degrees = this.config.measures.value.globalMeasures.degrees;
+    const degreesExtent = d3.extent(degrees.values()) as [number, number];
+    const radiusScale = d3.scaleLinear().domain(degreesExtent).range(this.nodeRadiusRange);
+    for (const node of graph.nodes) {
+      const gfx = new PIXI.Graphics({ zIndex: 1 });
+      let radius = this.nodeRadius;
+      if (this.config.graphicsSettings.value.nodeRadius) {
+        radius = radiusScale(degrees.get(node)!);
+      }
+      gfx.circle(0, 0, radius);
+      gfx.stroke({ width: 4, color: 'black' });
+      gfx.fill({ color: this.getNodeColor(node, this.config.graphicsSettings.value.nodeColoring) });
+      this.nodeDict.set(node, gfx);
+      this.stage.addChild(gfx);
+    }
   }
 
   private async runLayout(graph: EdgeList) {
@@ -59,10 +137,8 @@ export class VisNodeLinkComponent {
       return;
     }
 
-    this.prepare();
-
     if (graph.nodes.length == 0) {
-      this.render();
+      this.render(graph);
       return;
     }
 
@@ -71,7 +147,6 @@ export class VisNodeLinkComponent {
     const sourceEdges: Array<number> = [];
     const targetEdges: Array<number> = [];
 
-    Utility.rand = new Rand(this.config.configuration.value.definition.seed.toString());
     for (let i = 0; i < graph.nodes.length; i++) {
       const node = graph.nodes[i];
       const data = node.data as NodeData;
@@ -144,58 +219,25 @@ export class VisNodeLinkComponent {
         };
       }
 
-      this.render();
+      this.render(graph);
     };
 
     await this.layout.runForces(
       nodeDataBuffer, edgeDataBuffer,
       nodeLength, edgeLength,
-      0.5, 0.05, 100, 1,
+      0.5, 0.05, 100, this.config.layoutSettings.value.gravity,
       sourceEdgeDataBuffer, targetEdgeDataBuffer, frame
     );
 
     // Layout finished
   }
 
-  private async initWebGPU() {
-    if (!navigator.gpu) {
-      alert("NetworkBuilder requires WebGPU. You may be using an incompatible Browser.");
+  private render(graph: EdgeList) {
+    if (this.graph == undefined) {
+      console.log("No graph");
       return;
     }
-    const adapter = (await navigator.gpu.requestAdapter({ powerPreference: "high-performance" }))!;
-    if (!adapter) {
-      alert("NetworkBuilder requires WebGPU. You may be using an incompatible Browser.");
-      return;
-    }
-    this.device = await adapter.requestDevice({
-      requiredLimits: {
-          "maxStorageBufferBindingSize": adapter.limits.maxStorageBufferBindingSize,
-          "maxComputeWorkgroupsPerDimension": adapter.limits.maxComputeWorkgroupsPerDimension
-      }
-    });
-    this.layout = new ForceDirected(this.device);
-    console.log("Layout intialized.");
-  }
 
-  private prepare() {
-    this.stage?.destroy(true);
-    this.stage = new PIXI.Container({
-      isRenderGroup: true
-    });
-    this.app.stage.addChild(this.stage);
-
-    this.nodeDict.clear();
-    for (const node of this.config.configuration.value.instance.graph.nodes) {
-      const gfx = new PIXI.Graphics({ zIndex: 1 });
-      gfx.circle(0, 0, this.nodeRadius);
-      gfx.stroke({ width: 4, color: 'black' });
-      gfx.fill({ color: this.getNodeColor(node) });
-      this.nodeDict.set(node, gfx);
-      this.stage.addChild(gfx);
-    }
-  }
-
-  private render() {
     // Zoom and pan
     const zoom = (e: any) => {
       this.transform = e.transform;
@@ -212,11 +254,14 @@ export class VisNodeLinkComponent {
       zooming.call(this.zoom.transform, d3.zoomIdentity.translate(this.width / 2, this.height / 2))
     }
 
+    // Apply graphics settings
+    const settings = this.config.graphicsSettings.value;
+
     // Render edges
     this.edgeGraphics?.destroy();
     this.edgeGraphics = new PIXI.Graphics();
     this.stage.addChild(this.edgeGraphics);
-    for (const edge of this.config.configuration.value.instance.graph.edges) {
+    for (const edge of this.graph.edges) {
       const data = edge.data as EdgeData;
       const source = edge.source.data as NodeData;
       const target = edge.target.data as NodeData;
@@ -226,14 +271,14 @@ export class VisNodeLinkComponent {
       };
       this.edgeGraphics.moveTo(source.layoutPosition.x * this.edgeScale, source.layoutPosition.y * this.edgeScale);
       this.edgeGraphics.lineTo(middle.x * this.edgeScale, middle.y * this.edgeScale);
-      this.edgeGraphics.stroke({width: 1, color: this.getNodeColor(edge.source) });
+      this.edgeGraphics.stroke({width: 1, color: this.getNodeColor(edge.source, settings.edgeColoring) });
       this.edgeGraphics.moveTo(middle.x * this.edgeScale, middle.y * this.edgeScale);
       this.edgeGraphics.lineTo(target.layoutPosition.x * this.edgeScale, target.layoutPosition.y * this.edgeScale);
-      this.edgeGraphics.stroke({width: 1, color: this.getNodeColor(edge.target) });
+      this.edgeGraphics.stroke({width: 1, color: this.getNodeColor(edge.target, settings.edgeColoring) });
     }
     
     // Set node positions
-    for (const node of this.config.configuration.value.instance.graph.nodes) {
+    for (const node of this.graph.nodes) {
       const data = node.data as NodeData;
       let gfx = this.nodeDict.get(node)!;
       gfx.position = {
@@ -262,13 +307,12 @@ export class VisNodeLinkComponent {
   }
 
   private getNodeColor(node: Node, communityColor: boolean = true): number | string {
-    const data = node.data as NodeData;
-    const clusterNode = this.config.configuration.value.definition.graph.nodeDictionary.get(data.clusterID)!;
-    const cluster = clusterNode.data as Cluster;
-
-    // If selected
+        // If this.config.selectedNodes.value.has(node)
     // return 0xFF00FF
     if (communityColor) {
+      const data = node.data as NodeData;
+      const clusterNode = this.config.configuration.value.definition.graph.nodeDictionary.get(data.clusterID)!;
+      const cluster = clusterNode.data as Cluster;
       return d3.schemeCategory10[cluster.color % 10];
     } else {
       return 0x000000

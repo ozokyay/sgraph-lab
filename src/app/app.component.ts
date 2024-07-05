@@ -13,6 +13,7 @@ import { TabClusterListComponent } from "./tab-cluster-list/tab-cluster-list.com
 import { TabConnectionsComponent } from './tab-connections/tab-connections.component';
 import { Uniform10 } from './series';
 import { VisNodeLinkComponent } from './vis-node-link/vis-node-link.component';
+import { TabNlSettingsComponent } from './tab-nl-settings/tab-nl-settings.component';
 
 @Component({
     selector: 'app-root',
@@ -30,6 +31,7 @@ import { VisNodeLinkComponent } from './vis-node-link/vis-node-link.component';
         TabClusterComponent,
         TabClusterListComponent,
         TabConnectionsComponent,
+        TabNlSettingsComponent,
         VisNodeLinkComponent
     ]
 })

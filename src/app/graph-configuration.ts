@@ -1,6 +1,6 @@
 import { Cluster } from "./cluster";
 import { ClusterConnection } from "./cluster-connection";
-import { AdjacencyList, Edge, EdgeList } from "./graph";
+import { AdjacencyList, Node, Edge, EdgeList } from "./graph";
 import { Series } from "./series";
 
 export interface GraphConfiguration {
@@ -25,12 +25,14 @@ export interface GraphInstance {
 export interface GraphMeasures {
     nodeCount: number,
     edgeCount: number,
+    degrees: Map<Node, number>,
     degreeDistribution: Series
 }
 
 export const EmptyMeasures: GraphMeasures = {
     nodeCount: 0,
     edgeCount: 0,
+    degrees: new Map(),
     degreeDistribution: { data: [], xExtent: [0, 0], yExtent: [0, 0] }
 }
 

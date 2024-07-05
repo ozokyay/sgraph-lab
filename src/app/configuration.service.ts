@@ -1,12 +1,13 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
-import { GraphConfiguration, GraphInstance, EmptyInstance, EmptyDefinition } from './graph-configuration';
+import { GraphConfiguration, GraphInstance, EmptyInstance, EmptyDefinition, EmptyMeasures } from './graph-configuration';
 import { AdjacencyList, Edge, EdgeList, Node } from './graph';
 import { Cluster } from './cluster';
 import { LocalService } from './local.service';
 import { Utility } from './utility';
 import Rand from 'rand-seed';
 import { ClusterConnection } from './cluster-connection';
+import { DefaultGraphics, DefaultLayout, GraphicsSettings, LayoutSettings } from './nl-settings';
 
 @Injectable({
   providedIn: 'root'
@@ -26,21 +27,23 @@ export class ConfigurationService {
     message: "Empty graph"
   });
 
-  public measures = new BehaviorSubject<GraphInstance>(EmptyInstance); // This is just for slow measures, can publish degree distribution immediately
+  public measures = new BehaviorSubject<GraphInstance>(EmptyInstance);
   public selectedCluster = new BehaviorSubject<Cluster | undefined>(undefined);
   public selectedConnections = new BehaviorSubject<Edge[]>([]);
-  public history = new BehaviorSubject<GraphConfiguration[]>([this.configuration.value]);
+  public layoutSettings = new BehaviorSubject<LayoutSettings>(DefaultLayout);
+  public graphicsSettings = new BehaviorSubject<GraphicsSettings>(DefaultGraphics);
+  public history = new BehaviorSubject<GraphConfiguration[]>([structuredClone(this.configuration.value)]);
 
   constructor(private local: LocalService) {}
    
   public update(message: string) {
-    // Build graph
     this.configuration.value.message = message;
+    // Build graph
     this.build(this.configuration.value, false);
 
-    // TODO: Compute fast measures immediately
-    
-    
+    // Compute fast measures immediately
+    this.computeFastMeasures();
+
     // Track history without instance
     this.trackHistory(message);
 
@@ -48,9 +51,10 @@ export class ConfigurationService {
     this.configuration.next(this.configuration.value);
 
     // Start async measure computation
-    // Per cluster
+    // Per cluster, every level
     // Global
-    // Can do fast measures before
+
+    // Must make sure to provide new copies to trigger Angular change detection
   }
 
   public trackHistory(message: string) {
@@ -253,39 +257,21 @@ export class ConfigurationService {
     return finalEdges.slice(0, edges);
   }
 
-  private updateInstance(change: string, config: GraphConfiguration) {
-    // Generate graph according to config
-    // Merge into instance according to change type (if seed is unchanged)
-    // What if multiple changes combined? The current approach is limited
+  private computeFastMeasures() {
+    // Global
+    const measures = structuredClone(EmptyMeasures);
+    this.configuration.value.instance.globalMeasures = measures;
+    measures.nodeCount = this.configuration.value.instance.graph.nodes.length;
+    measures.edgeCount = this.configuration.value.instance.graph.edges.length;
+    measures.degrees = Utility.computeNodeDegrees(this.configuration.value.instance.graph);
 
-    // Next problem: Inconsistent layout import vs generation
-    // But cannot have completely random layout either
-    // Won't fix?
-    // Solution: Semi-Deterministic Layout-Algorithm?
-    // Also makes merging instances redundant?
-    // Idea: arange cluster circular based on CLUSTER_ID (this could actually work)
-    // Possible problem: Only start state deterministic, effects of connections unpredictable
-
-    // Still: better than nothing, easier to implement, not too much focus on central NL
-
-    // Can still decide to merge instances later if wanted
-
-    // Always reset RNG with seed before building
-
-    // Change types:
-    // Add/Update/Remove
-    // Node, Edge
-
-    // Graph is always available in parts and gets assembled in the end
-
-    // Actually, the only thing that needs to be merged are nodes of unchanged clusters
-    // This is easy: Just retain all unchanged clusters
-    // By excluding updated clusters according to change event cluster ID
-    
-    // Problem: cascade of RNG state
-    // Solution: Is full consistency even required?
-    // Solution2: RNG state by SEED + CLUSTER_ID for cluster generation
-    // Solution2: RNG state by SEED + CLUSTER_ID1 + CLUSTER_ID2 (symmetrical) for connection generation
-    // This will ensure full partial graph consistency
+    // Per cluster
+    for (const [cluster, graph] of this.configuration.value.instance.clusters) {
+      const measures = structuredClone(EmptyMeasures);
+      this.configuration.value.instance.clusterMeasures.set(cluster, measures);
+      measures.nodeCount = graph.nodes.length;
+      measures.edgeCount = graph.edges.length;
+      measures.degrees = Utility.computeNodeDegrees(graph);
+    }
   }
 }
