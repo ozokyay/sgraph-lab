@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
-import { GraphConfiguration, GraphInstance, EmptyInstance, EmptyDefinition, EmptyMeasures } from './graph-configuration';
+import { GraphConfiguration, GraphInstance, EmptyInstance, EmptyDefinition, EmptyMeasures, GraphMeasures } from './graph-configuration';
 import { AdjacencyList, Edge, EdgeList, Node } from './graph';
 import { Cluster } from './cluster';
 import { LocalService } from './local.service';
@@ -54,7 +54,8 @@ export class ConfigurationService {
     // Per cluster, every level
     // Global
 
-    // Must make sure to provide new copies to trigger Angular change detection
+    this.computeSlowMeasures();
+    this.measures.next(this.measures.value);
   }
 
   public trackHistory(message: string) {
@@ -258,20 +259,45 @@ export class ConfigurationService {
   }
 
   private computeFastMeasures() {
+    const compute = (graph: EdgeList): GraphMeasures => {
+      const measures = structuredClone(EmptyMeasures);
+      measures.nodeCount = graph.nodes.length;
+      measures.edgeCount = graph.edges.length;
+      measures.density = Math.round(2 * graph.edges.length / (graph.nodes.length * (graph.nodes.length - 1)) * 1000) / 1000;
+      measures.degrees = Utility.computeNodeDegrees(graph);
+      measures.degreeDistribution = Utility.getDegreeDistribution(measures.degrees);      
+      return measures;
+    };
+
     // Global
-    const measures = structuredClone(EmptyMeasures);
-    this.configuration.value.instance.globalMeasures = measures;
-    measures.nodeCount = this.configuration.value.instance.graph.nodes.length;
-    measures.edgeCount = this.configuration.value.instance.graph.edges.length;
-    measures.degrees = Utility.computeNodeDegrees(this.configuration.value.instance.graph);
+    this.configuration.value.instance.globalMeasures = compute(this.configuration.value.instance.graph);
 
     // Per cluster
     for (const [cluster, graph] of this.configuration.value.instance.clusters) {
-      const measures = structuredClone(EmptyMeasures);
+      const measures = compute(graph);
       this.configuration.value.instance.clusterMeasures.set(cluster, measures);
-      measures.nodeCount = graph.nodes.length;
-      measures.edgeCount = graph.edges.length;
-      measures.degrees = Utility.computeNodeDegrees(graph);
+    }
+  }
+
+  private computeSlowMeasures() {
+    const compute = (graph: EdgeList, measures: GraphMeasures): GraphMeasures => {
+      measures = structuredClone(measures); // clone again for change detection
+      // cc
+      // cc2
+      // try dia
+      // if dia, try eigen
+      // assortativity
+      return measures;
+    };
+
+    // Global
+    this.configuration.value.instance.globalMeasures = compute(this.configuration.value.instance.graph, this.configuration.value.instance.globalMeasures);
+
+    // Per cluster
+    for (const [cluster, graph] of this.configuration.value.instance.clusters) {
+      let measures = this.configuration.value.instance.clusterMeasures.get(cluster)!;
+      measures = compute(graph, measures);
+      this.configuration.value.instance.clusterMeasures.set(cluster, measures);
     }
   }
 }

@@ -25,6 +25,7 @@ export interface GraphInstance {
 export interface GraphMeasures {
     nodeCount: number,
     edgeCount: number,
+    density: number,
     degrees: Map<Node, number>,
     degreeDistribution: Series
 }
@@ -32,6 +33,7 @@ export interface GraphMeasures {
 export const EmptyMeasures: GraphMeasures = {
     nodeCount: 0,
     edgeCount: 0,
+    density: 0,
     degrees: new Map(),
     degreeDistribution: { data: [], xExtent: [0, 0], yExtent: [0, 0] }
 }
