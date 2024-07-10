@@ -15,22 +15,19 @@ export class PythonService {
   constructor() { }
 
   public async initPython(): Promise<py.PyodideInterface> {
-    // const pyodide = await py.loadPyodide({
-    //     indexURL: "pyodide"
-    // });
     const pyodide = await py.loadPyodide({
       indexURL: "https://cdn.jsdelivr.net/pyodide/v0.26.1/full/"
     });
     await pyodide.loadPackage("micropip");
     await pyodide.loadPackage("networkx");
-    //await pyodide.loadPackage("scipy");
     this.pyodide = pyodide;
+    await this.setGraph({ nodes: [], edges: [] });
     return pyodide;
   }
 
-  public generateChungLu(degrees: number[]): EdgeList {
+  public async generateChungLu(degrees: number[]): Promise<EdgeList> {
     this.pyodide!.globals['set']("degrees", degrees);
-    const obj = this.pyodide!.runPython(`
+    const obj = await this.pyodide!.runPythonAsync(`
     import networkx as nx
     
     G = nx.expected_degree_graph(degrees, selfloops=False)
@@ -41,9 +38,9 @@ export class PythonService {
     return EdgeList.fromNetworkX(graph.nodes, graph.links);
   }
 
-  public generateConfiguration(degrees: number[]): EdgeList {
+  public async generateConfiguration(degrees: number[]): Promise<EdgeList> {
     this.pyodide!.globals['set']("degrees", degrees);
-    const obj = this.pyodide!.runPython(`
+    const obj = await this.pyodide!.runPythonAsync(`
     import networkx as nx
     
     G = nx.configuration_model(degrees)
@@ -56,9 +53,9 @@ export class PythonService {
     return EdgeList.fromNetworkX(graph.nodes, graph.links);
   }
 
-  public setGraph(input: EdgeList) {
+  public async setGraph(input: EdgeList): Promise<void> {
     this.pyodide!.globals['set']("edges", input.edges.map(e => [e.source.id, e.target.id]));
-    this.pyodide!.runPython(`
+    await this.pyodide!.runPythonAsync(`
     import networkx as nx
     G = nx.Graph(edges.to_py())`);
   }

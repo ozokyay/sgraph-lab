@@ -8,6 +8,8 @@ import { Utility } from './utility';
 import Rand from 'rand-seed';
 import { ClusterConnection } from './cluster-connection';
 import { DefaultGraphics, DefaultLayout, GraphicsSettings, LayoutSettings } from './nl-settings';
+import { PythonService } from './python.service';
+import { Uniform10 } from './series';
 
 @Injectable({
   providedIn: 'root'
@@ -34,12 +36,14 @@ export class ConfigurationService {
   public graphicsSettings = new BehaviorSubject<GraphicsSettings>(DefaultGraphics);
   public history = new BehaviorSubject<GraphConfiguration[]>([structuredClone(this.configuration.value)]);
 
-  constructor(private local: LocalService) {}
+  constructor(private local: LocalService, private python: PythonService) {}
    
-  public update(message: string) {
+  public async update(message: string) {
     this.configuration.value.message = message;
     // Build graph
+    let t = performance.now();
     this.build(this.configuration.value, false);
+    console.log(`Building graph took ${performance.now() - t} ms`);
 
     // Compute fast measures immediately
     this.computeFastMeasures();
@@ -50,11 +54,10 @@ export class ConfigurationService {
     // Publish
     this.configuration.next(this.configuration.value);
 
-    // Start async measure computation
-    // Per cluster, every level
-    // Global
-
-    this.computeSlowMeasures();
+    // Slow measures
+    t = performance.now();
+    await this.computeSlowMeasures();
+    console.log(`Slow measures took ${performance.now() - t} ms`);
     this.measures.next(this.measures.value);
   }
 
@@ -279,24 +282,36 @@ export class ConfigurationService {
     }
   }
 
-  private computeSlowMeasures() {
-    const compute = (graph: EdgeList, measures: GraphMeasures): GraphMeasures => {
-      measures = structuredClone(measures); // clone again for change detection
-      // cc
-      // cc2
-      // try dia
-      // if dia, try eigen
-      // assortativity
+  private async computeSlowMeasures() {
+    const compute = async (graph: EdgeList, measures: GraphMeasures): Promise<GraphMeasures> => {
+      measures = {...measures}; // clone again for change detection
+      await this.python.setGraph(graph);
+      measures.clusteringCoefficientDistribution = await this.python.getGraphMeasure("clustering", 20);
+      measures.clusteringCoefficientDistribution2 = await this.python.getClusteringCoefficientDistribution2();
+      try {
+        measures.diameter = await this.python.getDiameter();  
+      } catch (error) {
+        measures.diameter = NaN;
+      }
+      if (!Number.isNaN(measures.diameter)) {
+        try {
+          measures.eigenvectorCentralityDistribution = await this.python.getGraphMeasure("eigenvector_centrality", 20); // Requires connected graph 
+        } catch (error) {
+          console.log("Cannot eigenvector centrality: Did not converge");
+        }
+      }
+      measures.degreeAssortativity = await this.python.getSimpleMeasure("degree_assortativity_coefficient");
+      measures.degreeAssortativity = Math.round(measures.degreeAssortativity * 100) / 100;
       return measures;
     };
 
     // Global
-    this.configuration.value.instance.globalMeasures = compute(this.configuration.value.instance.graph, this.configuration.value.instance.globalMeasures);
+    this.configuration.value.instance.globalMeasures = await compute(this.configuration.value.instance.graph, this.configuration.value.instance.globalMeasures);
 
     // Per cluster
     for (const [cluster, graph] of this.configuration.value.instance.clusters) {
       let measures = this.configuration.value.instance.clusterMeasures.get(cluster)!;
-      measures = compute(graph, measures);
+      measures = await compute(graph, measures);
       this.configuration.value.instance.clusterMeasures.set(cluster, measures);
     }
   }

@@ -207,6 +207,7 @@ export class ForceDirected {
         sourceEdgeBuffer: GPUBuffer | null,
         targetEdgeBuffer: GPUBuffer | null,
         frame: (positions: number[]) => void,
+        signal: AbortSignal
     ) {
         // coolingFactor = 0.995;
         // l = 0.01;
@@ -450,8 +451,8 @@ export class ForceDirected {
         //     size: 8,
         //     usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
         // });
-        let start, end : number;
-        while (iterationCount > 0 && (this.coolingFactor > 0.0001 || true)) {
+        // let start, end : number;
+        while (iterationCount > 0 && (this.coolingFactor > 0.0001 || true) && !signal.aborted) {
             numIterations++;
             iterationCount--;
             // Set up params (node length, edge length)
@@ -704,9 +705,9 @@ export class ForceDirected {
             );
 
             this.device.queue.submit([commandEncoder.finish()]);
-            start = performance.now();
+            // start = performance.now();
             await this.device.queue.onSubmittedWorkDone();
-            end = performance.now();
+            // end = performance.now();
             // console.log(`iteration time ${end - start}`)
             // iterationTimes.push(end - start);
 

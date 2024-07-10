@@ -31,6 +31,7 @@ export class VisNodeLinkComponent {
   private nodeDict: Map<Node, PIXI.Graphics> = new Map();
   private edgeGraphics?: PIXI.Graphics = undefined;
   private graph?: EdgeList = undefined;
+  private abort: AbortController = new AbortController();
 
   @ViewChild('container')
   private container!: ElementRef;
@@ -50,13 +51,17 @@ export class VisNodeLinkComponent {
         return;
       }
 
+      this.abort.abort();
+      this.abort = new AbortController();
       this.graph = this.prepare(config.instance.graph);
-      await this.runLayout(this.graph);
+      await this.runLayout(this.graph, this.abort.signal);
     });
     config.layoutSettings.subscribe(async () => {
       if (config.configuration.value.instance.graph.nodes.length > 0) {
+        this.abort.abort();
+        this.abort = new AbortController();
         this.graph = this.prepare(config.configuration.value.instance.graph);
-        await this.runLayout(config.configuration.value.instance.graph);
+        await this.runLayout(config.configuration.value.instance.graph, this.abort.signal);
       }
     });
     config.graphicsSettings.subscribe(() => {
@@ -131,7 +136,7 @@ export class VisNodeLinkComponent {
     }
   }
 
-  private async runLayout(graph: EdgeList) {
+  private async runLayout(graph: EdgeList, signal: AbortSignal) {
     if (this.device == undefined || this.layout == undefined) {
       console.log("WebGPU initialization failed.");
       return;
@@ -225,8 +230,8 @@ export class VisNodeLinkComponent {
     await this.layout.runForces(
       nodeDataBuffer, edgeDataBuffer,
       nodeLength, edgeLength,
-      0.5, 0.05, 100, this.config.layoutSettings.value.gravity,
-      sourceEdgeDataBuffer, targetEdgeDataBuffer, frame
+      0.5, 0.05 + Math.log(1 + this.config.layoutSettings.value.gravity / 100), 100, this.config.layoutSettings.value.gravity,
+      sourceEdgeDataBuffer, targetEdgeDataBuffer, frame, signal
     );
 
     // Layout finished

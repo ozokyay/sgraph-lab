@@ -27,7 +27,13 @@ export interface GraphMeasures {
     edgeCount: number,
     density: number,
     degrees: Map<Node, number>,
-    degreeDistribution: Series
+    degreeDistribution: Series,
+    clusteringCoefficientDistribution: Series,
+    clusteringCoefficientDistribution2: Series,
+    diameter: number,
+    eigenvectorCentralityDistribution: Series,
+    degreeAssortativity: number
+    
 }
 
 export const EmptyMeasures: GraphMeasures = {
@@ -35,7 +41,12 @@ export const EmptyMeasures: GraphMeasures = {
     edgeCount: 0,
     density: 0,
     degrees: new Map(),
-    degreeDistribution: { data: [], xExtent: [0, 0], yExtent: [0, 0] }
+    degreeDistribution: { data: [], xExtent: [0, 0], yExtent: [0, 0] },
+    clusteringCoefficientDistribution: { data: [], xExtent: [0, 0], yExtent: [0, 0] },
+    clusteringCoefficientDistribution2: { data: [], xExtent: [0, 0], yExtent: [0, 0] },
+    diameter: 0,
+    eigenvectorCentralityDistribution: { data: [], xExtent: [0, 0], yExtent: [0, 0] },
+    degreeAssortativity: 0
 }
 
 export const EmptyDefinition: GraphDefintion = {
