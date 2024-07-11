@@ -6,6 +6,12 @@ export interface Series {
     yExtent: number[]
 }
 
+export const EmptySeries: Series = {
+    data: [],
+    xExtent: [0, 0],
+    yExtent: [0, 0]
+}
+
 export const Uniform10: Series = {
     data: [
         { x: 1, y: 0.5 },

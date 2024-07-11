@@ -2,7 +2,7 @@ import * as py from 'pyodide';
 import * as d3 from 'd3';
 import { Injectable } from '@angular/core';
 import { EdgeList } from './graph';
-import { Series } from './series';
+import { EmptySeries, Series } from './series';
 import { Point } from './point';
 
 @Injectable({
@@ -142,7 +142,10 @@ export class PythonService {
     clustering = list(nx.clustering(H).values())
     [clustering, list(H.degree)]`);
     const arrays = obj.toJs();
-    const maxDeg = d3.max(arrays[1], (a: number[]) => a[1])!;
+    const maxDeg = d3.max(arrays[1], (a: number[]) => a[1])! + 1;
+    if (Number.isNaN(maxDeg)) {
+      return EmptySeries;
+    }
     const degToCC: number[] = new Array(maxDeg);
     const degToCount: number[] = new Array(maxDeg);
     degToCC.fill(0);

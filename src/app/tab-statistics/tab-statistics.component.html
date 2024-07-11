@@ -1,13 +1,13 @@
 <h4>Statistics</h4>
+<mat-slide-toggle [(ngModel)]="global" (change)="setStatistics()">Show measures for global graph</mat-slide-toggle>
+<br><br>
 @if (statistics != undefined) {
-    <mat-slide-toggle [(ngModel)]="global" (change)="setStatistics()">Show measures for global graph</mat-slide-toggle>
-    <br />
     <p class="label">Nodes: {{statistics.nodeCount}}</p>
     <p class="label">Edges: {{statistics.edgeCount}}</p>
     <p class="label">Density: {{statistics.density}}</p>
     <p class="label">Diameter: {{statistics.diameter}}</p>
     <p class="label">Degree assortativity: {{statistics.degreeAssortativity}}</p>
-    <br />
+    <br>
     <h4 class="between">Degree Distribution</h4>
     <app-vis-line-chart [editMode]="false" [allowLogToggles]="false" [allowAxisScaling]="false" [series]="statistics.degreeDistribution" xLabel="Node Degree" yLabel="Node Count"></app-vis-line-chart>
     <h4 class="between">Local Clustering Coefficient Distribution</h4>
