@@ -10,165 +10,90 @@ import { Point } from './point';
 })
 export class PythonService {
 
-  public pyodide?: py.PyodideInterface;
+  private worker!: Worker
+  private id: number = 0;
+  private promises: Map<number, (value: any) => void> = new Map();
 
-  constructor() { }
+  constructor() {}
 
-  public async initPython(): Promise<py.PyodideInterface> {
-    const pyodide = await py.loadPyodide({
-      indexURL: "https://cdn.jsdelivr.net/pyodide/v0.26.1/full/"
+  public async initPython() {
+    if (typeof Worker !== 'undefined') {
+      this.worker = new Worker(new URL('./python.worker', import.meta.url), { type: "classic" });
+      this.worker.onmessage = ({ data }) => {
+        const response = data as PythonResponse;
+        const promise = this.promises.get(response.id);
+        this.promises.delete(response.id);
+        if (promise == undefined) {
+          console.log("Promise not found");
+          return;
+        }
+        promise(response.value);
+      };
+      await this.call("init");
+    } else {
+      alert("Please use a web browser that supports web workers");
+    }
+  }
+
+  private async call(method: PythonMethod, param?: any): Promise<any> {
+    const request: PythonRequest = {
+      id: this.id++,
+      method: method,
+      param: param
+    }
+    const promise = new Promise(resolve => {
+      this.promises.set(request.id, resolve);
     });
-    await pyodide.loadPackage("micropip");
-    await pyodide.loadPackage("networkx");
-    this.pyodide = pyodide;
-    await this.setGraph({ nodes: [], edges: [] });
-    return pyodide;
+    this.worker.postMessage(request);
+    return promise;
   }
 
   public async generateChungLu(degrees: number[]): Promise<EdgeList> {
-    this.pyodide!.globals['set']("degrees", degrees);
-    const obj = await this.pyodide!.runPythonAsync(`
-    import networkx as nx
-    
-    G = nx.expected_degree_graph(degrees, selfloops=False)
-    
-    nx.node_link_data(G)
-    `);
-    const graph = obj.toJs({dict_converter : Object.fromEntries});
-    return EdgeList.fromNetworkX(graph.nodes, graph.links);
+    return await this.call("generateChungLu", degrees);
   }
 
   public async generateConfiguration(degrees: number[]): Promise<EdgeList> {
-    this.pyodide!.globals['set']("degrees", degrees);
-    const obj = await this.pyodide!.runPythonAsync(`
-    import networkx as nx
-    
-    G = nx.configuration_model(degrees)
-    G = nx.Graph(G)
-    G.remove_edges_from(nx.selfloop_edges(G))
-    
-    nx.node_link_data(G)
-    `);
-    const graph = obj.toJs({dict_converter : Object.fromEntries});
-    return EdgeList.fromNetworkX(graph.nodes, graph.links);
+    return await this.call("generateConfiguration", degrees);
   }
 
   public async setGraph(input: EdgeList): Promise<void> {
-    this.pyodide!.globals['set']("edges", input.edges.map(e => [e.source.id, e.target.id]));
-    await this.pyodide!.runPythonAsync(`
-    import networkx as nx
-    G = nx.Graph(edges.to_py())`);
-  }
-
-  public extractGiantComponent(input: EdgeList): EdgeList {
-    this.pyodide!.globals['set']("edges", input.edges.map(e => [e.source.id, e.target.id]));
-    const obj = this.pyodide!.runPython(`
-    import networkx as nx
-    
-    G = nx.Graph(edges.to_py())
-    largest_cc = max(nx.connected_components(G), key=len)
-    H = G.subgraph(largest_cc)
-    H = nx.convert_node_labels_to_integers(H)
-    nx.node_link_data(H)
-    `);
-    const graph = obj.toJs({dict_converter : Object.fromEntries});
-    return EdgeList.fromNetworkX(graph.nodes, graph.links);
-}
-
-  // Unused
-  public sampleRandomEdgeNode(input: EdgeList, edges: number) {
-    this.pyodide!.globals['set']("edges", input.edges.map(e => [e.source, e.target]));
-    const obj = this.pyodide!.runPython(`
-    import networkx as nx
-    import numpy as np
-
-    G = nx.Graph(edges.to_py())
-    rng = np.random.default_rng()
-    edges = rng.choice(G.edges, size=${edges})
-    H = nx.induced_subgraph(G, edges.flatten())
-    H = nx.convert_node_labels_to_integers(H)
-    nx.node_link_data(H)`);
-    const graph = obj.toJs({dict_converter : Object.fromEntries});
-    return EdgeList.fromNetworkX(graph.nodes, graph.links);
-  }
-
-  // Unused
-  public linearSumAssignment(a: number[], b: number[], noise: number = 0): [number, number][] {
-    this.pyodide!.globals['set']("dist_a", a);
-    this.pyodide!.globals['set']("dist_b", b);
-    const obj = this.pyodide!.runPython(`
-    import numpy as np
-    from scipy.optimize import linear_sum_assignment
-    from scipy.spatial import distance_matrix
-
-    cost = distance_matrix(np.matrix(dist_a.to_py()).T, np.matrix(dist_b.to_py()).T, p=1)
-    row_ind, col_ind = linear_sum_assignment(cost)
-    list(zip(row_ind.tolist(), col_ind.tolist()))`);
-    return obj.toJs();
+    return await this.call("setGraph", input);
   }
 
   public async getSimpleMeasure(measure: "degree_assortativity_coefficient" | "degree_pearson_assortativity_coefficient"): Promise<number> {
-    const obj = await this.pyodide!.runPythonAsync(`
-    import networkx as nx
-
-    nx.degree_assortativity_coefficient(G)`);
-    return obj;
+    return await this.call("getSimpleMeasure", measure);
   }
 
   public async getGraphMeasure(measure: "clustering" | "pagerank" | "eigenvector_centrality" | "betweenness_centrality", bins: number): Promise<Series> {
-    const obj = await this.pyodide!.runPythonAsync(`
-    import networkx as nx
-    import numpy as np
-
-    measure = nx.${measure}(G)
-    data = list(measure.values())
-    hist = np.histogram(data, ${bins})
-    list(zip(hist[1][1:], hist[0].tolist()))`);
-    const list: any[] = obj.toJs();
-    const points: Point[] = list.map(e => ({ x: e[0], y: e[1] }));
-    return {
-      data: points,
-      xExtent: d3.extent(points, p => p.x) as [number, number],
-      yExtent: d3.extent(points, p => p.y) as [number, number]
-    }
+    return await this.call("getGraphMeasure", measure);
   }
 
   public async getClusteringCoefficientDistribution2(): Promise<Series> {
-    const obj = await this.pyodide!.runPythonAsync(`
-    import networkx as nx
-    import numpy as np
-
-    H = nx.convert_node_labels_to_integers(G)
-    clustering = list(nx.clustering(H).values())
-    [clustering, list(H.degree)]`);
-    const arrays = obj.toJs();
-    const maxDeg = d3.max(arrays[1], (a: number[]) => a[1])! + 1;
-    if (Number.isNaN(maxDeg)) {
-      return EmptySeries;
-    }
-    const degToCC: number[] = new Array(maxDeg);
-    const degToCount: number[] = new Array(maxDeg);
-    degToCC.fill(0);
-    degToCount.fill(0);
-    for (const [n, d] of arrays[1]) {
-      degToCC[d] += arrays[0][n];
-      degToCount[d]++;
-    }
-    for (let i = 0; i < degToCC.length; i++) {
-      degToCC[i] /= Math.max(1, degToCount[i]);
-    }
-    const points: Point[] = degToCC.map((v, i) => ({ x: i, y: v }));
-    return {
-      data: points,
-      xExtent: d3.extent(points, p => p.x) as [number, number],
-      yExtent: d3.extent(points, p => p.y) as [number, number]
-    }
+    return await this.call("getClusteringCoefficientDistribution2");
   }
 
   public async getDiameter(): Promise<number> {
-    const obj = await this.pyodide!.runPythonAsync(`
-    import networkx as nx
-    nx.diameter(G)`);
-    return obj;
+    return await this.call("getDiameter");
   }
+}
+
+export type PythonMethod = "init"
+  | "abort"
+  | "generateChungLu"
+  | "generateConfiguration"
+  | "setGraph"
+  | "getSimpleMeasure"
+  | "getGraphMeasure"
+  | "getClusteringCoefficientDistribution2"
+  | "getDiameter";
+
+export interface PythonRequest {
+  id: number,
+  method: PythonMethod,
+  param?: any
+}
+
+export interface PythonResponse {
+  id: number
+  value: any
 }

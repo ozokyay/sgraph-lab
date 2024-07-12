@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, SimpleChange } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { GraphConfiguration, GraphInstance, EmptyInstance, EmptyDefinition, EmptyMeasures, GraphMeasures } from './graph-configuration';
 import { AdjacencyList, Edge, EdgeList, Node } from './graph';
@@ -36,7 +36,11 @@ export class ConfigurationService {
   public graphicsSettings = new BehaviorSubject<GraphicsSettings>(DefaultGraphics);
   public history = new BehaviorSubject<GraphConfiguration[]>([structuredClone(this.configuration.value)]);
 
-  constructor(private local: LocalService, private python: PythonService) {}
+  private abort: AbortController = new AbortController();
+
+  constructor(private local: LocalService, private python: PythonService) {
+
+  }
    
   public async update(message: string) {
     this.configuration.value.message = message;
@@ -56,7 +60,9 @@ export class ConfigurationService {
 
     // Slow measures
     t = performance.now();
-    await this.computeSlowMeasures();
+    this.abort.abort();
+    this.abort = new AbortController();
+    await this.computeSlowMeasures(this.abort.signal);
     console.log(`Slow measures took ${performance.now() - t} ms`);
     this.measures.next(this.measures.value);
   }
@@ -282,36 +288,37 @@ export class ConfigurationService {
     }
   }
 
-  private async computeSlowMeasures() {
+  // Must prevent data race
+  private async computeSlowMeasures(signal: AbortSignal): Promise<void> {
     const compute = async (graph: EdgeList, measures: GraphMeasures): Promise<GraphMeasures> => {
       measures = {...measures}; // clone again for change detection
       await this.python.setGraph(graph);
+      if (signal.aborted) { return measures; }
       measures.clusteringCoefficientDistribution = await this.python.getGraphMeasure("clustering", 20);
+      if (signal.aborted) { return measures; }
       measures.clusteringCoefficientDistribution2 = await this.python.getClusteringCoefficientDistribution2();
-      try {
-        measures.diameter = await this.python.getDiameter();  
-      } catch (error) {
-        measures.diameter = NaN;
-      }
+      if (signal.aborted) { return measures; }
+      measures.diameter = await this.python.getDiameter();  
+      if (signal.aborted) { return measures; }
       if (!Number.isNaN(measures.diameter)) {
-        try {
-          measures.eigenvectorCentralityDistribution = await this.python.getGraphMeasure("eigenvector_centrality", 20); // Requires connected graph 
-        } catch (error) {
-          console.log("Cannot eigenvector centrality: Did not converge");
-        }
+        measures.eigenvectorCentralityDistribution = await this.python.getGraphMeasure("eigenvector_centrality", 20); // Requires connected graph 
       }
+      if (signal.aborted) { return measures; }
       measures.degreeAssortativity = await this.python.getSimpleMeasure("degree_assortativity_coefficient");
       measures.degreeAssortativity = Math.round(measures.degreeAssortativity * 100) / 100;
       return measures;
     };
 
     // Global
-    this.configuration.value.instance.globalMeasures = await compute(this.configuration.value.instance.graph, this.configuration.value.instance.globalMeasures);
+    const measures = await compute(this.configuration.value.instance.graph, this.configuration.value.instance.globalMeasures);
+    if (signal.aborted) { return; }
+    this.configuration.value.instance.globalMeasures = measures;
 
     // Per cluster
     for (const [cluster, graph] of this.configuration.value.instance.clusters) {
       let measures = this.configuration.value.instance.clusterMeasures.get(cluster)!;
       measures = await compute(graph, measures);
+      if (signal.aborted) { return; }
       this.configuration.value.instance.clusterMeasures.set(cluster, measures);
     }
   }

@@ -39,8 +39,9 @@ import { TabStatisticsComponent } from './tab-statistics/tab-statistics.componen
 })
 export class AppComponent implements OnInit {
 
-  public selectedTabIndex: number = 0;
-  public dragging: boolean = false;
+  public pyodideReady = false;
+  public selectedTabIndex = 0;
+  public dragging = false;
 
   @ViewChild('nodeLinkDiagram')
   private nodeLinkDiagram!: VisNodeLinkComponent;
@@ -53,8 +54,9 @@ export class AppComponent implements OnInit {
 
   }
 
-  public ngOnInit() {
-    this.python.initPython();
+  public async ngOnInit() {
+    await this.python.initPython();
+    this.pyodideReady = true;
   }
 
   public onDragStart() {
