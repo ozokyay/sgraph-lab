@@ -1,0 +1,20 @@
+.button {
+    margin-right: 10px;
+    min-width: 40px;
+    padding-left: 16px;
+    padding-right: 0;
+    width: 48px;
+}
+
+.clear-button {
+    margin-top: 6px;
+}
+
+mat-slider {
+    width: 168px;
+    margin-bottom: 5px;
+}
+
+mat-select {
+    width: 300px;
+}

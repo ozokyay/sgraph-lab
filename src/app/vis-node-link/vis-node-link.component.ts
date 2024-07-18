@@ -70,6 +70,12 @@ export class VisNodeLinkComponent {
         this.render(this.graph);
       }
     });
+    config.selectedDiffusionSeeds.subscribe(() => {
+      if (this.graph != undefined && this.graph.nodes.length > 0) {
+        this.createNodes(this.graph);
+        this.render(this.graph);
+      }
+    });
   }
 
   private async initWebGPU() {
@@ -131,6 +137,22 @@ export class VisNodeLinkComponent {
       gfx.circle(0, 0, radius);
       gfx.stroke({ width: 4, color: 'black' });
       gfx.fill({ color: this.getNodeColor(node, this.config.graphicsSettings.value.nodeColoring) });
+      gfx.interactive = true;
+      gfx.onmouseenter = () => {
+        gfx.tint = 0x9A9A9A;
+      };
+      gfx.onmouseleave = () => {
+        gfx.tint = 0xFFFFFF;
+      }
+      gfx.onclick = () => {
+        const seeds = this.config.selectedDiffusionSeeds.value;
+        if (seeds.has(node)) {
+          seeds.delete(node);
+        } else {
+          seeds.add(node);
+        }
+        this.config.selectedDiffusionSeeds.next(seeds);
+      };
       this.nodeDict.set(node, gfx);
       this.stage.addChild(gfx);
     }
@@ -290,6 +312,12 @@ export class VisNodeLinkComponent {
         x: data.layoutPosition.x * this.edgeScale,
         y: data.layoutPosition.y * this.edgeScale
       };
+
+      // Change fill/tint depending on selection
+      // Or re-create nodes in subject change subscription event
+
+      // Kind of prefer tint here tbh (less calls other than render)
+      // Or just call createNodes(), easy
     }
 
     // Render convex hull
@@ -312,9 +340,9 @@ export class VisNodeLinkComponent {
   }
 
   private getNodeColor(node: Node, communityColor: boolean = true): number | string {
-        // If this.config.selectedNodes.value.has(node)
-    // return 0xFF00FF
-    if (communityColor) {
+    if (this.config.selectedDiffusionSeeds.value.has(node)) {
+      return 0xFF00FF;
+    } else if (communityColor) {
       const data = node.data as NodeData;
       const clusterNode = this.config.configuration.value.definition.graph.nodeDictionary.get(data.clusterID)!;
       const cluster = clusterNode.data as Cluster;

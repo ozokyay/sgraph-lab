@@ -32,6 +32,7 @@ export class ConfigurationService {
   public measures = new BehaviorSubject<GraphInstance>(EmptyInstance);
   public selectedCluster = new BehaviorSubject<Cluster | undefined>(undefined);
   public selectedConnections = new BehaviorSubject<Edge[]>([]);
+  public selectedDiffusionSeeds = new BehaviorSubject<Set<Node>>(new Set());
   public layoutSettings = new BehaviorSubject<LayoutSettings>(DefaultLayout);
   public graphicsSettings = new BehaviorSubject<GraphicsSettings>(DefaultGraphics);
   public history = new BehaviorSubject<GraphConfiguration[]>([structuredClone(this.configuration.value)]);

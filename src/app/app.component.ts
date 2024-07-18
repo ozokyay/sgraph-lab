@@ -15,6 +15,7 @@ import { Uniform10 } from './series';
 import { VisNodeLinkComponent } from './vis-node-link/vis-node-link.component';
 import { TabNlSettingsComponent } from './tab-nl-settings/tab-nl-settings.component';
 import { TabStatisticsComponent } from './tab-statistics/tab-statistics.component';
+import { TabInformationDiffusionComponent } from "./tab-information-diffusion/tab-information-diffusion.component";
 
 @Component({
     selector: 'app-root',
@@ -22,20 +23,21 @@ import { TabStatisticsComponent } from './tab-statistics/tab-statistics.componen
     templateUrl: './app.component.html',
     styleUrl: './app.component.css',
     imports: [
-        RouterOutlet,
-        AngularSplitModule,
-        MatTabsModule,
-        MatFormFieldModule,
-        MatSelectModule,
-        MatSlideToggleModule,
-        TabImportExportComponent,
-        TabClusterComponent,
-        TabClusterListComponent,
-        TabConnectionsComponent,
-        TabNlSettingsComponent,
-        TabStatisticsComponent,
-        VisNodeLinkComponent
-    ]
+    RouterOutlet,
+    AngularSplitModule,
+    MatTabsModule,
+    MatFormFieldModule,
+    MatSelectModule,
+    MatSlideToggleModule,
+    TabImportExportComponent,
+    TabClusterComponent,
+    TabClusterListComponent,
+    TabConnectionsComponent,
+    TabNlSettingsComponent,
+    TabStatisticsComponent,
+    VisNodeLinkComponent,
+    TabInformationDiffusionComponent
+]
 })
 export class AppComponent implements OnInit {
 
