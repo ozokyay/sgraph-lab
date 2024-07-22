@@ -8,6 +8,8 @@ import { FormsModule } from '@angular/forms';
 import { GraphMeasures } from '../graph-configuration';
 import { ConfigurationService } from '../configuration.service';
 import { Cluster } from '../cluster';
+import { CLGenerator, CMGenerator } from '../generators';
+import { DegreesDefault, Series } from '../series';
 
 @Component({
   selector: 'app-tab-cluster',
@@ -27,6 +29,7 @@ export class TabClusterComponent {
 
   public clusterMeasures?: GraphMeasures;
   public cluster?: Cluster = undefined;
+  public generator?: any = undefined; // To erase type for html
 
   constructor(private config: ConfigurationService) {
     config.measures.subscribe(measures => {
@@ -42,18 +45,34 @@ export class TabClusterComponent {
     config.selectedCluster.subscribe(cluster => {
       this.cluster = cluster;
       if (this.cluster != undefined) {
+        this.generator = this.cluster.generator;
         this.clusterMeasures = config.measures.value.clusterMeasures.get(this.cluster);
       }
     });
   }
 
-  onChange() {
+  public onChangeGenerator(generator: string) {
+    const oldGenerator = this.cluster!.generator as any;
+    let degreeDistribution: Series = oldGenerator.degreeDistribution || DegreesDefault;
+    let extractGiantComponent: boolean = oldGenerator.extractGiantComponent || true;
+    switch (generator) {
+      case "CL":
+        this.cluster!.generator = new CLGenerator(degreeDistribution, extractGiantComponent);
+        break;
+      case "CM":
+        this.cluster!.generator = new CMGenerator(degreeDistribution, extractGiantComponent);
+        break;
+    }
+    this.onChange();
+  }
+
+  public onChange() {
     if (this.cluster != undefined) {
       this.config.update("Change cluster " + this.cluster.id);
     }
   }
 
-  onChangeName() {
+  public onChangeName() {
     if (this.cluster != undefined) {
       this.config.trackHistory("Rename cluster " + this.cluster.id);
     }

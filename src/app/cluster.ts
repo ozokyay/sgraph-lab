@@ -1,10 +1,9 @@
-import { Series } from "./series";
+import { Generator } from "./generators"
 
 export interface Cluster {
     id: number,
-    generator: "CL" | "CM",
-    degreeDistribution: Series,
-    extractGiantComponent: boolean,
+    name: string,
     color: number,
-    name: string
+    children: Cluster[],
+    generator: Generator
 }

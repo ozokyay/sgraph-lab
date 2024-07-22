@@ -1,19 +1,23 @@
 import { Component } from '@angular/core';
 import { ConfigurationService } from '../configuration.service';
-import { Series } from '../series';
+import { DegreesDefault, Series } from '../series';
 import { Cluster } from '../cluster';
 import * as d3 from 'd3';
 import { MatButtonModule } from '@angular/material/button';
 import { MatListModule } from '@angular/material/list';
+import { NestedTreeControl } from '@angular/cdk/tree';
+import { MatTreeNestedDataSource, MatTreeModule } from '@angular/material/tree';
 import { MatIconModule } from '@angular/material/icon';
 import { NgClass, NgFor } from '@angular/common';
 import { Node } from '../graph';
+import { CLGenerator } from '../generators';
 
 @Component({
   selector: 'app-tab-cluster-list',
   standalone: true,
   imports: [
     MatListModule,
+    MatTreeModule,
     MatButtonModule,
     MatIconModule,
     NgClass,
@@ -23,6 +27,9 @@ import { Node } from '../graph';
   styleUrl: './tab-cluster-list.component.css'
 })
 export class TabClusterListComponent {
+
+  public treeControl = new NestedTreeControl<Cluster>(c => c.children);
+  public dataSource = new MatTreeNestedDataSource<Cluster>();
 
   public clusters: Cluster[] = [];
   public selectedCluster?: Cluster = undefined;
@@ -50,29 +57,13 @@ export class TabClusterListComponent {
     }
 
     const id = this.clusters.length > 0 ? this.clusters[this.clusters.length - 1].id + 1 : 0;
-    const series: Series = {
-      data: [
-        { x: 1, y: 50 },
-        { x: 2, y: 35 },
-        { x: 3, y: 25 },
-        { x: 4, y: 15 },
-        { x: 5, y: 10 },
-        { x: 6, y: 5 },
-        { x: 7, y: 3 },
-        { x: 8, y: 2 },
-        { x: 9, y: 1 },
-        { x: 10, y: 0 },
-      ],
-      xExtent: [1, 10],
-      yExtent: [0, 50]
-    }
 
-    const cluster: Cluster = { id: id,
-      generator: "CL",
+    const cluster: Cluster = {
+      id: id,
       color: col,
-      degreeDistribution: series,
-      extractGiantComponent: true,
-      name: "Cluster " + this.numberToLetters(id + 1)
+      name: "Cluster " + this.numberToLetters(id + 1),
+      generator: new CLGenerator(DegreesDefault, true),
+      children: []
     };
     const node: Node = { id: id, data: cluster };
     this.config.configuration.value.definition.graph.addNode(node);

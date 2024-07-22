@@ -39,9 +39,7 @@ export class ConfigurationService {
 
   private abort: AbortController = new AbortController();
 
-  constructor(private local: LocalService, private python: PythonService) {
-
-  }
+  constructor(private python: PythonService) {}
    
   public async update(message: string) {
     this.configuration.value.message = message;
@@ -141,36 +139,7 @@ export class ConfigurationService {
 
   private generateCluster(node: Node): EdgeList {
     const cluster = node.data as Cluster;
-    // Convert series to distribution
-    const distribution = Utility.computeDistribution(cluster.degreeDistribution);
-
-    // Convert to node by deg format
-    let sum = 0;
-    let nodeDegrees: number[] = [];
-    for (const p of distribution) {
-      if (p.x == 0) {
-        continue;
-      }
-      for (let i = 0; i < p.y; i++) {
-        const deg = cluster.generator == "CL" ? p.x : Math.round(p.x);
-        nodeDegrees.push(deg);
-        sum += deg;
-      }
-    }
-    if (cluster.generator == "CM" && sum % 2 != 0) {
-      nodeDegrees.push(1);
-    }
-
-    // Run generator
-    let g: EdgeList;
-    if (cluster.generator == "CL") {
-      g = this.local.generateChungLu(nodeDegrees);
-    } else {
-      g = this.local.generateConfigurationModel(nodeDegrees);
-    }
-    if (cluster.extractGiantComponent) {
-      g = this.local.extractGiantComponent(new AdjacencyList(g));
-    }
+    let g = cluster.generator.generate();
 
     for (const n of g.nodes) {
       n.data = {

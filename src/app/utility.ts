@@ -3,13 +3,14 @@ import { Point } from "./point";
 import { Series } from "./series";
 import Rand from 'rand-seed';
 import * as d3 from 'd3';
+import { CLGenerator, CMGenerator } from "./generators";
 
 export class Utility {
     public static rand = new Rand('default');
 
     // https://stackoverflow.com/questions/29085197/how-do-you-json-stringify-an-es6-map
     private static replacer(key: string, value: any) {
-      if(value instanceof Map) {
+      if (value instanceof Map) {
         return {
           dataType: 'Map',
           value: Array.from(value.entries()), // or with spread: value: [...value]
@@ -30,6 +31,10 @@ export class Utility {
           return new Map(value.value);
         } else if (value.dataType == 'AdjacencyList') {
           return new AdjacencyList(value.value, true);
+        } else if (value.name == 'CL' && value.degreeDistribution != undefined) {
+          return new CLGenerator(value.degreeDistribution, value.extractGiantComponent);
+        } else if (value.name == "CM" && value.degreeDistribution != undefined) {
+          return new CMGenerator(value.degreeDistribution, value.extractGiantComponent);
         }
       }
       return value;

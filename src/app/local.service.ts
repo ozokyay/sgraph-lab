@@ -23,7 +23,7 @@ export class LocalService {
 
   constructor() { }
 
-  public generateChungLu(w: number[], selfLoops: boolean = false): EdgeList {
+  public static generateChungLu(w: number[], selfLoops: boolean = false): EdgeList {
     const n: number = w.length;
     const G: EdgeList = { nodes: [], edges: [] };
 
@@ -68,7 +68,7 @@ export class LocalService {
     return G;
   }
 
-  public generateConfigurationModel(degSequence: number[], selfLoops: boolean = false): EdgeList {
+  public static generateConfigurationModel(degSequence: number[], selfLoops: boolean = false): EdgeList {
       if (degSequence.reduce((a, b) => a + b) % 2 != 0) {
         throw new Error("Node count must be even!");
       }
@@ -104,7 +104,7 @@ export class LocalService {
       return G;
   }
 
-  public extractGiantComponent(G: AdjacencyList): EdgeList {
+  public static extractGiantComponent(G: AdjacencyList): EdgeList {
     const seen: Set<Node> = new Set();
 
     // Implement DFS
