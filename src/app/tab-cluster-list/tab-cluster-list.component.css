@@ -7,6 +7,10 @@
     margin-left: auto;
 }
 
+.li-icon-end {
+    margin-right: 0.5em;
+}
+
 .li-bar {
     width: 0.4em;
     height: 2em;
@@ -14,9 +18,62 @@
     margin-left: 0.5em;
 }
 
+/* Old ends here */
+
+/* Must add
+   - Color bar
+   - Trash can
+   - Plus button on non-leafs
+ */
+
 .fab {
     display: block;
     margin-left: auto;
     margin-right: auto;
     margin-top: 1em;
+}
+
+.mat-tree-node {
+    cursor: pointer;
+    background-color: white;
+    border-radius: 30px;
+}
+
+.mat-tree-node:hover {
+    background-color: #ededed;
+}
+
+.activated {
+    background-color: #dae2f9;   
+}
+
+.activated:hover {
+    background-color: #cbd2e7;
+}
+
+.tree-invisible {
+    display: none;
+}
+
+.tree ul,
+.tree li {
+    margin-top: 0;
+    margin-bottom: 0;
+    list-style-type: none;
+}
+
+/*
+* This padding sets alignment of the nested nodes.
+*/
+.tree .mat-nested-tree-node div[role=group] {
+    padding-left: 40px;
+}
+
+/*
+* Padding for leaf nodes.
+* Leaf nodes need to have padding so as to align with other non-leaf nodes
+* under the same parent.
+*/
+.tree div[role=group]>.mat-tree-node {
+    padding-left: 40px;
 }

@@ -11,10 +11,50 @@
     </mat-list-item>
 </mat-nav-list>
 
+<!-- Maybe consider creating a new component as a template for the (bar, name, plus, trash) list item -->
+ <!-- Or maybe don't -->
+
+<mat-tree [dataSource]="dataSource" [treeControl]="treeControl" class="tree">
+    <!-- This is the tree node template for leaf nodes -->
+    <!-- There is inline padding applied to this node using styles.
+      This padding value depends on the mat-icon-button width. -->
+    <mat-tree-node *matTreeNodeDef="let node" matTreeNodeToggle (click)="onSelectCluster(node)" [class.activated]="node === selectedCluster">
+        <div class="li-bar" [style.background-color]="getColor(node)"></div>
+        {{node.name}}
+        <button mat-icon-button class="li-icon" title="Add child cluster" (click)="onAddCluster($event, node)">
+            <mat-icon>add</mat-icon>
+        </button>
+        <button mat-icon-button class="li-icon-end" title="Delete cluster" (click)="onRemoveCluster($event, node)">
+            <mat-icon>delete</mat-icon>
+        </button>
+    </mat-tree-node>
+    <!-- This is the tree node template for expandable nodes -->
+    <mat-nested-tree-node *matTreeNodeDef="let node; when: hasChild" (click)="onSelectCluster(node)">
+        <div class="mat-tree-node" [class.activated]="node === selectedCluster">
+            <button mat-icon-button matTreeNodeToggle [attr.aria-label]="'Expand ' + node.name">
+                <mat-icon class="mat-icon-rtl-mirror">
+                    {{treeControl.isExpanded(node) ? 'expand_more' : 'chevron_right'}}
+                </mat-icon>
+            </button>
+            <div class="li-bar" [style.background-color]="getColor(node)"></div>
+            {{node.name}}
+            <button mat-icon-button class="li-icon" title="Add child cluster" (click)="onAddCluster($event, node)">
+                <mat-icon>add</mat-icon>
+            </button>
+            <button mat-icon-button class="li-icon-end" title="Delete cluster" (click)="onRemoveCluster($event, node)">
+                <mat-icon>delete</mat-icon>
+            </button>
+        </div>
+        <!-- There is inline padding applied to this div using styles.
+            This padding value depends on the mat-icon-button width.  -->
+        <div [class.tree-invisible]="!treeControl.isExpanded(node)" role="group">
+            <ng-container matTreeNodeOutlet></ng-container>
+        </div>
+    </mat-nested-tree-node>
+</mat-tree>
 
 
-
-<button mat-fab type="button" class="fab" (click)="onAddCluster()">
+<button mat-fab type="button" class="fab" (click)="onAddCluster($event)">
     <mat-icon>add</mat-icon>
 </button>
 
