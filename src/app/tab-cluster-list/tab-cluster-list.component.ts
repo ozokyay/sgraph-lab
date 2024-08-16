@@ -43,7 +43,8 @@ export class TabClusterListComponent {
 
   constructor(private config: ConfigurationService) {
     config.configuration.subscribe(configuration => {
-      this.clusters = configuration.definition.graph.getNodes().map(n => n.data as Cluster).filter(c => c.parent == -1); // Only root level nodes (group or leaf doesn't matter)
+      this.clusters = configuration.definition.graph.getNodes().map(n => n.data as Cluster).filter(c => c.parent == -1); // Only root level nodes
+      this.dataSource.data = [];
       this.dataSource.data = this.clusters;
     });
 
@@ -108,7 +109,7 @@ export class TabClusterListComponent {
     // this.assignColor(root, [0, 360], [10, 45], [95, 57], 0.75, true, true, true);
     // console.log(this.clusters);
 
-    this.dataSource.data = this.clusters;
+    
     config.selectedCluster.subscribe(cluster => this.selectedCluster = cluster);
   }
 
@@ -181,6 +182,32 @@ export class TabClusterListComponent {
 
     const chroma = cRange[0] + depthFraction * (cRange[1] - cRange[0]);
     const luminance = lRange[0] + depthFraction * (lRange[1] - lRange[0]);
+    
+
+    const l = luminance / 100;
+    const c = chroma / 100;
+    const h = hue * Math.PI / 180;
+    const sRGB = this.oklabToLinearSrgb(l, c * Math.cos(h), c * Math.sin(h));
+    sRGB.r = Math.min(1, Math.max(0, sRGB.r));
+    sRGB.g = Math.min(1, Math.max(0, sRGB.g));
+    sRGB.b = Math.min(1, Math.max(0, sRGB.b));
+    const RGB = {
+      r: sRGB.r <= 0.0031308 ? 12.92 * sRGB.r : 1.055 * Math.pow(sRGB.r, 1/2.4) - 0.055,
+      g: sRGB.g <= 0.0031308 ? 12.92 * sRGB.g : 1.055 * Math.pow(sRGB.g, 1/2.4) - 0.055,
+      b: sRGB.b <= 0.0031308 ? 12.92 * sRGB.b : 1.055 * Math.pow(sRGB.b, 1/2.4) - 0.055,
+    };
+    // const RGB = {
+    //   r: sRGB.r <= 0.04045 ? sRGB.r / 12.92 : Math.pow((sRGB.r + 0.055) / 1.055, 2.4),
+    //   g: sRGB.g <= 0.04045 ? sRGB.g / 12.92 : Math.pow((sRGB.g + 0.055) / 1.055, 2.4),
+    //   b: sRGB.b <= 0.04045 ? sRGB.b / 12.92 : Math.pow((sRGB.b + 0.055) / 1.055, 2.4),
+    // };
+    v.color = `rgb(${RGB.r * 255}, ${RGB.g * 255}, ${RGB.b * 255})`;
+    console.log("srgb", sRGB);
+    console.log("rgb" ,RGB);
+
+    // TODO: Proper chroma range conversion from LCh paper
+    // oklch: 0.4
+    // lch:   150
     v.color = `oklch(${luminance}% ${chroma}% ${hue})`;
 
     return depth;
@@ -211,14 +238,14 @@ export class TabClusterListComponent {
     return s;
   }
 
-  private updateColors() {
+  private updateColors(clusters: Cluster[]) {
     const root: Cluster = {
       id: -1,
       parent: -1,
       name: "Root",
       color: "black",
       generator: new MGGenerator(),
-      children: this.clusters
+      children: clusters
     };
 
     this.assignColor(root, [0, 360], [10, 45], [95, 57], 0.75, true, true, true);
@@ -269,15 +296,17 @@ export class TabClusterListComponent {
     // TODO: Circle Packing (optional)
     // TODO: Distribution Tables
     // TODO: Attributes and assortativity
+    // TODO: Top level colors fixed up to 5-10?
+    // https://sites.cc.gatech.edu/gvu/ii/icet/
 
 
     const cluster: Cluster = {
       id: id,
-      parent: parent?.id || -1,
+      parent: parent !== undefined ? parent.id : -1,
       color: "black",
       name: "Cluster " + this.numberToLetters(id + 1),
       generator: new CLGenerator(DegreesDefault, true), // TODO: Separate buttons for root level groups, hide add for CL/CM gen
-      children: [] // TODO: This serialization causes redundant async references (either restore on load or restore here in constructor)
+      children: [] // TODO: This serialization causes redundant async references (either restore on load or restore here in constructor preferred)
     };
 
     const node: Node = { id: id, data: cluster };
@@ -286,6 +315,10 @@ export class TabClusterListComponent {
       parent.children.push(cluster);
       this.treeControl.expand(parent);
     }
+
+    const topLevel = this.config.configuration.value.definition.graph.getNodes().map(n => n.data as Cluster).filter(c => c.parent == -1);
+    this.updateColors(topLevel);
+
     this.config.selectedCluster.next(cluster);
     this.config.update("Add cluster " + id);
   }
@@ -317,4 +350,20 @@ export class TabClusterListComponent {
     }
     return letters;
   }
+
+  private oklabToLinearSrgb(L: number, a: number, b: number) {
+    let l_ = L + 0.3963377774 * a + 0.2158037573 * b;
+    let m_ = L - 0.1055613458 * a - 0.0638541728 * b;
+    let s_ = L - 0.0894841775 * a - 1.2914855480 * b;
+
+    let l = l_ * l_ * l_;
+    let m = m_ * m_ * m_;
+    let s = s_ * s_ * s_;
+
+    return {
+        r: 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+        g: -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+        b: -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s
+    };
+}
 }

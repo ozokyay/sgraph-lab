@@ -18,13 +18,9 @@
     margin-left: 0.5em;
 }
 
-/* Old ends here */
-
-/* Must add
-   - Color bar
-   - Trash can
-   - Plus button on non-leafs
- */
+.spacer {
+    margin-left: 3em;
+}
 
 .fab {
     display: block;

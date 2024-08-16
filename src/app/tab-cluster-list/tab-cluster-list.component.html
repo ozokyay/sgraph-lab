@@ -19,7 +19,7 @@
     <!-- There is inline padding applied to this node using styles.
       This padding value depends on the mat-icon-button width. -->
     <mat-tree-node *matTreeNodeDef="let node" matTreeNodeToggle (click)="onSelectCluster(node)" [class.activated]="node === selectedCluster">
-        <div class="li-bar" [style.background-color]="getColor(node)"></div>
+        <div class="li-bar" [class.spacer]="node.parent == -1" [style.background-color]="getColor(node)"></div>
         {{node.name}}
         <button mat-icon-button class="li-icon" title="Add child cluster" (click)="onAddCluster($event, node)">
             <mat-icon>add</mat-icon>
