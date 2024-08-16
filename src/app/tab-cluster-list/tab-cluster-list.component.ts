@@ -10,7 +10,7 @@ import { MatTreeNestedDataSource, MatTreeModule } from '@angular/material/tree';
 import { MatIconModule } from '@angular/material/icon';
 import { NgClass, NgFor } from '@angular/common';
 import { Node } from '../graph';
-import { CLGenerator } from '../generators';
+import { CLGenerator, MGGenerator } from '../generators';
 
 @Component({
   selector: 'app-tab-cluster-list',
@@ -35,117 +35,156 @@ export class TabClusterListComponent {
   public clusters: Cluster[] = [];
   public selectedCluster?: Cluster = undefined;
 
+  // Here: Cluster[], nested structure (r)
+  // Config: AdjacencyList, graph through all levels (rw)
+
+  // Need both
+  // Need sync
+
   constructor(private config: ConfigurationService) {
-    // config.configuration.subscribe(configuration => {
-    //   this.clusters = configuration.definition.graph.getNodes().map(n => n.data as Cluster);
-    //   this.dataSource.data = this.clusters;
-    // });
+    config.configuration.subscribe(configuration => {
+      this.clusters = configuration.definition.graph.getNodes().map(n => n.data as Cluster).filter(c => c.parent == -1); // Only root level nodes (group or leaf doesn't matter)
+      this.dataSource.data = this.clusters;
+    });
 
     // - Implement adding/deleting children
-    // - Color algorithm => hierarchical color scale oh god recursive oklch
-    // (- Color picker)
     // - generate children
 
-    this.clusters = [
-      {
-        id: 0,
-        name: "Cluster A",
-        color: 0,
-        children: [
-          {
-            id: 1,
-            name: "Cluster A.1",
-            color: 1,
-            children: [],
-            generator: new CLGenerator(DegreesDefault, true)
-          },
-          {
-            id: 2,
-            name: "Cluster A.2",
-            color: 2,
-            children: [],
-            generator: new CLGenerator(DegreesDefault, true)
-          }
-        ],
-        generator: new CLGenerator(DegreesDefault, true)
-      }
-    ];
+    // this.clusters = [
+    //   {
+    //     id: 0,
+    //     name: "Cluster A",
+    //     color: "black",
+    //     children: [
+    //       {
+    //         id: 1,
+    //         name: "Cluster A.1",
+    //         color: "black",
+    //         children: [],
+    //         generator: new CLGenerator(DegreesDefault, true)
+    //       },
+    //       {
+    //         id: 2,
+    //         name: "Cluster A.2",
+    //         color: "black",
+    //         children: [],
+    //         generator: new CLGenerator(DegreesDefault, true)
+    //       }
+    //     ],
+    //     generator: new CLGenerator(DegreesDefault, true)
+    //   },
+    //   {
+    //     id: 3,
+    //     name: "Cluster B",
+    //     color: "black",
+    //     children: [
+    //       {
+    //         id: 4,
+    //         name: "Cluster B.1",
+    //         color: "black",
+    //         children: [],
+    //         generator: new CLGenerator(DegreesDefault, true)
+    //       },
+    //       {
+    //         id: 5,
+    //         name: "Cluster B.2",
+    //         color: "black",
+    //         children: [],
+    //         generator: new CLGenerator(DegreesDefault, true)
+    //       }
+    //     ],
+    //     generator: new CLGenerator(DegreesDefault, true)
+    //   },
+    // ];
+
+    // const root: Cluster = {
+    //   id: -1,
+    //   name: "Root",
+    //   color: "black",
+    //   generator: new CLGenerator(DegreesDefault, true),
+    //   children: this.clusters
+    // };
+
+    // this.assignColor(root, [0, 360], [10, 45], [95, 57], 0.75, true, true, true);
+    // console.log(this.clusters);
+
     this.dataSource.data = this.clusters;
     config.selectedCluster.subscribe(cluster => this.selectedCluster = cluster);
   }
 
   public getColor(cluster: Cluster) {
-    return d3.schemeCategory10[cluster.color % 10];
+    return cluster.color;
+  }
+
+  private countChildren(c: Cluster): number {
+    let count = 0;
+    for (const x of c.children) {
+      count += this.countChildren(x) + 1;
+    }
+    return count;
   }
 
   // https://bottosson.github.io/posts/oklab/
   // Call with fake root cluster
-  private assignColor(v: Cluster, [lb, ub]: [number, number], f: number, perm: boolean, rev: boolean, prop: boolean) {
+  private assignColor(v: Cluster, hRange: [number, number], cRange: [number, number], lRange: [number, number], f: number, perm: boolean, rev: boolean, prop: boolean, depth: number = 0, sibling: number = 0): number {
+    const [lb, ub] = [hRange[0], hRange[1]];
     const hue = (lb + ub) / 2;
-    v.color = hue;
-    // C, L local interpolation in suggested ranges
-    // Need current and max depth information
+    let depthFraction: number;
 
-    if (v.children.length > 0) {
-      // Divide r in to N parts (proportionally flag)
-      // Need subtree child counts
-      const ri: [number, number][] = [];
-
-      // [[ub, lb], [ub, lb]]
-      const range = Array.from({ length: v.children.length }, (_, i) => [lb + (ub - lb) * (i / v.children.length), i]);
-
-      // Reduce to middle fraction f
-
-      // if perm then permute ris
-
-      // if rev then reverse even ris
-
-      for (let i = 0; i < v.children.length; i++) {
-        this.assignColor(v.children[i], ri[i], f, perm, rev, prop);
+    const n = v.children.length;
+    if (n > 0) {
+      let s: [number, number][];
+      if (prop) {
+        // Proportionally
+        let counts = v.children.map(c => this.countChildren(c) + 1);
+        const total = counts.reduce((a, b) => a + b);
+        const cumulative = counts.reduce((acc: number[], curr: number, index: number) => [...acc, curr + (acc[index - 1] || 0)], []);
+        const proportions = cumulative.map(n => n / total);
+        s = Array.from({ length: n }, (_, i) => [lb + (ub - lb) * (i == 0 ? 0 : proportions[i - 1]), lb + (ub - lb) * proportions[i]]);
+        // console.log("lb=" + lb + ", ub=" + ub);
+        // console.log(proportions);
+        // console.log(s);
+      } else {
+        // Uniform
+        s = Array.from({ length: n }, (_, i) => [lb + (ub - lb) * (i / n), lb + (ub - lb) * ((i + 1) / n)]);
       }
-    }
-  }
 
-  // This does one step of hue division
-  // 
-  private addRange(
-    x: [number[], number[], number[]],
-    depth: number,
-    frc: number = 0.5,
-    huePerm: boolean = true,
-    hueRev: boolean = true
-): { lb: number[], ub: number[], rev: boolean[] } {
-    
-    const LB = x[0][0];
-    const UB = x[1][0];
-    const REV = x[2][0];
-    
-    const nr = x[0].length;
-    
-    const sq = Array.from({ length: nr + 1 }, (_, i) => LB + (UB - LB) * (i / nr));
-    const spacer = (sq[1] - sq[0]) * (1 - frc) * 0.5;
-    
-    let s: number[];
-    
-    if (huePerm) {
-        s = this.spread(nr);
-    } else {
-        s = Array.from({ length: nr }, (_, i) => i + 1);
-    }
-    
-    if (hueRev && REV) {
+      // Permute
+      if (perm) {
+        const perm = this.spread(n);
+        const s2: [number, number][] = [];
+        for (let i = 0; i < perm.length; i++) {
+          s2.push(s[perm.indexOf(i + 1)]);
+        }
+        s = s2;
+      }
+
+      // Reverse
+      if (rev && sibling % 2 == 0) {
         s = s.reverse();
+      }
+
+      // Reduce
+      s = s.map(([lb, ub]) => [lb + (ub - lb) * (1 - f) * 0.5, ub + (lb - ub) * (1 - f) * 0.5]);
+
+      let d = 0;
+      for (let i = 0; i < n; i++) {
+        const d2 = this.assignColor(v.children[i], s[i], cRange, lRange, f, perm, rev, prop, depth + 1, i);
+        d = Math.max(d, d2);
+      }
+
+      // Use max depth for local interpolation
+      depthFraction = depth / d;
+    } else {
+      depthFraction = 1;
     }
-    
-    const start = sq.slice(0, nr).sort((a, b) => s.indexOf(a) - s.indexOf(b));
-    const end = sq.slice(1, nr + 1).sort((a, b) => s.indexOf(a) - s.indexOf(b));
-    
-    return {
-        lb: start.map(v => Math.floor(v + spacer)),
-        ub: end.map(v => Math.floor(v - spacer)),
-        rev: Array.from({ length: nr }, (_, i) => i % 2 === 1)
-    };
-}
+
+    const chroma = cRange[0] + depthFraction * (cRange[1] - cRange[0]);
+    const luminance = lRange[0] + depthFraction * (lRange[1] - lRange[0]);
+    v.color = `oklch(${luminance}% ${chroma}% ${hue})`;
+
+    return depth;
+  }
 
   private spread(n: number) {
     let s: number[];
@@ -172,32 +211,81 @@ export class TabClusterListComponent {
     return s;
   }
 
+  private updateColors() {
+    const root: Cluster = {
+      id: -1,
+      parent: -1,
+      name: "Root",
+      color: "black",
+      generator: new MGGenerator(),
+      children: this.clusters
+    };
+
+    this.assignColor(root, [0, 360], [10, 45], [95, 57], 0.75, true, true, true);
+  }
+
   public onAddCluster(event: MouseEvent, parent?: Cluster) {
     event.stopPropagation();
 
     // Use colors like ids, but reorder to quickly find next
-    const colors = [...this.clusters.map(c => c.color)]
-    colors.sort();
-    let col: number = 0;
-    for (const c of colors) {
-      if (c == col) {
-        col++;
-      } else {
-        break;
-      }
+    // const colors = [...this.clusters.map(c => c.color)]
+    // colors.sort();
+    // let col: number = 0;
+    // for (const c of colors) {
+    //   if (c == col) {
+    //     col++;
+    //   } else {
+    //     break;
+    //   }
+    // }
+
+    let id = 0;
+    if (this.clusters.length > 0) {
+      const nodes = [...this.config.configuration.value.definition.graph.nodeDictionary.values()]
+      const latestNode = nodes[nodes.length - 1];
+      const latestCluster = latestNode.data as Cluster;
+      id = latestCluster.id + 1;
     }
 
-    const id = this.clusters.length > 0 ? this.clusters[this.clusters.length - 1].id + 1 : 0;
+    // Should not have hierarchy in graph definition
+    // Only leaves should form this graph
+    // This makes things easier
+    // But how to edit on different levels then?
+    // Also need serializability!!
+
+    // TODO: Invisible root cluster (for color and max id)
+    // TODO: Get max id => needed? should groups be modeled as clusters? Doesn't quite make sense...
+    // TODO: Only allow manual child clusters if specific (default?) generator is selected
+    // TODO: Make children nodes?
+    // TODO: Fix builder not finding child level clusters
+    // TODO: Assign colors
+    // TODO: Color mode selection
+
+    // Then
+    // TODO: Matrix (levels)
+    // TODO: Minimap (levels)
+    // TODO: Tree
+    // TODO: NL (levels)
+    // TODO: Circle Packing (optional)
+    // TODO: Distribution Tables
+    // TODO: Attributes and assortativity
+
 
     const cluster: Cluster = {
       id: id,
-      color: col,
+      parent: parent?.id || -1,
+      color: "black",
       name: "Cluster " + this.numberToLetters(id + 1),
-      generator: new CLGenerator(DegreesDefault, true),
-      children: []
+      generator: new CLGenerator(DegreesDefault, true), // TODO: Separate buttons for root level groups, hide add for CL/CM gen
+      children: [] // TODO: This serialization causes redundant async references (either restore on load or restore here in constructor)
     };
+
     const node: Node = { id: id, data: cluster };
     this.config.configuration.value.definition.graph.addNode(node);
+    if (parent) {
+      parent.children.push(cluster);
+      this.treeControl.expand(parent);
+    }
     this.config.selectedCluster.next(cluster);
     this.config.update("Add cluster " + id);
   }
@@ -206,6 +294,10 @@ export class TabClusterListComponent {
     event.stopPropagation();
     if (cluster == this.selectedCluster) {
       this.config.selectedCluster.next(undefined);
+    }
+    for (const child of cluster.children) {
+      const node = this.config.configuration.value.definition.graph.nodeDictionary.get(child.id)!;
+      this.config.configuration.value.definition.graph.removeNode(node);      
     }
     const node = this.config.configuration.value.definition.graph.nodeDictionary.get(cluster.id)!;
     this.config.configuration.value.definition.graph.removeNode(node);

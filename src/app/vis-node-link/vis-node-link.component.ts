@@ -346,7 +346,7 @@ export class VisNodeLinkComponent {
       const data = node.data as NodeData;
       const clusterNode = this.config.configuration.value.definition.graph.nodeDictionary.get(data.clusterID)!;
       const cluster = clusterNode.data as Cluster;
-      return d3.schemeCategory10[cluster.color % 10];
+      return cluster.color;
     } else {
       return 0x000000
     }

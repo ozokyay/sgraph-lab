@@ -10,6 +10,8 @@ import { Utility } from '../utility';
 import { Cluster } from '../cluster';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 
+
+// Currently, this UI only supports 1:N editing
 @Component({
   selector: 'app-tab-connections',
   standalone: true,

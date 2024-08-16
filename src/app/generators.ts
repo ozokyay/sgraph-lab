@@ -82,3 +82,28 @@ export class CMGenerator implements Generator {
         return g;
     }
 }
+
+// Manual Group
+export class MGGenerator implements Generator {
+    public name = "MG";
+    public group = "group";
+
+    public generate(): EdgeList {
+        return { nodes: [], edges: [] };
+    }
+}
+
+// Automatic Group
+export class AGGenerator implements Generator {
+    public name = "AG";
+    public group = "group";
+    public numGroups: number;
+
+    constructor(numGroups: number = 2) {
+        this.numGroups = numGroups;
+    }
+
+    public generate(): EdgeList {
+        return { nodes: [], edges: [] };
+    }
+}

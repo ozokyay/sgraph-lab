@@ -3,7 +3,7 @@ import { Point } from "./point";
 import { Series } from "./series";
 import Rand from 'rand-seed';
 import * as d3 from 'd3';
-import { CLGenerator, CMGenerator } from "./generators";
+import { CLGenerator, CMGenerator, MGGenerator } from "./generators";
 
 export class Utility {
     public static rand = new Rand('default');
@@ -35,6 +35,8 @@ export class Utility {
           return new CLGenerator(value.degreeDistribution, value.extractGiantComponent);
         } else if (value.name == "CM" && value.degreeDistribution != undefined) {
           return new CMGenerator(value.degreeDistribution, value.extractGiantComponent);
+        } else if (value.name == "MG" && value.group != undefined) {
+          return new MGGenerator();
         }
       }
       return value;
