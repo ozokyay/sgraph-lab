@@ -185,7 +185,7 @@ export class TabClusterListComponent {
     
 
     const l = luminance / 100;
-    const c = chroma / 100;
+    const c = chroma;
     const h = hue * Math.PI / 180;
     const sRGB = this.oklabToLinearSrgb(l, c * Math.cos(h), c * Math.sin(h));
     sRGB.r = Math.min(1, Math.max(0, sRGB.r));
@@ -202,13 +202,14 @@ export class TabClusterListComponent {
     //   b: sRGB.b <= 0.04045 ? sRGB.b / 12.92 : Math.pow((sRGB.b + 0.055) / 1.055, 2.4),
     // };
     v.color = `rgb(${RGB.r * 255}, ${RGB.g * 255}, ${RGB.b * 255})`;
-    console.log("srgb", sRGB);
-    console.log("rgb" ,RGB);
+    // console.log("srgb", sRGB);
+    // console.log("rgb" ,RGB);
 
     // TODO: Proper chroma range conversion from LCh paper
     // oklch: 0.4
     // lch:   150
-    v.color = `oklch(${luminance}% ${chroma}% ${hue})`;
+    // Assume given range is in lch c and not percent
+    // v.color = `oklch(${luminance}% ${chroma} ${hue})`;
 
     return depth;
   }
@@ -248,7 +249,11 @@ export class TabClusterListComponent {
       children: clusters
     };
 
-    this.assignColor(root, [0, 360], [10, 45], [95, 57], 0.75, true, true, true);
+    const hRange: [number, number] = [0, 369];
+    const cRange: [number, number] = [10 / 100 * 0.4, 45 / 100 * 0.4];
+    const lRange: [number, number] = [96, 57];
+    const hFrac = 0.75;
+    this.assignColor(root, hRange, cRange, lRange, hFrac, true, true, true);
   }
 
   public onAddCluster(event: MouseEvent, parent?: Cluster) {
@@ -306,7 +311,8 @@ export class TabClusterListComponent {
       color: "black",
       name: "Cluster " + this.numberToLetters(id + 1),
       generator: new CLGenerator(DegreesDefault, true), // TODO: Separate buttons for root level groups, hide add for CL/CM gen
-      children: [] // TODO: This serialization causes redundant async references (either restore on load or restore here in constructor preferred)
+      children: [] // TODO: This serialization causes redundant async references (either restore on deser or restore here in constructor preferred)
+      // Dont know how to restore on deser anyway
     };
 
     const node: Node = { id: id, data: cluster };
@@ -331,6 +337,12 @@ export class TabClusterListComponent {
     for (const child of cluster.children) {
       const node = this.config.configuration.value.definition.graph.nodeDictionary.get(child.id)!;
       this.config.configuration.value.definition.graph.removeNode(node);      
+    }
+    if (cluster.parent != -1) {
+      // Get parent (ref serialization mgmt annoying, id req lookup anyway?)
+      // Remove from children
+
+      // Idea: ser just ids, restore refs on load here in ctor when all are available
     }
     const node = this.config.configuration.value.definition.graph.nodeDictionary.get(cluster.id)!;
     this.config.configuration.value.definition.graph.removeNode(node);
