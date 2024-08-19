@@ -5,6 +5,7 @@ export interface Cluster {
     name: string,
     color: string,
     parent: number,
-    children: Cluster[],
-    generator: Generator
+    children: number[],
+    generator: Generator,
+    changeUUID: string
 }

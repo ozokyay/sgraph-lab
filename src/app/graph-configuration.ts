@@ -15,10 +15,10 @@ export interface GraphDefintion {
 }
 
 export interface GraphInstance {
-    clusters: Map<Cluster, EdgeList>,
+    clusters: Map<number, EdgeList>,
     connections: Map<ClusterConnection, Edge[]>,
     graph: EdgeList,
-    clusterMeasures: Map<Cluster, GraphMeasures>,
+    clusterMeasures: Map<number, GraphMeasures>,
     globalMeasures: GraphMeasures
 }
 

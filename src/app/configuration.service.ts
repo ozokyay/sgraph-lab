@@ -94,22 +94,45 @@ export class ConfigurationService {
     configuration.instance.graph = new EdgeList();
 
     // Generate clusters
+
+    // Main reason for change detection: Layout consistency, quite important
+    // Also want it for undo/redo
+    // Cluster connections dont really matter because the nodes store their positions
+
     if (undo || configuration.message.startsWith("Import")) {
       configuration.instance.clusters = new Map();
       for (const node of configuration.definition.graph.nodes.keys()) {
         Utility.rand = new Rand(configuration.definition.seed.toString() + node.id.toString());
-        configuration.instance.clusters.set(node.data as Cluster, this.generateCluster(node));
+        configuration.instance.clusters.set(node.id, this.generateCluster(node));
       }
-    } else if (configuration.message.startsWith("Add cluster") ||
-        configuration.message.startsWith("Change cluster")) {
-      const id = parseInt(configuration.message.split(" ").pop()!);
-      const node = configuration.definition.graph.nodeDictionary.get(id)!;
-      Utility.rand = new Rand(configuration.definition.seed.toString() + id.toString());
-      configuration.instance.clusters.set(node.data as Cluster, this.generateCluster(node));
-    } else if (configuration.message.startsWith("Remove cluster")) {
-      const id = parseInt(configuration.message.split(" ").pop()!);
-      const cluster = [...configuration.instance.clusters.keys()].find(c => c.id == id)!;
-      configuration.instance.clusters.delete(cluster);
+    } else {
+      // Change detection for leaf clusters
+      const last = this.history.value[this.history.value.length - 1].definition.graph;
+
+      for (const node of configuration.definition.graph.nodes.keys()) {
+        const old = last.nodeDictionary.get(node.id);
+
+        const clusterOld = old?.data as Cluster;
+        const clusterNew = node.data as Cluster;
+
+        if (clusterOld == undefined || clusterNew.changeUUID !== clusterNew.changeUUID) {
+          // Add or change
+          Utility.rand = new Rand(configuration.definition.seed.toString() + node.id.toString());
+          configuration.instance.clusters.set(node.id, this.generateCluster(node));
+        }
+      }
+
+      for (const old of last.nodes.keys()) {
+        const node = configuration.definition.graph.nodeDictionary.get(old.id);
+
+        const clusterOld = old.data as Cluster;
+        const clusterNew = node?.data as Cluster;
+
+        if (clusterNew == undefined) {
+          // Remove
+          configuration.instance.clusters.delete(clusterOld.id);
+        }
+      }
     }
 
     // Generate connections
@@ -156,8 +179,8 @@ export class ConfigurationService {
     const connection: ClusterConnection = edge.data as ClusterConnection;
     const cluster1: Cluster = edge.source.data as Cluster;
     const cluster2: Cluster = edge.target.data as Cluster;
-    const graph1: EdgeList = this.configuration.value.instance.clusters.get(cluster1)!;
-    const graph2: EdgeList = this.configuration.value.instance.clusters.get(cluster2)!;
+    const graph1: EdgeList = this.configuration.value.instance.clusters.get(cluster1.id)!;
+    const graph2: EdgeList = this.configuration.value.instance.clusters.get(cluster2.id)!;
     const count1 = Math.round(connection.nodeCountSource * graph1.nodes.length); // Actually prefer absolute node counts in cluster def - but harder to achieve precisely
     const count2 = Math.round(connection.nodeCountTarget * graph2.nodes.length);
     const degrees1 = Utility.computeNodeDegrees(graph1);

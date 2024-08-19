@@ -28,18 +28,12 @@ import { CLGenerator, MGGenerator } from '../generators';
 })
 export class TabClusterListComponent {
 
-  public treeControl = new NestedTreeControl<Cluster>(c => c.children);
+  public treeControl = new NestedTreeControl<Cluster>(c => this.getChildren(c));
   public dataSource = new MatTreeNestedDataSource<Cluster>();
   public hasChild = (_: number, node: Cluster) => node.children && node.children.length > 0;
 
   public clusters: Cluster[] = [];
   public selectedCluster?: Cluster = undefined;
-
-  // Here: Cluster[], nested structure (r)
-  // Config: AdjacencyList, graph through all levels (rw)
-
-  // Need both
-  // Need sync
 
   constructor(private config: ConfigurationService) {
     config.configuration.subscribe(configuration => {
@@ -47,69 +41,6 @@ export class TabClusterListComponent {
       this.dataSource.data = [];
       this.dataSource.data = this.clusters;
     });
-
-    // - Implement adding/deleting children
-    // - generate children
-
-    // this.clusters = [
-    //   {
-    //     id: 0,
-    //     name: "Cluster A",
-    //     color: "black",
-    //     children: [
-    //       {
-    //         id: 1,
-    //         name: "Cluster A.1",
-    //         color: "black",
-    //         children: [],
-    //         generator: new CLGenerator(DegreesDefault, true)
-    //       },
-    //       {
-    //         id: 2,
-    //         name: "Cluster A.2",
-    //         color: "black",
-    //         children: [],
-    //         generator: new CLGenerator(DegreesDefault, true)
-    //       }
-    //     ],
-    //     generator: new CLGenerator(DegreesDefault, true)
-    //   },
-    //   {
-    //     id: 3,
-    //     name: "Cluster B",
-    //     color: "black",
-    //     children: [
-    //       {
-    //         id: 4,
-    //         name: "Cluster B.1",
-    //         color: "black",
-    //         children: [],
-    //         generator: new CLGenerator(DegreesDefault, true)
-    //       },
-    //       {
-    //         id: 5,
-    //         name: "Cluster B.2",
-    //         color: "black",
-    //         children: [],
-    //         generator: new CLGenerator(DegreesDefault, true)
-    //       }
-    //     ],
-    //     generator: new CLGenerator(DegreesDefault, true)
-    //   },
-    // ];
-
-    // const root: Cluster = {
-    //   id: -1,
-    //   name: "Root",
-    //   color: "black",
-    //   generator: new CLGenerator(DegreesDefault, true),
-    //   children: this.clusters
-    // };
-
-    // this.assignColor(root, [0, 360], [10, 45], [95, 57], 0.75, true, true, true);
-    // console.log(this.clusters);
-
-    
     config.selectedCluster.subscribe(cluster => this.selectedCluster = cluster);
   }
 
@@ -119,10 +50,26 @@ export class TabClusterListComponent {
 
   private countChildren(c: Cluster): number {
     let count = 0;
-    for (const x of c.children) {
-      count += this.countChildren(x) + 1;
+    for (const i of c.children) {
+      count += this.countChildren(this.getCluster(i)) + 1;
     }
     return count;
+  }
+
+
+  private getCluster(i: number): Cluster {
+    const node = this.config.configuration.value.definition.graph.nodeDictionary.get(i)
+    const child = node?.data as Cluster;
+    return child;
+  }
+
+  private getChildren(c: Cluster): Cluster[] {
+    const children: Cluster[] = [];
+    for (const i of c.children) {
+      const child = this.getCluster(i);
+      children.push(child);
+    }
+    return children;
   }
 
   // https://bottosson.github.io/posts/oklab/
@@ -137,7 +84,7 @@ export class TabClusterListComponent {
       let s: [number, number][];
       if (prop) {
         // Proportionally
-        let counts = v.children.map(c => this.countChildren(c) + 1);
+        let counts = v.children.map(c => this.countChildren(this.getCluster(c)) + 1);
         const total = counts.reduce((a, b) => a + b);
         const cumulative = counts.reduce((acc: number[], curr: number, index: number) => [...acc, curr + (acc[index - 1] || 0)], []);
         const proportions = cumulative.map(n => n / total);
@@ -170,7 +117,7 @@ export class TabClusterListComponent {
 
       let d = 0;
       for (let i = 0; i < n; i++) {
-        const d2 = this.assignColor(v.children[i], s[i], cRange, lRange, f, perm, rev, prop, depth + 1, i);
+        const d2 = this.assignColor(this.getCluster(v.children[i]), s[i], cRange, lRange, f, perm, rev, prop, depth + 1, i);
         d = Math.max(d, d2);
       }
 
@@ -196,19 +143,7 @@ export class TabClusterListComponent {
       g: sRGB.g <= 0.0031308 ? 12.92 * sRGB.g : 1.055 * Math.pow(sRGB.g, 1/2.4) - 0.055,
       b: sRGB.b <= 0.0031308 ? 12.92 * sRGB.b : 1.055 * Math.pow(sRGB.b, 1/2.4) - 0.055,
     };
-    // const RGB = {
-    //   r: sRGB.r <= 0.04045 ? sRGB.r / 12.92 : Math.pow((sRGB.r + 0.055) / 1.055, 2.4),
-    //   g: sRGB.g <= 0.04045 ? sRGB.g / 12.92 : Math.pow((sRGB.g + 0.055) / 1.055, 2.4),
-    //   b: sRGB.b <= 0.04045 ? sRGB.b / 12.92 : Math.pow((sRGB.b + 0.055) / 1.055, 2.4),
-    // };
     v.color = `rgb(${RGB.r * 255}, ${RGB.g * 255}, ${RGB.b * 255})`;
-    // console.log("srgb", sRGB);
-    // console.log("rgb" ,RGB);
-
-    // TODO: Proper chroma range conversion from LCh paper
-    // oklch: 0.4
-    // lch:   150
-    // Assume given range is in lch c and not percent
     // v.color = `oklch(${luminance}% ${chroma} ${hue})`;
 
     return depth;
@@ -246,7 +181,8 @@ export class TabClusterListComponent {
       name: "Root",
       color: "black",
       generator: new MGGenerator(),
-      children: clusters
+      children: clusters.map(c => c.id),
+      changeUUID: crypto.randomUUID()
     };
 
     const hRange: [number, number] = [0, 369];
@@ -285,12 +221,10 @@ export class TabClusterListComponent {
     // But how to edit on different levels then?
     // Also need serializability!!
 
-    // TODO: Invisible root cluster (for color and max id)
-    // TODO: Get max id => needed? should groups be modeled as clusters? Doesn't quite make sense...
-    // TODO: Only allow manual child clusters if specific (default?) generator is selected
-    // TODO: Make children nodes?
-    // TODO: Fix builder not finding child level clusters
-    // TODO: Assign colors
+    // TODO: Cluster gens generate children with number selector
+    // TODO: Only allow manual child clusters if specific generator is selected OR have second + button for that purpose
+    // TODO: Implement in builder
+    // TODO: Prevent top level color permutation (reverse?) because of confusion, maybe limit to 5-10?
     // TODO: Color mode selection
 
     // Then
@@ -310,15 +244,15 @@ export class TabClusterListComponent {
       parent: parent !== undefined ? parent.id : -1,
       color: "black",
       name: "Cluster " + this.numberToLetters(id + 1),
-      generator: new CLGenerator(DegreesDefault, true), // TODO: Separate buttons for root level groups, hide add for CL/CM gen
-      children: [] // TODO: This serialization causes redundant async references (either restore on deser or restore here in constructor preferred)
-      // Dont know how to restore on deser anyway
+      generator: new CLGenerator(DegreesDefault, true),
+      children: [],
+      changeUUID: crypto.randomUUID()
     };
 
     const node: Node = { id: id, data: cluster };
     this.config.configuration.value.definition.graph.addNode(node);
     if (parent) {
-      parent.children.push(cluster);
+      parent.children.push(cluster.id);
       this.treeControl.expand(parent);
     }
 
@@ -329,24 +263,25 @@ export class TabClusterListComponent {
     this.config.update("Add cluster " + id);
   }
 
-  public onRemoveCluster(event: MouseEvent, cluster: Cluster) {
+  public onRemoveCluster(event: MouseEvent, cluster: Cluster, update: boolean = true) {
     event.stopPropagation();
     if (cluster == this.selectedCluster) {
       this.config.selectedCluster.next(undefined);
     }
-    for (const child of cluster.children) {
-      const node = this.config.configuration.value.definition.graph.nodeDictionary.get(child.id)!;
-      this.config.configuration.value.definition.graph.removeNode(node);      
+    for (const i of [...cluster.children]) {
+      this.onRemoveCluster(event, this.getCluster(i), false);
     }
     if (cluster.parent != -1) {
-      // Get parent (ref serialization mgmt annoying, id req lookup anyway?)
-      // Remove from children
-
-      // Idea: ser just ids, restore refs on load here in ctor when all are available
+      const p = this.getCluster(cluster.parent);
+      p.children.splice(p.children.indexOf(cluster.id), 1);
     }
     const node = this.config.configuration.value.definition.graph.nodeDictionary.get(cluster.id)!;
     this.config.configuration.value.definition.graph.removeNode(node);
-    this.config.update("Remove cluster " + node.id);
+    if (update) {
+      this.config.update("Remove cluster " + node.id);
+      this.updateColors(this.clusters); // nodes not updating in nl, result of above?
+      // Want to run color update before update for correct undo behavior
+    }
   }
 
   public onSelectCluster(cluster: Cluster) {

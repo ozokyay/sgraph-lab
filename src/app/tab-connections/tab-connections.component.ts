@@ -71,9 +71,9 @@ export class TabConnectionsComponent {
     const firstConn = first.data as ClusterConnection;
 
     // Get involved cluster measures
-    const clusterSource = this.config.configuration.value.instance.clusterMeasures.get(first.source.data as Cluster)!;
+    const clusterSource = this.config.configuration.value.instance.clusterMeasures.get(first.source.id)!;
     const clusterTargets = this.connections.map(c =>
-      this.config.configuration.value.instance.clusterMeasures.get(c.target.data as Cluster)!
+      this.config.configuration.value.instance.clusterMeasures.get(c.target.id)!
     );
 
     // Set values

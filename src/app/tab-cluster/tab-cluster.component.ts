@@ -34,19 +34,19 @@ export class TabClusterComponent {
   constructor(private config: ConfigurationService) {
     config.measures.subscribe(measures => {
       if (this.cluster != undefined) {
-        this.clusterMeasures = measures.clusterMeasures.get(this.cluster!)
+        this.clusterMeasures = measures.clusterMeasures.get(this.cluster!.id)
       }
     });
     config.configuration.subscribe(config => {
       if (this.cluster != undefined) {
-        this.clusterMeasures = config.instance.clusterMeasures.get(this.cluster!)
+        this.clusterMeasures = config.instance.clusterMeasures.get(this.cluster!.id)
       }
     });
     config.selectedCluster.subscribe(cluster => {
       this.cluster = cluster;
       if (this.cluster != undefined) {
         this.generator = this.cluster.generator;
-        this.clusterMeasures = config.measures.value.clusterMeasures.get(this.cluster);
+        this.clusterMeasures = config.measures.value.clusterMeasures.get(this.cluster.id);
       }
     });
   }
@@ -68,6 +68,7 @@ export class TabClusterComponent {
 
   public onChange() {
     if (this.cluster != undefined) {
+      this.cluster.changeUUID = crypto.randomUUID();
       this.config.update("Change cluster " + this.cluster.id);
     }
   }

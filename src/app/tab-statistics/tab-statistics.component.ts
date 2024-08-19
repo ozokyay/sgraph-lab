@@ -37,7 +37,7 @@ export class TabStatisticsComponent {
     if (this.global) {
       this.statistics = this.config.measures.value.globalMeasures;
     } else if (this.selectedCluster != undefined) {
-      this.statistics = this.config.measures.value.clusterMeasures.get(this.selectedCluster);
+      this.statistics = this.config.measures.value.clusterMeasures.get(this.selectedCluster.id);
     } else {
       this.statistics = undefined;
     }
