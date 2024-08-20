@@ -278,9 +278,9 @@ export class TabClusterListComponent {
     const node = this.config.configuration.value.definition.graph.nodeDictionary.get(cluster.id)!;
     this.config.configuration.value.definition.graph.removeNode(node);
     if (update) {
+      this.clusters = this.config.configuration.value.definition.graph.getNodes().map(n => n.data as Cluster).filter(c => c.parent == -1);
+      this.updateColors(this.clusters);
       this.config.update("Remove cluster " + node.id);
-      this.updateColors(this.clusters); // nodes not updating in nl, result of above?
-      // Want to run color update before update for correct undo behavior
     }
   }
 
