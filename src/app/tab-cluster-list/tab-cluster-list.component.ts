@@ -74,7 +74,7 @@ export class TabClusterListComponent {
 
   // https://bottosson.github.io/posts/oklab/
   // Call with fake root cluster
-  private assignColor(v: Cluster, hRange: [number, number], cRange: [number, number], lRange: [number, number], f: number, perm: boolean, rev: boolean, prop: boolean, depth: number = 0, sibling: number = 0): number {
+  private assignColor(v: Cluster, hRange: [number, number], cRange: [number, number], lRange: [number, number], f: number, perm: boolean, rev: boolean, mode: "proportional" | "uniform" | "fixed", depth: number = 0, sibling: number = 0): number {
     const [lb, ub] = [hRange[0], hRange[1]];
     const hue = (lb + ub) / 2;
     let depthFraction: number;
@@ -82,27 +82,49 @@ export class TabClusterListComponent {
     const n = v.children.length;
     if (n > 0) {
       let s: [number, number][];
-      if (prop) {
-        // Proportionally
+      if (mode == "proportional") {
         let counts = v.children.map(c => this.countChildren(this.getCluster(c)) + 1);
         const total = counts.reduce((a, b) => a + b);
         const cumulative = counts.reduce((acc: number[], curr: number, index: number) => [...acc, curr + (acc[index - 1] || 0)], []);
         const proportions = cumulative.map(n => n / total);
         s = Array.from({ length: n }, (_, i) => [lb + (ub - lb) * (i == 0 ? 0 : proportions[i - 1]), lb + (ub - lb) * proportions[i]]);
-        // console.log("lb=" + lb + ", ub=" + ub);
-        // console.log(proportions);
-        // console.log(s);
-      } else {
-        // Uniform
+      } else if (mode == "uniform") {
         s = Array.from({ length: n }, (_, i) => [lb + (ub - lb) * (i / n), lb + (ub - lb) * ((i + 1) / n)]);
+      } else {
+        // Simply hardcode range to 5 as a tradeoff between width and depth
+        if (depth > 0) {
+          // Uniform
+          s = Array.from({ length: 5 }, (_, i) => [lb + (ub - lb) * ((i % 5) / 5), lb + (ub - lb) * (((i % 5) + 1) / 5)]);
+        } else {
+          // More range to red
+          s = [[0, 85], [85, 144], [144, 216], [236, 288], [288, 360]];
+        }
       }
+
+      // Problem: Deletion shifts clusters
+      // Solution: Cluster note their siblingIndex, use this for everything
+      // Also use last of this to determine next sibling color
+
+      // Use siblingIndex here because this creates permuted ranges
+      // Should use as offset if i - sIndex > 0 in fixed mode
 
       // Permute
       if (perm) {
-        const perm = this.spread(n);
+        let perm;
+        if (mode == "fixed") {
+          perm = this.spread(5);
+        } else {
+          perm = this.spread(n);
+        }
         const s2: [number, number][] = [];
-        for (let i = 0; i < perm.length; i++) {
-          s2.push(s[perm.indexOf(i + 1)]);
+        // Need to go over perm repeatedly
+        for (let i = 0; i < n; i++) {
+          if (mode == "fixed") {
+            const sIndex = this.getCluster(v.children[i]).siblingIndex;
+            s2.push(s[perm.indexOf((sIndex % 5) + 1)]);
+          } else {
+            s2.push(s[perm.indexOf(i + 1)]);
+          }
         }
         s = s2;
       }
@@ -117,7 +139,7 @@ export class TabClusterListComponent {
 
       let d = 0;
       for (let i = 0; i < n; i++) {
-        const d2 = this.assignColor(this.getCluster(v.children[i]), s[i], cRange, lRange, f, perm, rev, prop, depth + 1, i);
+        const d2 = this.assignColor(this.getCluster(v.children[i]), s[i], cRange, lRange, f, perm, rev, mode, depth + 1, i);
         d = Math.max(d, d2);
       }
 
@@ -129,7 +151,6 @@ export class TabClusterListComponent {
 
     const chroma = cRange[0] + depthFraction * (cRange[1] - cRange[0]);
     const luminance = lRange[0] + depthFraction * (lRange[1] - lRange[0]);
-    
 
     const l = luminance / 100;
     const c = chroma;
@@ -182,14 +203,54 @@ export class TabClusterListComponent {
       color: "black",
       generator: new MGGenerator(),
       children: clusters.map(c => c.id),
-      changeUUID: crypto.randomUUID()
+      changeUUID: crypto.randomUUID(),
+      siblingIndex: 0
     };
 
     const hRange: [number, number] = [0, 369];
     const cRange: [number, number] = [10 / 100 * 0.4, 45 / 100 * 0.4];
     const lRange: [number, number] = [96, 57];
-    const hFrac = 0.75;
-    this.assignColor(root, hRange, cRange, lRange, hFrac, true, true, true);
+    const hFrac = 1;
+    this.assignColor(root, hRange, cRange, lRange, hFrac, true, false, "fixed");
+
+    // Algorithm
+    // - Up to 5: Fill from range [1, 2, 3, 4, 5] (permuted output)
+    // - Next hue: take from pos i between starting range
+    // - Insert in array at i, but cluster next
+    // - Shift others to keep constant distance
+    // - Advance i % #rootClusters (or better: next pos with max const dist for this level)
+
+    // Algorithm 2
+    // - Up to 5, fill from pre-computed 5-division and fixed permutation
+    // - Next, keep last permutation and expand by one
+    // - 
+
+
+    // Actual problem: Expanding existing permutation by one
+
+    // Workaround? 
+    // - Start with good 7 permutation
+    // - Repeat when expanding
+    // - Cannot dstinguish too many colors anyway :)
+
+    // Problem: Is this recursively better than TREECOLORS??? (no: imagine extreme cases of failure)
+
+    // Workaround #2
+    // - Manual color assignment button / auto checkbox
+
+    // treecolor problem is threefold:
+    // 1. Colors shifting (can use fixed, repeating)
+    // 2. Colors permuting (can use fixed, repeating)
+    // 3. Color range changes (no problem if fixed)
+    // => Where is treecolors after these changes?
+    // Disadavantages
+    // - Not adapting to extreme cases (1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 2) (this is okay)
+    // - inconsistent behavior when going down layers
+    // - Fix: disable perm? => also breaks a ton of stuff
+
+    // New solution:
+    // - Recursive fixed repeating ranges of 5 (only supports proportional)
+    // - Seems stupid, but could work
   }
 
   public onAddCluster(event: MouseEvent, parent?: Cluster) {
@@ -215,17 +276,16 @@ export class TabClusterListComponent {
       id = latestCluster.id + 1;
     }
 
-    // Should not have hierarchy in graph definition
-    // Only leaves should form this graph
-    // This makes things easier
-    // But how to edit on different levels then?
-    // Also need serializability!!
+    
 
     // TODO: Cluster gens generate children with number selector
     // TODO: Only allow manual child clusters if specific generator is selected OR have second + button for that purpose
     // TODO: Implement in builder
-    // TODO: Prevent top level color permutation (reverse?) because of confusion, maybe limit to 5-10?
-    // TODO: Color mode selection
+
+
+    // TODO: Prevent top level color permutation (reverse?) because of confusion, maybe limit to 7-10 scale repeating?
+    // TODO: Alternatively: Color mode selection?
+    // TODO: Proper subcluster naming (append child indices form hierarchy above)
 
     // Then
     // TODO: Matrix (levels)
@@ -239,14 +299,32 @@ export class TabClusterListComponent {
     // https://sites.cc.gatech.edu/gvu/ii/icet/
 
 
+    // console.log(DegreesDefault);
+
+    let sIndex;
+    if (parent !== undefined) {
+      if (parent.children.length > 0) {
+        sIndex = this.getCluster(parent.children[parent.children.length - 1]).siblingIndex + 1;
+      } else {
+        sIndex = 0;
+      }
+    } else {
+      if (this.clusters.length == 0) {
+        sIndex = 0;
+      } else {
+        sIndex = this.clusters[this.clusters.length - 1].siblingIndex + 1;
+      }
+    }
+
     const cluster: Cluster = {
       id: id,
       parent: parent !== undefined ? parent.id : -1,
       color: "black",
       name: "Cluster " + this.numberToLetters(id + 1),
-      generator: new CLGenerator(DegreesDefault, true),
+      generator: new CLGenerator(structuredClone(DegreesDefault), true),
       children: [],
-      changeUUID: crypto.randomUUID()
+      changeUUID: crypto.randomUUID(),
+      siblingIndex: sIndex
     };
 
     const node: Node = { id: id, data: cluster };

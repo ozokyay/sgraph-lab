@@ -115,7 +115,7 @@ export class ConfigurationService {
         const clusterOld = old?.data as Cluster;
         const clusterNew = node.data as Cluster;
 
-        if (clusterOld == undefined || clusterNew.changeUUID !== clusterNew.changeUUID) {
+        if (clusterOld == undefined || clusterNew.changeUUID !== clusterOld.changeUUID) {
           // Add or change
           Utility.rand = new Rand(configuration.definition.seed.toString() + node.id.toString());
           configuration.instance.clusters.set(node.id, this.generateCluster(node));
