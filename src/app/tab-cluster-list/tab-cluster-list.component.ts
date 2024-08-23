@@ -104,9 +104,7 @@ export class TabClusterListComponent {
       // Problem: Deletion shifts clusters
       // Solution: Cluster note their siblingIndex, use this for everything
       // Also use last of this to determine next sibling color
-
-      // Use siblingIndex here because this creates permuted ranges
-      // Should use as offset if i - sIndex > 0 in fixed mode
+      // Use siblingIndex offset here
 
       // Permute
       if (perm) {
@@ -212,45 +210,6 @@ export class TabClusterListComponent {
     const lRange: [number, number] = [96, 57];
     const hFrac = 1;
     this.assignColor(root, hRange, cRange, lRange, hFrac, true, false, "fixed");
-
-    // Algorithm
-    // - Up to 5: Fill from range [1, 2, 3, 4, 5] (permuted output)
-    // - Next hue: take from pos i between starting range
-    // - Insert in array at i, but cluster next
-    // - Shift others to keep constant distance
-    // - Advance i % #rootClusters (or better: next pos with max const dist for this level)
-
-    // Algorithm 2
-    // - Up to 5, fill from pre-computed 5-division and fixed permutation
-    // - Next, keep last permutation and expand by one
-    // - 
-
-
-    // Actual problem: Expanding existing permutation by one
-
-    // Workaround? 
-    // - Start with good 7 permutation
-    // - Repeat when expanding
-    // - Cannot dstinguish too many colors anyway :)
-
-    // Problem: Is this recursively better than TREECOLORS??? (no: imagine extreme cases of failure)
-
-    // Workaround #2
-    // - Manual color assignment button / auto checkbox
-
-    // treecolor problem is threefold:
-    // 1. Colors shifting (can use fixed, repeating)
-    // 2. Colors permuting (can use fixed, repeating)
-    // 3. Color range changes (no problem if fixed)
-    // => Where is treecolors after these changes?
-    // Disadavantages
-    // - Not adapting to extreme cases (1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 2) (this is okay)
-    // - inconsistent behavior when going down layers
-    // - Fix: disable perm? => also breaks a ton of stuff
-
-    // New solution:
-    // - Recursive fixed repeating ranges of 5 (only supports proportional)
-    // - Seems stupid, but could work
   }
 
   public onAddCluster(event: MouseEvent, parent?: Cluster) {
@@ -276,16 +235,9 @@ export class TabClusterListComponent {
       id = latestCluster.id + 1;
     }
 
-    
-
     // TODO: Cluster gens generate children with number selector
     // TODO: Only allow manual child clusters if specific generator is selected OR have second + button for that purpose
     // TODO: Implement in builder
-
-
-    // TODO: Prevent top level color permutation (reverse?) because of confusion, maybe limit to 7-10 scale repeating?
-    // TODO: Alternatively: Color mode selection?
-    // TODO: Proper subcluster naming (append child indices form hierarchy above)
 
     // Then
     // TODO: Matrix (levels)
@@ -297,9 +249,6 @@ export class TabClusterListComponent {
     // TODO: Attributes and assortativity
     // TODO: Top level colors fixed up to 5-10?
     // https://sites.cc.gatech.edu/gvu/ii/icet/
-
-
-    // console.log(DegreesDefault);
 
     let sIndex;
     if (parent !== undefined) {
@@ -320,7 +269,7 @@ export class TabClusterListComponent {
       id: id,
       parent: parent !== undefined ? parent.id : -1,
       color: "black",
-      name: "Cluster " + this.numberToLetters(id + 1),
+      name: "Cluster " + (parent === undefined ? this.numberToLetters(id + 1) : parent.name + "." + (sIndex + 1)),
       generator: new CLGenerator(structuredClone(DegreesDefault), true),
       children: [],
       changeUUID: crypto.randomUUID(),

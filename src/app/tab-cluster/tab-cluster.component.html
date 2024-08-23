@@ -10,6 +10,7 @@
     <mat-select [ngModel]="generator.name" (valueChange)="onChangeGenerator($event)">
         <mat-option value="CL">Chung-Lu Model</mat-option>
         <mat-option value="CM">Configuration Model</mat-option>
+        <mat-option value="MG">Cluster Group</mat-option>
     </mat-select>
   </mat-form-field>
   @if (cluster.generator.name == "CL") {
@@ -22,6 +23,10 @@
     <mat-slide-toggle [(ngModel)]="generator.extractGiantComponent" (change)="onChange()">
       Keep only largest connected component
     </mat-slide-toggle>
+  } @else if (cluster.generator.name == "MG") {
+    <br>
+    <span>Add child clusters in the cluster list</span>
+    <br>
   } @else {
     <span>unknown</span>
   }

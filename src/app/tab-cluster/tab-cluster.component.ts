@@ -8,7 +8,7 @@ import { FormsModule } from '@angular/forms';
 import { GraphMeasures } from '../graph-configuration';
 import { ConfigurationService } from '../configuration.service';
 import { Cluster } from '../cluster';
-import { CLGenerator, CMGenerator } from '../generators';
+import { CLGenerator, CMGenerator, MGGenerator } from '../generators';
 import { DegreesDefault, Series } from '../series';
 
 @Component({
@@ -47,6 +47,7 @@ export class TabClusterComponent {
       if (this.cluster != undefined) {
         this.generator = this.cluster.generator;
         this.clusterMeasures = config.measures.value.clusterMeasures.get(this.cluster.id);
+        console.log(this.cluster);
       }
     });
   }
@@ -62,7 +63,11 @@ export class TabClusterComponent {
       case "CM":
         this.cluster!.generator = new CMGenerator(degreeDistribution, extractGiantComponent);
         break;
+      case "MG":
+        this.cluster!.generator = new MGGenerator();
+        break;
     }
+    this.generator = this.cluster!.generator;
     this.onChange();
   }
 
