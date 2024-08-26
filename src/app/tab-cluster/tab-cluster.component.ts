@@ -10,6 +10,7 @@ import { ConfigurationService } from '../configuration.service';
 import { Cluster } from '../cluster';
 import { CLGenerator, CMGenerator, MGGenerator } from '../generators';
 import { DegreesDefault, Series } from '../series';
+import { Utility } from '../utility';
 
 @Component({
   selector: 'app-tab-cluster',
@@ -47,7 +48,6 @@ export class TabClusterComponent {
       if (this.cluster != undefined) {
         this.generator = this.cluster.generator;
         this.clusterMeasures = config.measures.value.clusterMeasures.get(this.cluster.id);
-        console.log(this.cluster);
       }
     });
   }
@@ -65,6 +65,12 @@ export class TabClusterComponent {
         break;
       case "MG":
         this.cluster!.generator = new MGGenerator();
+        this.cluster!.replication = 1;
+        for (const child of this.cluster!.children) {
+          const node = this.config.configuration.value.definition.graph.nodeDictionary.get(child);
+          const cluster = node?.data as Cluster;
+          cluster.immutable = false;
+        }
         break;
     }
     this.generator = this.cluster!.generator;
@@ -73,6 +79,7 @@ export class TabClusterComponent {
 
   public onChange() {
     if (this.cluster != undefined) {
+      this.updateReplication();
       this.cluster.changeUUID = crypto.randomUUID();
       this.config.update("Change cluster " + this.cluster.id);
     }
@@ -82,5 +89,90 @@ export class TabClusterComponent {
     if (this.cluster != undefined) {
       this.config.trackHistory("Rename cluster " + this.cluster.id);
     }
+  }
+
+  private updateReplication() {
+    if (this.cluster == undefined) {
+      return;
+    }
+
+    if (this.generator.name != "MG" && this.cluster.children.length != this.cluster.replication) {
+      // Kill all children
+      for (const child of this.cluster.children) {
+        const node = this.config.configuration.value.definition.graph.nodeDictionary.get(child)!;
+        this.config.configuration.value.definition.graph.removeNode(node);
+      }
+      this.cluster.children = [];
+      const children: number[] = [];
+
+      // Done if replication was reset
+      if (this.cluster.replication == 1) {
+        return;
+      }
+
+      // Get next ID
+      let id = 0;
+      if (this.config.configuration.value.definition.graph.nodeDictionary.size > 0) {
+        const nodes = [...this.config.configuration.value.definition.graph.nodeDictionary.values()]
+        const latestNode = nodes[nodes.length - 1];
+        const latestCluster = latestNode.data as Cluster;
+        id = latestCluster.id + 1;
+      }
+
+      // Clone
+      for (let i = 0; i < this.cluster.replication; i++) {
+        const newChild = structuredClone(this.cluster);
+        switch (newChild.generator.name) {
+          case "CL":
+            const cl = newChild.generator as CLGenerator;
+            newChild.generator = new CLGenerator(cl.degreeDistribution, cl.extractGiantComponent);
+            break;
+          case "CM":
+            const cm = newChild.generator as CMGenerator;
+            newChild.generator = new CMGenerator(cm.degreeDistribution, cm.extractGiantComponent);
+            break;
+        }
+        newChild.replication = 1;
+        newChild.immutable = true;
+        newChild.id = id;
+        newChild.siblingIndex = i;
+        newChild.parent = this.cluster.id;
+        newChild.name = this.cluster.name + "." + (i + 1);
+        children.push(newChild.id);
+        newChild.changeUUID = crypto.randomUUID();
+        this.config.configuration.value.definition.graph.addNode({ id: newChild.id, data: newChild });
+        id++;
+      }
+      this.cluster.children = children;
+      
+      // Update colors
+      const topLevel = this.config.configuration.value.definition.graph.getNodes().map(n => n.data as Cluster).filter(c => c.parent == -1);
+      Utility.updateColors(topLevel);
+    }
+
+    if (this.cluster.replication > 1) {
+      // Update existing generators
+      for (const child of this.cluster.children) {
+        const node = this.config.configuration.value.definition.graph.nodeDictionary.get(child);
+        const cluster = node?.data as Cluster;
+        switch (this.cluster.generator.name) {
+          case "CL":
+            const cl = this.cluster.generator as CLGenerator;
+            cluster.generator = new CLGenerator(structuredClone(cl.degreeDistribution), cl.extractGiantComponent);
+            break;
+          case "CM":
+            const cm = this.cluster.generator as CMGenerator;
+            cluster.generator = new CMGenerator(structuredClone(cm.degreeDistribution), cm.extractGiantComponent);
+            break;
+        }
+        cluster.changeUUID = crypto.randomUUID();
+      }
+    }
+
+    // TODO: Color update on import
+    // TODO: Test import
+
+    // Allow replication on other levels to replicate subtrees? Not possible because replication is set together with curve, no mechanism to extend replication to subtrees (and no likely need to do so)
+    // KISS
   }
 }

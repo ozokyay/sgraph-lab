@@ -8,5 +8,7 @@ export interface Cluster {
     children: number[],
     generator: Generator,
     changeUUID: string,
-    siblingIndex: number
+    siblingIndex: number,
+    replication: number,
+    immutable: boolean
 }

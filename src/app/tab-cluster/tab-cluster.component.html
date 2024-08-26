@@ -7,20 +7,27 @@
   <br>
   <mat-form-field>
     <mat-label>Graph Generator</mat-label>
-    <mat-select [ngModel]="generator.name" (valueChange)="onChangeGenerator($event)">
+    <mat-select [ngModel]="generator.name" (valueChange)="onChangeGenerator($event)" [disabled]="cluster.immutable">
         <mat-option value="CL">Chung-Lu Model</mat-option>
         <mat-option value="CM">Configuration Model</mat-option>
         <mat-option value="MG">Cluster Group</mat-option>
     </mat-select>
   </mat-form-field>
+  @if (cluster.generator.name != "MG") {
+    <br>
+    <mat-form-field>
+      <mat-label>Replication</mat-label>
+      <input type="number" matInput [(ngModel)]="cluster.replication" value="1" min="1" oninput="this.value = Math.max(1, Math.round(this.value));" (change)="onChange()" [disabled]="cluster.immutable">
+    </mat-form-field>
+  }
   @if (cluster.generator.name == "CL") {
-    <app-vis-line-chart [series]="generator.degreeDistribution" [series2]="clusterMeasures?.degreeDistribution" (seriesChange)="onChange()"></app-vis-line-chart>
-    <mat-slide-toggle [(ngModel)]="generator.extractGiantComponent" (change)="onChange()">
+  <app-vis-line-chart [series]="generator.degreeDistribution" [series2]="clusterMeasures?.degreeDistribution" (seriesChange)="onChange()" [editMode]="!cluster.immutable" [allowAxisScaling]="!cluster.immutable" [allowLogToggles]="!cluster.immutable"></app-vis-line-chart>
+    <mat-slide-toggle [(ngModel)]="generator.extractGiantComponent" (change)="onChange()" [disabled]="cluster.immutable">
       Keep only largest connected component
     </mat-slide-toggle>
   } @else if (cluster.generator.name == "CM") {
-    <app-vis-line-chart [series]="generator.degreeDistribution" [series2]="clusterMeasures?.degreeDistribution" (seriesChange)="onChange()"></app-vis-line-chart>
-    <mat-slide-toggle [(ngModel)]="generator.extractGiantComponent" (change)="onChange()">
+    <app-vis-line-chart [series]="generator.degreeDistribution" [series2]="clusterMeasures?.degreeDistribution" (seriesChange)="onChange()" [editMode]="!cluster.immutable" [allowAxisScaling]="!cluster.immutable" [allowLogToggles]="!cluster.immutable"></app-vis-line-chart>
+    <mat-slide-toggle [(ngModel)]="generator.extractGiantComponent" (change)="onChange()" [disabled]="cluster.immutable">
       Keep only largest connected component
     </mat-slide-toggle>
   } @else if (cluster.generator.name == "MG") {

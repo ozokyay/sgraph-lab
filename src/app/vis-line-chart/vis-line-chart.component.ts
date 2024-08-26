@@ -321,6 +321,8 @@ export class VisLineChartComponent implements AfterViewInit, OnChanges {
     }
     
     if (!this.editMode) {
+      this.handles.selectAll("circle")
+        .remove();
       return;
     }
 

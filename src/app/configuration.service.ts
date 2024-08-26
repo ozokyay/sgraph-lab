@@ -162,6 +162,9 @@ export class ConfigurationService {
 
   private generateCluster(node: Node): EdgeList {
     const cluster = node.data as Cluster;
+    if (cluster.replication > 1) {
+      return { nodes: [], edges: [] };
+    }
     let g = cluster.generator.generate();
 
     for (const n of g.nodes) {
