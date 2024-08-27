@@ -37,6 +37,7 @@ export class TabClusterListComponent {
   public selectedCluster?: Cluster = undefined;
 
   constructor(private config: ConfigurationService) {
+    Utility.config = config;
     config.configuration.subscribe(configuration => {
       this.clusters = configuration.definition.graph.getNodes().map(n => n.data as Cluster).filter(c => c.parent == -1); // Only root level nodes
       this.dataSource.data = [];

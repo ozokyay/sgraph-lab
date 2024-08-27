@@ -33,6 +33,7 @@ export class TabClusterComponent {
   public generator?: any = undefined; // To erase type for html
 
   constructor(private config: ConfigurationService) {
+    Utility.config = config;
     config.measures.subscribe(measures => {
       if (this.cluster != undefined) {
         this.clusterMeasures = measures.clusterMeasures.get(this.cluster!.id)
@@ -168,9 +169,6 @@ export class TabClusterComponent {
         cluster.changeUUID = crypto.randomUUID();
       }
     }
-
-    // TODO: Color update on import
-    // TODO: Test import
 
     // Allow replication on other levels to replicate subtrees? Not possible because replication is set together with curve, no mechanism to extend replication to subtrees (and no likely need to do so)
     // KISS

@@ -5,9 +5,11 @@ import Rand from 'rand-seed';
 import * as d3 from 'd3';
 import { CLGenerator, CMGenerator, MGGenerator } from "./generators";
 import { Cluster } from "./cluster";
+import { ConfigurationService } from "./configuration.service";
 
 export class Utility {
     public static rand = new Rand('default');
+    public static config: ConfigurationService;
 
     // https://stackoverflow.com/questions/29085197/how-do-you-json-stringify-an-es6-map
     private static replacer(key: string, value: any) {
