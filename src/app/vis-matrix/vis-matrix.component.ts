@@ -22,8 +22,12 @@ interface MatrixCell {
 })
 export class VisMatrixComponent {
 
-  // Get definiton nodes for current level
-  // Make matrix
+
+  // TODO:
+  // - Level UI
+  // - Get definiton nodes for current level
+  // - Selection modality (how to handle multiple?)
+  
   // Show connection strength [min, max] color
   // Selection of arbitrary number of edges
 

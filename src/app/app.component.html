@@ -5,6 +5,7 @@
   <as-split #vertical unit="percent" direction="horizontal" (dragStart)="onDragStart()" (dragEnd)="onDragEnd()" restrictMove="true">
     <as-split-area size="20">
       <div class="padded">
+        <app-vis-level />
         <h3>Cluster Connections</h3>
         <app-vis-matrix />
         <app-tab-cluster-list />
@@ -12,10 +13,6 @@
     </as-split-area>
     <as-split-area size="50">
       <app-vis-node-link #nodeLinkDiagram></app-vis-node-link>
-      <!-- <div class="settings-container"> -->
-        <!-- Settings panel -->
-        <!-- Node link diagram -->
-      <!-- </div> -->
     </as-split-area>
     <as-split-area size="*" class="noscroll">
       <mat-tab-group class="scroll" (selectedTabChange)="onSelectedTabChange()" [(selectedIndex)]="selectedTabIndex">
