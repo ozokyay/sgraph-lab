@@ -73,9 +73,6 @@ export class TabClusterListComponent {
       id = latestCluster.id + 1;
     }
 
-    // TODO: Cluster gens generate children with number selector
-    // TODO: Implement in builder incl parent measurement aggregation
-
     // Then
     // TODO: Matrix (levels)
     // TODO: Minimap (levels)
@@ -84,7 +81,6 @@ export class TabClusterListComponent {
     // TODO: (Tree)
     // TODO: Distribution Tables
     // TODO: Attributes and assortativity
-    // TODO: Top level colors fixed up to 5-10?
     // https://sites.cc.gatech.edu/gvu/ii/icet/
 
     let sIndex;

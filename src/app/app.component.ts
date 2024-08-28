@@ -16,6 +16,7 @@ import { VisNodeLinkComponent } from './vis-node-link/vis-node-link.component';
 import { TabNlSettingsComponent } from './tab-nl-settings/tab-nl-settings.component';
 import { TabStatisticsComponent } from './tab-statistics/tab-statistics.component';
 import { TabInformationDiffusionComponent } from "./tab-information-diffusion/tab-information-diffusion.component";
+import { VisMatrixComponent } from "./vis-matrix/vis-matrix.component";
 
 @Component({
     selector: 'app-root',
@@ -36,7 +37,8 @@ import { TabInformationDiffusionComponent } from "./tab-information-diffusion/ta
     TabNlSettingsComponent,
     TabStatisticsComponent,
     VisNodeLinkComponent,
-    TabInformationDiffusionComponent
+    TabInformationDiffusionComponent,
+    VisMatrixComponent
 ]
 })
 export class AppComponent implements OnInit {

@@ -33,6 +33,7 @@ export class ConfigurationService {
   public selectedCluster = new BehaviorSubject<Cluster | undefined>(undefined);
   public selectedConnections = new BehaviorSubject<Edge[]>([]);
   public selectedDiffusionSeeds = new BehaviorSubject<Set<Node>>(new Set());
+  public currentLevel = new BehaviorSubject<number>(1);
   public layoutSettings = new BehaviorSubject<LayoutSettings>(DefaultLayout);
   public graphicsSettings = new BehaviorSubject<GraphicsSettings>(DefaultGraphics);
   public history = new BehaviorSubject<GraphConfiguration[]>([structuredClone(this.configuration.value)]);
@@ -74,9 +75,11 @@ export class ConfigurationService {
       instance: EmptyInstance,
       message: this.configuration.value.message
     }));
+    this.history.next(this.history.value);
   }
 
   public undo() {
+    // TODO: Must re-create functions lost in structured clone (only defintion graph)
     // TODO: CTRL+Y, selection history
     if (this.history.value.length == 1) {
       return;
