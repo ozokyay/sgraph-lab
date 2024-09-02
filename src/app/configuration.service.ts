@@ -100,13 +100,13 @@ export class ConfigurationService {
 
     // Main reason for change detection: Layout consistency, quite important
     // Also want it for undo/redo
-    // Cluster connections dont really matter because the nodes store their positions
+    // Cluster connections dont really matter
+    // The leaf cluster nodes are important to keep because they store their positions
 
     if (undo || configuration.message.startsWith("Import")) {
       configuration.instance.clusters = new Map();
       for (const node of configuration.definition.graph.nodes.keys()) {
-        Utility.rand = new Rand(configuration.definition.seed.toString() + node.id.toString());
-        configuration.instance.clusters.set(node.id, this.generateCluster(node));
+        this.generateAndStoreCluster(configuration, node);
       }
     } else {
       // Change detection for leaf clusters
@@ -119,9 +119,7 @@ export class ConfigurationService {
         const clusterNew = node.data as Cluster;
 
         if (clusterOld == undefined || clusterNew.changeUUID !== clusterOld.changeUUID) {
-          // Add or change
-          Utility.rand = new Rand(configuration.definition.seed.toString() + node.id.toString());
-          configuration.instance.clusters.set(node.id, this.generateCluster(node));
+          this.generateAndStoreCluster(configuration, node);
         }
       }
 
@@ -138,16 +136,67 @@ export class ConfigurationService {
       }
     }
 
+    // Clear hierarchy
+    for (const node of configuration.definition.graph.nodes.keys()) {
+      const cluster = node.data as Cluster;
+      if (cluster.children.length == 0) {
+        continue;
+      }
+      configuration.instance.clusters.set(cluster.id, { nodes: [], edges: [] });
+    }
+
+    // Rebuild hierarchy and build (grand) children list
+    const groupChildren = new Map<Node, Node[]>();
+    for (const node of configuration.definition.graph.nodes.keys()) {
+      if ((node.data as Cluster).children.length > 0) {
+        groupChildren.set(node, []);
+      }
+    }
+
+    for (const node of configuration.definition.graph.nodes.keys()) {
+      const cluster = node.data as Cluster;
+      if (cluster.children.length > 0) {
+        continue;
+      }
+
+      // Add to all parents
+      const g = configuration.instance.clusters.get(cluster.id)!;
+      let parent = configuration.definition.graph.nodeDictionary.get(cluster.parent);
+      while (parent != undefined) {
+        const c = parent.data as Cluster;
+        const graph = configuration.instance.clusters.get(c.id)!;
+        graph.nodes.push(...g.nodes);
+        graph.edges.push(...g.edges);
+        groupChildren.get(parent)!.push(node);
+        parent = configuration.definition.graph.nodeDictionary.get(c.parent);
+      }
+    }
+
+
     // Generate connections
     for (const edges of configuration.definition.graph.nodes.values()) {
       for (const [edge, _] of edges) {
         Utility.rand = new Rand(configuration.definition.seed.toString() + edge.source.id.toString() + (edge.target.id << 16).toString());
-        configuration.instance.connections.set(edge.data as ClusterConnection, this.generateConnection(edge));
+        configuration.instance.connections.set(edge, this.generateConnection(edge));
       }
     }
 
+    // Build up hierarchy
+    for (const [connection, edges] of configuration.instance.connections) {
+      for (const [group, children] of groupChildren) {
+        if (children.indexOf(connection.source) != -1 && children.indexOf(connection.target) != -1) {
+          configuration.instance.clusters.get(group.id)!.edges.push(...edges);
+        }
+      }
+    }
+
+
     // Assemble graph
-    for (const instance of configuration.instance.clusters.values()) {
+    for (const [cluster, instance] of configuration.instance.clusters) {
+      if ((configuration.definition.graph.nodeDictionary.get(cluster)!.data as Cluster).children.length > 0) {
+        continue;
+      }
+
       configuration.instance.graph.nodes = configuration.instance.graph.nodes.concat(instance.nodes);
       configuration.instance.graph.edges = configuration.instance.graph.edges.concat(instance.edges);
     }
@@ -156,6 +205,7 @@ export class ConfigurationService {
       configuration.instance.graph.edges = configuration.instance.graph.edges.concat(connection);
     }
 
+    // Unique node IDs in final graph
     let id = 0;
     for (const node of configuration.instance.graph.nodes) {
       node.id = id;
@@ -165,9 +215,6 @@ export class ConfigurationService {
 
   private generateCluster(node: Node): EdgeList {
     const cluster = node.data as Cluster;
-    if (cluster.replication > 1) {
-      return { nodes: [], edges: [] };
-    }
     let g = cluster.generator.generate();
 
     for (const n of g.nodes) {
@@ -181,14 +228,27 @@ export class ConfigurationService {
     return g;
   }
 
+  private generateAndStoreCluster(configuration: GraphConfiguration, node: Node) {
+    const cluster = node.data as Cluster;
+    // Ignore non-leaves
+    if (cluster.children.length > 0) {
+      return;
+    }
+
+    // Add or change
+    Utility.rand = new Rand(configuration.definition.seed.toString() + node.id.toString());
+    const g = this.generateCluster(node);
+    configuration.instance.clusters.set(node.id, g);
+  }
+
   private generateConnection(edge: Edge): Edge[] {
     const connection: ClusterConnection = edge.data as ClusterConnection;
     const cluster1: Cluster = edge.source.data as Cluster;
     const cluster2: Cluster = edge.target.data as Cluster;
     const graph1: EdgeList = this.configuration.value.instance.clusters.get(cluster1.id)!;
     const graph2: EdgeList = this.configuration.value.instance.clusters.get(cluster2.id)!;
-    const count1 = Math.round(connection.nodeCountSource * graph1.nodes.length); // Actually prefer absolute node counts in cluster def - but harder to achieve precisely
-    const count2 = Math.round(connection.nodeCountTarget * graph2.nodes.length);
+    const count1 = Math.round(connection.sourceNodeCount * graph1.nodes.length); // Actually prefer absolute node counts in cluster def - but harder to achieve precisely
+    const count2 = Math.round(connection.targetNodeCount * graph2.nodes.length);
     const degrees1 = Utility.computeNodeDegrees(graph1);
     const degrees2 = Utility.computeNodeDegrees(graph2);
     const buckets1 = Utility.sortNodeDegrees(degrees1);
@@ -221,21 +281,21 @@ export class ConfigurationService {
 
     let nodes1: Node[] = [...graph1.nodes];
     let nodes2: Node[] = [...graph2.nodes];
-    if (connection.degreeDistributionSource == undefined) {
+    if (connection.sourceDegreeDistribution == undefined) {
       Utility.shuffleArray(nodes1);
       nodes1 = nodes1.slice(0, count1);
     } else {
-      const sum = connection.degreeDistributionSource.data.reduce((a, b) => a + b.y, 0);
-      const scaled = [...connection.degreeDistributionSource.data];
+      const sum = connection.sourceDegreeDistribution.data.reduce((a, b) => a + b.y, 0);
+      const scaled = [...connection.sourceDegreeDistribution.data];
       Utility.multiplyPointValues(scaled, count1 / sum);
       nodes1 = Utility.drawProportionally(count1, buckets1, scaled);
     }
-    if (connection.degreeDistributionTarget == undefined) {
+    if (connection.targetDegreeDistribution == undefined) {
       Utility.shuffleArray(nodes2);
       nodes2 = nodes2.slice(0, count2);
     } else {
-      const sum = connection.degreeDistributionTarget.data.reduce((a, b) => a + b.y, 0);
-      const scaled = [...connection.degreeDistributionTarget.data];
+      const sum = connection.targetDegreeDistribution.data.reduce((a, b) => a + b.y, 0);
+      const scaled = [...connection.targetDegreeDistribution.data];
       Utility.multiplyPointValues(scaled, count2 / sum);
       nodes2 = Utility.drawProportionally(count2, buckets2, scaled);
     }
@@ -285,6 +345,27 @@ export class ConfigurationService {
       const measures = compute(graph);
       this.configuration.value.instance.clusterMeasures.set(cluster, measures);
     }
+
+
+    // TODO: Remove the following loop
+
+    // Now aggregate aggregatable measures for groups up the tree
+    // for (const node of this.configuration.value.definition.graph.nodes.keys()) {
+    //   const cluster = node.data as Cluster;
+    //   if (cluster.children.length > 0) {
+    //     continue;
+    //   }
+    //   const measures = this.configuration.value.instance.clusterMeasures.get(cluster.id)!;
+    //   let parent = this.configuration.value.definition.graph.nodeDictionary.get(cluster.parent);
+    //   while (parent != undefined) {
+    //     const c = parent.data as Cluster;
+    //     const m = this.configuration.value.instance.clusterMeasures.get(c.id)!;
+    //     m.nodeCount += measures.nodeCount;
+    //     m.edgeCount += measures.edgeCount;
+    //     m.degreeDistribution = Utility.addDistributions(m.degreeDistribution, measures.degreeDistribution);
+    //     parent = this.configuration.value.definition.graph.nodeDictionary.get(c.parent);
+    //   }
+    // }
   }
 
   // Must prevent data race

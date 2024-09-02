@@ -4,6 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { ConfigurationService } from '../configuration.service';
 import { AdjacencyList, Node } from '../graph';
 import { Cluster } from '../cluster';
+import { Utility } from '../utility';
 
 @Component({
   selector: 'app-vis-level',
@@ -24,7 +25,7 @@ export class VisLevelComponent {
       this.level = l;
     });
     config.configuration.subscribe(cfg => {
-      this.maxLevel = this.getDepth(cfg.definition.graph.getNodes());
+      this.maxLevel = Utility.getDepth(cfg.definition.graph);
     });
   }
 
@@ -34,20 +35,5 @@ export class VisLevelComponent {
 
   public onDecrement() {
     this.config.level.next(Math.max(1, this.level - 1));
-  }
-
-  private getDepth(nodes: Node[]): number {
-    let depth = 1;
-    for (let node of nodes) {
-      let d = 1;
-      let cluster = node.data as Cluster;
-      while (cluster.parent != -1) {
-        node = this.config.configuration.value.definition.graph.nodeDictionary.get(cluster.parent)!;
-        cluster = node.data as Cluster;
-        d++;
-      }
-      depth = Math.max(d, depth);
-    }
-    return depth;
   }
 }

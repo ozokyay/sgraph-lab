@@ -47,7 +47,10 @@ export class TabConnectionsComponent {
       this.render();
     });
     config.configuration.subscribe(config => {
-      // TODO: Set preview distributions to product from measures cluster distributions
+      // TODO: Set preview distributions to product from actual distributions of clusters
+
+      // 
+
       // Compute
 
       // Also rerender everything from above
@@ -77,7 +80,7 @@ export class TabConnectionsComponent {
     );
 
     // Set values
-    this.nodeCountSource = firstConn.nodeCountSource * clusterSource.nodeCount;
+    this.nodeCountSource = firstConn.sourceNodeCount * clusterSource.nodeCount;
     this.nodeCountTarget = clusterTargets.map(c => c.nodeCount).reduce((a, b) => a + b);
     const edgeCountTargets = clusterTargets.map(c => c.edgeCount).reduce((a, b) => a + b);
     const edgeCount = firstConn.edgeCount * Math.min(clusterSource.edgeCount, edgeCountTargets, this.nodeCountSource * this.nodeCountTarget);
@@ -97,8 +100,8 @@ export class TabConnectionsComponent {
     // Compute preview from sum
 
     // Update linechart (don't even clone - direct modifications)
-    this.degreeDistributionSource = firstConn.degreeDistributionSource;
-    this.degreeDistributionTarget = firstConn.degreeDistributionTarget;
+    this.degreeDistributionSource = firstConn.sourceDegreeDistribution;
+    this.degreeDistributionTarget = firstConn.targetDegreeDistribution;
 
     // On enabled: copy measured distribution, show
     // But this is still stupid when changing clusters...
@@ -117,15 +120,15 @@ export class TabConnectionsComponent {
 
       const conn = edge.data as ClusterConnection;
       if (conn.edgeCount != firstConn.edgeCount ||
-        conn.nodeCountSource != firstConn.nodeCountSource ||
-        conn.nodeCountTarget != firstConn.nodeCountTarget ||
+        conn.sourceNodeCount != firstConn.sourceNodeCount ||
+        conn.targetNodeCount != firstConn.targetNodeCount ||
         conn.degreeAssortativity != firstConn.degreeAssortativity ||
-        (conn.degreeDistributionSource && !firstConn.degreeDistributionSource) || // Stooopid
-        (conn.degreeDistributionTarget && !firstConn.degreeDistributionTarget) ||
-        (!conn.degreeDistributionSource && firstConn.degreeDistributionSource) ||
-        (!conn.degreeDistributionTarget && firstConn.degreeDistributionTarget) ||
-        conn.degreeDistributionSource && firstConn.degreeDistributionSource && !Utility.arraysEqual(conn.degreeDistributionSource!.data, firstConn.degreeDistributionSource!.data) ||
-        conn.degreeDistributionTarget && firstConn.degreeDistributionTarget && !Utility.arraysEqual(conn.degreeDistributionTarget!.data, firstConn.degreeDistributionTarget!.data)
+        (conn.sourceDegreeDistribution && !firstConn.sourceDegreeDistribution) || // Stooopid
+        (conn.targetDegreeDistribution && !firstConn.targetDegreeDistribution) ||
+        (!conn.sourceDegreeDistribution && firstConn.sourceDegreeDistribution) ||
+        (!conn.targetDegreeDistribution && firstConn.targetDegreeDistribution) ||
+        conn.sourceDegreeDistribution && firstConn.sourceDegreeDistribution && !Utility.arraysEqual(conn.sourceDegreeDistribution!.data, firstConn.sourceDegreeDistribution!.data) ||
+        conn.targetDegreeDistribution && firstConn.targetDegreeDistribution && !Utility.arraysEqual(conn.targetDegreeDistribution!.data, firstConn.targetDegreeDistribution!.data)
       ) {
         this.multiEditing = false;
       }
@@ -150,11 +153,11 @@ export class TabConnectionsComponent {
     for (const edge of this.connections) {
       const conn = edge.data as ClusterConnection;
       conn.edgeCount = this.edgeCount;
-      conn.nodeCountSource = this.nodeCountSource;
-      conn.nodeCountTarget = this.nodeCountTarget;
+      conn.sourceNodeCount = this.nodeCountSource;
+      conn.targetNodeCount = this.nodeCountTarget;
       conn.degreeAssortativity = this.degreeAssortativity;
-      conn.degreeDistributionSource = undefined;
-      conn.degreeDistributionTarget = undefined;
+      conn.sourceDegreeDistribution = undefined;
+      conn.targetDegreeDistribution = undefined;
     }
     this.multiEditing = true;
     this.onChange();
@@ -170,11 +173,11 @@ export class TabConnectionsComponent {
     for (const edge of this.connections) {
       const conn = edge.data as ClusterConnection;
       conn.edgeCount = this.edgeCount;
-      conn.nodeCountSource = this.nodeCountSource;
-      conn.nodeCountTarget = this.nodeCountTarget;
+      conn.sourceNodeCount = this.nodeCountSource;
+      conn.targetNodeCount = this.nodeCountTarget;
       conn.degreeAssortativity = this.degreeAssortativity;
-      conn.degreeDistributionSource = structuredClone(this.degreeDistributionSource);
-      conn.degreeDistributionTarget = structuredClone(this.degreeDistributionTarget);
+      conn.sourceDegreeDistribution = structuredClone(this.degreeDistributionSource);
+      conn.targetDegreeDistribution = structuredClone(this.degreeDistributionTarget);
     }
 
     this.config.update("Changed connections");

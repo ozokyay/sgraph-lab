@@ -16,7 +16,7 @@ export interface GraphDefintion {
 
 export interface GraphInstance {
     clusters: Map<number, EdgeList>,
-    connections: Map<ClusterConnection, Edge[]>,
+    connections: Map<Edge, Edge[]>,
     graph: EdgeList,
     clusterMeasures: Map<number, GraphMeasures>,
     globalMeasures: GraphMeasures

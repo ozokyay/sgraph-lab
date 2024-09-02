@@ -473,4 +473,27 @@ export class Utility {
           b: -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s
       };
     }
+
+    public static getNodeDepths(graph: AdjacencyList): [Node, number][] {
+      let depths: [Node, number][] = [];
+      for (const node of graph.nodes.keys()) {
+        let d = 1;
+        let cluster = node.data as Cluster;
+        while (cluster.parent != -1) {
+          const parent = graph.nodeDictionary.get(cluster.parent)!;
+          cluster = parent.data as Cluster;
+          d++;
+        }
+        depths.push([node, d]);
+      }
+      return depths;
+    }
+
+    public static getDepth(graph: AdjacencyList): number {
+      let depth = 1;
+      for (const [v, d] of this.getNodeDepths(graph)) {
+        depth = Math.max(d, depth);
+      }
+      return depth;
+    }
 }

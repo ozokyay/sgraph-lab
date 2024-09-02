@@ -3,14 +3,16 @@ import { ConfigurationService } from '../configuration.service';
 import * as d3 from 'd3';
 import { Cluster } from '../cluster';
 import { AdjacencyList, Edge, Node } from '../graph';
+import { Utility } from '../utility';
+import { EmptyConnection } from '../cluster-connection';
 
 interface MatrixCell {
   cx: Node,
   cy: Node,
   x: string,
   y: string,
-  link?: Edge,
-  highlighted: boolean
+  edge: Edge,
+  highlight: boolean
 }
 
 @Component({
@@ -24,9 +26,10 @@ export class VisMatrixComponent {
 
 
   // TODO:
-  // - Level UI
-  // - Get definiton nodes for current level
   // - Selection modality (how to handle multiple?)
+  // A) Single only
+  // B) Disable directional properties (except for 1:N case) <- preferred
+  // C) Directionality selection (complete matrix)
   
   // Show connection strength [min, max] color
   // Selection of arbitrary number of edges
@@ -55,13 +58,19 @@ export class VisMatrixComponent {
   constructor(private config: ConfigurationService) {
     config.configuration.subscribe(cfg => {
       // Render new graph
-      this.render(cfg.definition.graph);
+      this.render(this.config.configuration.value.definition.graph, this.config.level.value);
     });
     config.history.subscribe(cfg => {
       // Render if renamed
       if (cfg[cfg.length - 1].message.startsWith("Rename cluster")) {
-        this.render(this.config.configuration.value.definition.graph);
+        this.render(this.config.configuration.value.definition.graph, this.config.level.value);
       }
+    });
+    config.level.subscribe(l => {
+      this.render(this.config.configuration.value.definition.graph, this.config.level.value);
+    });
+    config.selectedConnections.subscribe(c => {
+      this.render(this.config.configuration.value.definition.graph, this.config.level.value);
     });
   }
 
@@ -105,15 +114,30 @@ export class VisMatrixComponent {
       .style("stroke-width", 2);
 
     this.initialized = true;
-    this.render(this.config.configuration.value.definition.graph);
+    this.render(this.config.configuration.value.definition.graph, this.config.level.value);
   }
 
-  render(graph: AdjacencyList) {
+  render(graph: AdjacencyList, level: number) {
     if (!this.initialized) {
       return;
     }
 
-    const nodes = graph.getNodes();
+    const nodes = Utility.getNodeDepths(graph)
+      .filter(([v, d]) => d == level || d < level && (v.data as Cluster).children.length == 0)
+      .map(([v, d]) => v);
+
+    
+    // IDEA
+    // - Alternative layer stepping with layer 0 that shows all layers simultaneously
+    // - Alternative alternative stepping that is monotonously increasing through tree
+    // - Same ideas also apply to minimap
+    // - Allows for ANY edges to be selected
+
+    // Further scenarios (no usecase)
+    // - Multiple edges
+    // - Cluster generators generate children
+
+    // Subdivision does not make too much sense because it is hard to place labels on inner cells (quite important!)
 
     // Matrix cells
     const data: MatrixCell[] = [];
@@ -122,15 +146,24 @@ export class VisMatrixComponent {
         const nodeX = nodes[x];
         const nodeY = nodes[y];
         const edges = graph.nodes.get(nodeX)!;
-        const edge = edges.find(([e, v]) => v.id == nodeY.id);
+        const entry = edges.find(([e, v]) => v.id == nodeY.id); // This could be handled by service or tab-cluster-list
+        let edge = entry != undefined ? entry[0] : undefined;
+
+        if (edge == undefined) {
+          edge = this.config.selectedConnections.value.find(e => e.source == nodeX && e.target == nodeY || e.source == nodeY && e.target == nodeX);
+        }
+
+        if (edge == undefined) {
+          edge = { source: nodeX, target: nodeY, data: EmptyConnection };
+        }
 
         const cell: MatrixCell = {
           cx: nodeX,
           cy: nodeY,
           x: (nodeX.data as Cluster).name,
           y: (nodeY.data as Cluster).name,
-          link: edge ? edge[0] : undefined,
-          highlighted: false
+          edge: edge,
+          highlight: this.config.selectedConnections.value.find(e => e.source == nodeX && e.target == nodeY) != undefined
         };
         data.push(cell);
       }
@@ -143,7 +176,12 @@ export class VisMatrixComponent {
     const selfScale = d3.scaleSequential(d3.interpolateBlues).domain([0, 1]);
 
     const color = (d: MatrixCell) => {
+      if (d.highlight) {
+        return "#FFFDC4";
+      }
+
       return selfScale(0);
+      
       if (d.x == d.y) {
         // return selfScale(d.link.edgeCount);
       } else {
@@ -159,11 +197,24 @@ export class VisMatrixComponent {
       .attr("width", this.xScale.bandwidth() - 2)
       .attr("height", this.yScale.bandwidth() - 2)
       .style("fill", d => color(d))
-      .attr("stroke", d => d.highlighted ? "#ff6f00" : "transparent")
+      // .attr("stroke", d => d.highlight ? "#ff6f00" : "transparent")
       .attr("stroke-width", 4)
       .on("click", (_, d) => {
         if (d.cx != d.cy) {
           // Add to selected
+
+          // IDEA
+          // - Selected connections only get added to the graph if #edges > 0
+          // - This is handled by tab-connections
+          // - Create missing connections in selection UI
+          // - Create connections here always
+
+          if (d.highlight) {
+            this.config.selectedConnections.value.splice(this.config.selectedConnections.value.indexOf(d.edge), 1);
+          } else {
+            this.config.selectedConnections.value.push(d.edge);
+          }
+          this.config.selectedConnections.next(this.config.selectedConnections.value);
         }
       });
 
