@@ -15,14 +15,6 @@ import { Uniform10 } from './series';
   providedIn: 'root'
 })
 export class ConfigurationService {
-
-  // Idea
-  // - instead of publishing instance and measures later
-  // - publish definition immediately for responsive UI
-  // - publish complete configuration later
-  // - risk: must ignore inputs inbetween
-  // - currently: publish all at once, very slow measures later
-
   public configuration = new BehaviorSubject<GraphConfiguration>({
     definition: EmptyDefinition,
     instance: EmptyInstance,
@@ -132,6 +124,14 @@ export class ConfigurationService {
         if (clusterNew == undefined) {
           // Remove
           configuration.instance.clusters.delete(clusterOld.id);
+          // Remove from selection
+          const indices = this.selectedConnections.value.filter(e => e.source.id == old.id || e.target.id == old.id).map((_, i) => i);
+          for (let i = indices.length - 1; i >= 0; i--) {
+            this.selectedConnections.value.splice(indices[i], 1);
+          }
+          if (indices.length > 0) {
+            this.selectedConnections.next(this.selectedConnections.value);
+          }
         }
       }
     }
@@ -172,10 +172,12 @@ export class ConfigurationService {
       }
     }
 
-
     // Generate connections
     for (const edges of configuration.definition.graph.nodes.values()) {
       for (const [edge, _] of edges) {
+        if (configuration.instance.connections.get(edge) != undefined) {
+          continue;
+        }
         Utility.rand = new Rand(configuration.definition.seed.toString() + edge.source.id.toString() + (edge.target.id << 16).toString());
         configuration.instance.connections.set(edge, this.generateConnection(edge));
       }
@@ -247,7 +249,7 @@ export class ConfigurationService {
     const cluster2: Cluster = edge.target.data as Cluster;
     const graph1: EdgeList = this.configuration.value.instance.clusters.get(cluster1.id)!;
     const graph2: EdgeList = this.configuration.value.instance.clusters.get(cluster2.id)!;
-    const count1 = Math.round(connection.sourceNodeCount * graph1.nodes.length); // Actually prefer absolute node counts in cluster def - but harder to achieve precisely
+    const count1 = Math.round(connection.sourceNodeCount * graph1.nodes.length);
     const count2 = Math.round(connection.targetNodeCount * graph2.nodes.length);
     const degrees1 = Utility.computeNodeDegrees(graph1);
     const degrees2 = Utility.computeNodeDegrees(graph2);
@@ -299,7 +301,6 @@ export class ConfigurationService {
       Utility.multiplyPointValues(scaled, count2 / sum);
       nodes2 = Utility.drawProportionally(count2, buckets2, scaled);
     }
-    
 
     // Assortativity
     const candidateDegrees1: number[] = nodes1.map(n => degrees1.get(n)!);
@@ -312,9 +313,8 @@ export class ConfigurationService {
       }
     }
 
-    const edges = Math.round(connection.edgeCount * Math.min(graph1.edges.length, graph2.edges.length, combinations.length));
-    const assortative = Math.round(Math.abs(connection.degreeAssortativity) * edges);
-    const random = edges - assortative;
+    const assortative = Math.round(Math.abs(connection.degreeAssortativity) * connection.edgeCount);
+    const random = connection.edgeCount - assortative;
     const finalEdges: Edge[] = [];
     // Take proportion from cobinations
     Utility.shuffleArray(combinations);
@@ -323,7 +323,7 @@ export class ConfigurationService {
     combinations.sort((a, b) => ((a.data as number) - (b.data as number)) * Math.sign(connection.degreeAssortativity));
     finalEdges.push(...combinations.slice(0, assortative));
 
-    return finalEdges.slice(0, edges);
+    return finalEdges.slice(0, connection.edgeCount);
   }
 
   private computeFastMeasures() {

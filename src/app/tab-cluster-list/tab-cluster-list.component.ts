@@ -77,10 +77,10 @@ export class TabClusterListComponent {
     // TODO: Matrix (levels)
     // TODO: Minimap (levels)
     // TODO: NL (levels)
-    // TODO: Circle Packing
-    // TODO: (Tree)
     // TODO: Distribution Tables
     // TODO: Attributes and assortativity
+    // TODO: Circle Packing
+    // TODO: (Tree)
     // https://sites.cc.gatech.edu/gvu/ii/icet/
 
     let sIndex;

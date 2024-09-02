@@ -66,10 +66,8 @@ export class VisMatrixComponent {
         this.render(this.config.configuration.value.definition.graph, this.config.level.value);
       }
     });
-    config.level.subscribe(l => {
-      this.render(this.config.configuration.value.definition.graph, this.config.level.value);
-    });
     config.selectedConnections.subscribe(c => {
+      // This also handles level change
       this.render(this.config.configuration.value.definition.graph, this.config.level.value);
     });
   }
@@ -154,7 +152,7 @@ export class VisMatrixComponent {
         }
 
         if (edge == undefined) {
-          edge = { source: nodeX, target: nodeY, data: EmptyConnection };
+          edge = { source: nodeX, target: nodeY, data: structuredClone(EmptyConnection) };
         }
 
         const cell: MatrixCell = {
@@ -163,7 +161,7 @@ export class VisMatrixComponent {
           x: (nodeX.data as Cluster).name,
           y: (nodeY.data as Cluster).name,
           edge: edge,
-          highlight: this.config.selectedConnections.value.find(e => e.source == nodeX && e.target == nodeY) != undefined
+          highlight: this.config.selectedConnections.value.find(e => e.source == nodeX && e.target == nodeY || e.source == nodeY && e.target == nodeX) != undefined
         };
         data.push(cell);
       }

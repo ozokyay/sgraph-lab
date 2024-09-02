@@ -67,11 +67,16 @@ export class AdjacencyList {
         this.nodes.get(edge.target)!.push([edge, edge.source]);
     }
 
-    public removeEdge(edge: Edge) {
+    public removeEdge(edge: Edge): boolean {
         const node1 = this.nodes.get(edge.source)!;
         const node2 = this.nodes.get(edge.target)!;
-        node1.splice(node1.findIndex(v => v[0] === edge), 1);
-        node2.splice(node2.findIndex(v => v[0] === edge), 1);
+        const index1 = node1.findIndex(v => v[0] === edge);
+        const index2 = node2.findIndex(v => v[0] === edge);
+        if (index1 != -1) {
+            node1.splice(index1, 1);
+            node2.splice(index2, 1);
+        }
+        return index1 != -1;
     }
 
     public addNode(node: Node) {

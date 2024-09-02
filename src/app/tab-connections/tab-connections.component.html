@@ -1,28 +1,35 @@
 <h3>Cluster Connections</h3>
 @if (connections && connections.length > 0) {
     @if (connections.length == 1 || multiEditing) {
-        <h4>Edges</h4>
+        <h4>Edge Count</h4>
         <span>
-            <mat-slider #sliderEdges discrete min="0" max="1" step="0.01">
-                <input matSliderThumb [(value)]="edgeCount" (valueChange)="onChange()">
-            </mat-slider>
-            <span class="label">{{edgeCount}}</span>
+            <mat-form-field>
+                <mat-label>Edges</mat-label>
+                <input type="number" matInput [(ngModel)]="edgeCount" min="0" [max]="maxEdgeCount" oninput="this.value = Math.floor(this.value);" (change)="onChange()">
+            </mat-form-field>
         </span>
         
         <h4 class="vertical-item">Nodes from {{sourceName}}</h4>
         <span>
-            <mat-slider discrete min="0" max="1" step="0.01">
+            <mat-slider discrete min="0" max="100">
                 <input matSliderThumb [(value)]="nodeCountSource" (valueChange)="onChange()">
             </mat-slider>
-            <span class="label">{{nodeCountSource}}</span>
+
+            <mat-form-field>
+                <mat-label>Nodes percent</mat-label>
+                <input type="number" matInput [(ngModel)]="nodeCountSource" min="0" max="100" (change)="onChange()">
+            </mat-form-field>
         </span>
     
-        <h4 class="vertical-item">Nodes from {{targetsName}}</h4>
+        <h4 class="vertical-item">Nodes from {{targetName}}</h4>
         <span>
-            <mat-slider discrete min="0" max="1" step="0.01">
+            <mat-slider discrete min="0" max="100">
                 <input matSliderThumb [(value)]="nodeCountTarget" (valueChange)="onChange()">
             </mat-slider>
-            <span class="label">{{nodeCountTarget}}</span>
+            <mat-form-field>
+                <mat-label>Nodes percent</mat-label>
+                <input type="number" matInput [(ngModel)]="nodeCountTarget" min="0" max="100" (change)="onChange()">
+            </mat-form-field>
         </span>
     
         <h4 class="vertical-item">Degree Assortativity</h4>
@@ -41,7 +48,7 @@
             <app-vis-line-chart yLabel="Node frequency" [(series)]="degreeDistributionSource" [series2]="actualDistributionSource" (seriesChange)="onChange()"></app-vis-line-chart>
         }
         <mat-slide-toggle [checked]="degreeDistributionSource != undefined" (change)="onChangeDistributionTarget($event.checked)">
-            Custom degree distribution for nodes from {{targetsName}}
+            Custom degree distribution for nodes from {{targetName}}
         </mat-slide-toggle>
         @if (degreeDistributionTarget != undefined) {
             <app-vis-line-chart yLabel="Node frequency" [(series)]="degreeDistributionTarget" [series2]="actualDistributionTarget" (seriesChange)="onChange()"></app-vis-line-chart>

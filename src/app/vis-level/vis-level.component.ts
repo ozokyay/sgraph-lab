@@ -31,9 +31,11 @@ export class VisLevelComponent {
 
   public onIncrement() {
     this.config.level.next(Math.min(this.maxLevel, this.level + 1));
+    this.config.selectedConnections.next([]);
   }
 
   public onDecrement() {
     this.config.level.next(Math.max(1, this.level - 1));
+    this.config.selectedConnections.next([]);
   }
 }

@@ -9,9 +9,14 @@ import { Edge } from '../graph';
 import { Utility } from '../utility';
 import { Cluster } from '../cluster';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { FormsModule } from '@angular/forms';
 
+// To make things clear once and for all:
+// - Edge count is the actual number (no intuitive range for normalization)
+// - Node count is normalized (multi-editing)
 
-// Currently, this UI only supports 1:N editing
 @Component({
   selector: 'app-tab-connections',
   standalone: true,
@@ -19,6 +24,9 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
     MatButtonModule,
     MatSliderModule,
     MatSlideToggleModule,
+    MatInputModule,
+    MatFormFieldModule,
+    FormsModule,
     VisLineChartComponent
   ],
   templateUrl: './tab-connections.component.html',
@@ -28,13 +36,14 @@ export class TabConnectionsComponent {
   public connections: Edge[] = [];
   public multiEditing: boolean = false;
 
-  public edgeCount: number = 0;
-  public nodeCountSource: number = 0;
-  public nodeCountTarget: number = 0;
-  public degreeAssortativity: number = 0;
+  public edgeCount = 0;
+  public nodeCountSource = 0;
+  public nodeCountTarget = 0;
+  public degreeAssortativity = 0;
+  public maxEdgeCount = 0;
 
   public sourceName: string = "";
-  public targetsName: string = "";
+  public targetName: string = "";
 
   public degreeDistributionSource?: Series = undefined;
   public degreeDistributionTarget?: Series = undefined;
@@ -49,12 +58,8 @@ export class TabConnectionsComponent {
     config.configuration.subscribe(config => {
       // TODO: Set preview distributions to product from actual distributions of clusters
 
-      // 
-
-      // Compute
-
-      // Also rerender everything from above
-      // => render()
+      // Just ignore restrictions here, selection problem
+    
 
       this.render();
     });
@@ -74,22 +79,21 @@ export class TabConnectionsComponent {
     const firstConn = first.data as ClusterConnection;
 
     // Get involved cluster measures
-    const clusterSource = this.config.configuration.value.instance.clusterMeasures.get(first.source.id)!;
-    const clusterTargets = this.connections.map(c =>
+    const measuresSource = this.connections.map(c =>
+      this.config.configuration.value.instance.clusterMeasures.get(c.source.id)!
+    );
+    const measuresTarget = this.connections.map(c =>
       this.config.configuration.value.instance.clusterMeasures.get(c.target.id)!
     );
 
-    // Set values
-    this.nodeCountSource = firstConn.sourceNodeCount * clusterSource.nodeCount;
-    this.nodeCountTarget = clusterTargets.map(c => c.nodeCount).reduce((a, b) => a + b);
-    const edgeCountTargets = clusterTargets.map(c => c.edgeCount).reduce((a, b) => a + b);
-    const edgeCount = firstConn.edgeCount * Math.min(clusterSource.edgeCount, edgeCountTargets, this.nodeCountSource * this.nodeCountTarget);
-    this.edgeCount = edgeCount;
+    // Clamp and apply
+    const maxNodeCountSource = measuresSource.reduce((v, m) => Math.min(v, m.nodeCount), Number.MAX_SAFE_INTEGER);
+    const maxNodeCountTarget = measuresTarget.reduce((v, m) => Math.min(v, m.nodeCount), Number.MAX_SAFE_INTEGER);
+    this.maxEdgeCount = maxNodeCountSource * maxNodeCountTarget;
+    this.edgeCount = Math.min(firstConn.edgeCount, this.maxEdgeCount);
+    this.nodeCountSource = firstConn.sourceNodeCount * 100;
+    this.nodeCountTarget = firstConn.targetNodeCount * 100;
     this.degreeAssortativity = firstConn.degreeAssortativity;
-
-    // Set string labels
-    this.sourceName = (first.source.data as Cluster).name;
-    this.targetsName = "";
 
     // Compute distributions
 
@@ -110,14 +114,11 @@ export class TabConnectionsComponent {
     // How to show actual? => from final graph
     // preview -> actual
     
+    this.sourceName = "";
+    this.targetName = "";
 
     // Check consistency and multi-editing
     for (const edge of this.connections) {
-      if (edge.source != first.source) {
-        console.log("Error: Inconsistent source on current edge selection");
-        break;
-      }
-
       const conn = edge.data as ClusterConnection;
       if (conn.edgeCount != firstConn.edgeCount ||
         conn.sourceNodeCount != firstConn.sourceNodeCount ||
@@ -131,9 +132,12 @@ export class TabConnectionsComponent {
         conn.targetDegreeDistribution && firstConn.targetDegreeDistribution && !Utility.arraysEqual(conn.targetDegreeDistribution!.data, firstConn.targetDegreeDistribution!.data)
       ) {
         this.multiEditing = false;
+        console.log("INCONSISTENT!");
       }
 
-      this.targetsName += (edge.target.data as Cluster).name + " ";
+      console.log(edge);
+      this.sourceName += (edge.source.data as Cluster).name + " ";
+      this.targetName += (edge.target.data as Cluster).name + " ";
     }
   }
 
@@ -143,18 +147,18 @@ export class TabConnectionsComponent {
       return;
     }
 
-    // Set all variables to 0
+    // Set all variables to default values
     this.edgeCount = 0;
-    this.nodeCountSource = 0;
-    this.nodeCountTarget = 0;
+    this.nodeCountSource = 100;
+    this.nodeCountTarget = 100;
     this.degreeAssortativity = 0;
     this.degreeDistributionSource = undefined;
     this.degreeDistributionTarget = undefined;
     for (const edge of this.connections) {
       const conn = edge.data as ClusterConnection;
       conn.edgeCount = this.edgeCount;
-      conn.sourceNodeCount = this.nodeCountSource;
-      conn.targetNodeCount = this.nodeCountTarget;
+      conn.sourceNodeCount = this.nodeCountSource / 100;
+      conn.targetNodeCount = this.nodeCountTarget / 100;
       conn.degreeAssortativity = this.degreeAssortativity;
       conn.sourceDegreeDistribution = undefined;
       conn.targetDegreeDistribution = undefined;
@@ -173,18 +177,23 @@ export class TabConnectionsComponent {
     for (const edge of this.connections) {
       const conn = edge.data as ClusterConnection;
       conn.edgeCount = this.edgeCount;
-      conn.sourceNodeCount = this.nodeCountSource;
-      conn.targetNodeCount = this.nodeCountTarget;
+      conn.sourceNodeCount = this.nodeCountSource / 100;
+      conn.targetNodeCount = this.nodeCountTarget / 100;
       conn.degreeAssortativity = this.degreeAssortativity;
       conn.sourceDegreeDistribution = structuredClone(this.degreeDistributionSource);
       conn.targetDegreeDistribution = structuredClone(this.degreeDistributionTarget);
+
+      // Must apply to graph because selection doesn't do it (handle deletion, also there are multiple selection UIs)
+      this.config.configuration.value.definition.graph.removeEdge(edge);
+      this.config.configuration.value.definition.graph.addEdge(edge);
+
+      // Could even delete, but don't want to lose other properties
     }
 
     this.config.update("Changed connections");
   }
 
   public onChangeDistributionSource(value: boolean) {
-    console.log("changed on render()");
     // if value then set to uniform with correct extent else set to undefined
   }
 
