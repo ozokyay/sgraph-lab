@@ -212,6 +212,9 @@ export class VisLineChartComponent implements AfterViewInit, OnChanges {
         const pos = this.getPointerPos(pointer);
         pos.x = Math.round(pos.x);
         const existing = this.series.data.find(p => p.x == pos.x);
+        console.log("-LINECHART-");
+        console.log(this.series);
+        console.log(existing);
         if (existing != undefined) {
           existing.y = pos.y;
         } else {

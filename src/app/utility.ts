@@ -193,7 +193,7 @@ export class Utility {
       return degrees;
     }
 
-    public static sortNodeDegrees(degrees: Map<Node, number>): Map<number, Node[]> {
+    public static sortNodeDegrees(degrees: [Node, number][]): Map<number, Node[]> {
       const buckets = new Map<number, Node[]>();
       for (const [n, d] of degrees) {
         buckets.set(d, [...(buckets.get(d) || []), n]);
@@ -244,7 +244,7 @@ export class Utility {
     }
 
     public static getDegreeDistribution(degrees: Map<Node, number>): Series {
-      const degreeBuckets = Utility.sortNodeDegrees(degrees);
+      const degreeBuckets = Utility.sortNodeDegrees([...degrees.entries()]);
       const degreePoints: Point[] = [];
       for (const [d, b] of degreeBuckets) {
         degreePoints.push({

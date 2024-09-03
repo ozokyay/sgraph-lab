@@ -1,7 +1,7 @@
 import { Injectable, SimpleChange } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { GraphConfiguration, GraphInstance, EmptyInstance, EmptyDefinition, EmptyMeasures, GraphMeasures } from './graph-configuration';
-import { AdjacencyList, Edge, EdgeList, Node } from './graph';
+import { AdjacencyList, Edge, EdgeList, Node, NodeData } from './graph';
 import { Cluster } from './cluster';
 import { LocalService } from './local.service';
 import { Utility } from './utility';
@@ -253,8 +253,12 @@ export class ConfigurationService {
     const count2 = Math.round(connection.targetNodeCount * graph2.nodes.length);
     const degrees1 = Utility.computeNodeDegrees(graph1);
     const degrees2 = Utility.computeNodeDegrees(graph2);
-    const buckets1 = Utility.sortNodeDegrees(degrees1);
-    const buckets2 = Utility.sortNodeDegrees(degrees2);
+    const degreeArray1 = [...degrees1.entries()];
+    const degreeArray2 = [...degrees2.entries()];
+    Utility.shuffleArray(degreeArray1);
+    Utility.shuffleArray(degreeArray2);
+    const buckets1 = Utility.sortNodeDegrees(degreeArray1);
+    const buckets2 = Utility.sortNodeDegrees(degreeArray2);
 
     // Degree distribution
 
@@ -283,12 +287,20 @@ export class ConfigurationService {
 
     let nodes1: Node[] = [...graph1.nodes];
     let nodes2: Node[] = [...graph2.nodes];
+
     if (connection.sourceDegreeDistribution == undefined) {
       Utility.shuffleArray(nodes1);
       nodes1 = nodes1.slice(0, count1);
     } else {
       const sum = connection.sourceDegreeDistribution.data.reduce((a, b) => a + b.y, 0);
-      const scaled = [...connection.sourceDegreeDistribution.data];
+      const scaled = Utility.deepCopyPoints(connection.sourceDegreeDistribution.data);
+
+      // TODO: Three things to work out here
+      // a) Enough nodes for maxEdges available
+      // b) maxEdges accurate (must take away leaves from the recursion parent)
+      // c) For some reason, distribution only reflected on low desired node counts -> Correct behavior, but seems unexpected
+      // d) Must shuffle inside buckets?
+
       Utility.multiplyPointValues(scaled, count1 / sum);
       nodes1 = Utility.drawProportionally(count1, buckets1, scaled);
     }
@@ -297,7 +309,7 @@ export class ConfigurationService {
       nodes2 = nodes2.slice(0, count2);
     } else {
       const sum = connection.targetDegreeDistribution.data.reduce((a, b) => a + b.y, 0);
-      const scaled = [...connection.targetDegreeDistribution.data];
+      const scaled = Utility.deepCopyPoints(connection.targetDegreeDistribution.data);
       Utility.multiplyPointValues(scaled, count2 / sum);
       nodes2 = Utility.drawProportionally(count2, buckets2, scaled);
     }
@@ -309,7 +321,16 @@ export class ConfigurationService {
     for (let n1 = 0; n1 < count1; n1++) {
       for (let n2 = 0; n2 < count2; n2++) {
         const distance = Math.abs(candidateDegrees1[n1] - candidateDegrees2[n2]); // Power-law distribution causes low values to be more likely to match than high values
-        combinations.push({ source: nodes1[n1], target: nodes2[n2], data: distance });
+        const v1 = nodes1[n1];
+        const v2 = nodes2[n2];
+        const d1 = v1.data as NodeData;
+        const d2 = v2.data as NodeData;
+        if (d1.clusterID != d2.clusterID) {
+          combinations.push({ source: v1, target: v2, data: distance });
+        } else {
+          // Should get replacement node from parent cluster if available
+          // Not implemented
+        }
       }
     }
 

@@ -121,7 +121,8 @@ export class VisMatrixComponent {
     }
 
     const nodes = Utility.getNodeDepths(graph)
-      .filter(([v, d]) => d == level || d < level && (v.data as Cluster).children.length == 0)
+      // .filter(([v, d]) => d == level || d < level && (v.data as Cluster).children.length == 0)
+      .filter(([v, d]) => d <= level)
       .map(([v, d]) => v);
 
     
@@ -174,6 +175,11 @@ export class VisMatrixComponent {
     const selfScale = d3.scaleSequential(d3.interpolateBlues).domain([0, 1]);
 
     const color = (d: MatrixCell) => {
+
+      // color scale relative to max
+      // from white to blue
+      // max is including self
+
       if (d.highlight) {
         return "#FFFDC4";
       }

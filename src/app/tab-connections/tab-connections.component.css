@@ -10,6 +10,10 @@ input {
     width: 60px;
 }
 
+.left-margin {
+    margin-left: 2em;
+}
+
 .label {
     margin-left: 10px;
     font-size: large;

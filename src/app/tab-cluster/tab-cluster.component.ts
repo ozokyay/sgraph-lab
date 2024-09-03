@@ -113,6 +113,9 @@ export class TabClusterComponent {
 
       // Done if replication was reset
       if (this.cluster.replication == 1) {
+        // Update colors
+        const topLevel = this.config.configuration.value.definition.graph.getNodes().map(n => n.data as Cluster).filter(c => c.parent == -1);
+        Utility.updateColors(topLevel);
         return;
       }
 

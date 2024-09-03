@@ -4,7 +4,7 @@ import { ConfigurationService } from '../configuration.service';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSliderModule } from '@angular/material/slider';
 import { VisLineChartComponent } from '../vis-line-chart/vis-line-chart.component';
-import { Series, Uniform10 } from '../series';
+import { EmptySeries, Series, Uniform10 } from '../series';
 import { Edge } from '../graph';
 import { Utility } from '../utility';
 import { Cluster } from '../cluster';
@@ -15,7 +15,9 @@ import { FormsModule } from '@angular/forms';
 
 // To make things clear once and for all:
 // - Edge count is the actual number (no intuitive range for normalization)
-// - Node count is normalized (multi-editing)
+// - Node count is normalized (multi-editing, want to keep for 1:N)
+// - Solution for N:N is full matrix or arrow/colors
+// - Good advantage of minimap!
 
 @Component({
   selector: 'app-tab-connections',
@@ -56,13 +58,24 @@ export class TabConnectionsComponent {
       this.render();
     });
     config.configuration.subscribe(config => {
-      // TODO: Set preview distributions to product from actual distributions of clusters
-
-      // Just ignore restrictions here, selection problem
-    
-
       this.render();
     });
+  }
+
+  private getEffectiveDistribution(side: "source" | "target"): Series {
+    // TODO: Want to show after drawing instead??
+
+    // Effective range, scale to 1 to reflect that scale doesn't matter
+    let distribution = structuredClone(EmptySeries);
+    distribution.xExtent = [1, 1];
+    for (const edge of this.connections) {
+      const dist = this.config.configuration.value.instance.clusterMeasures.get(side == "source" ? edge.source.id : edge.target.id)!.degreeDistribution;
+      distribution = Utility.addDistributions(distribution, dist);
+    }
+    const max = distribution.data.reduce((a, b) => Math.max(a, b.y), 0);
+    Utility.multiplyPointValues(distribution.data, 1 / max);
+    distribution.yExtent = [0, 1];
+    return distribution;
   }
 
   private render() {
@@ -107,6 +120,9 @@ export class TabConnectionsComponent {
     this.degreeDistributionSource = firstConn.sourceDegreeDistribution;
     this.degreeDistributionTarget = firstConn.targetDegreeDistribution;
 
+    this.actualDistributionSource = this.getEffectiveDistribution("source");
+    this.actualDistributionTarget = this.getEffectiveDistribution("target");
+
     // On enabled: copy measured distribution, show
     // But this is still stupid when changing clusters...
     // Which way is least stupid?
@@ -132,10 +148,8 @@ export class TabConnectionsComponent {
         conn.targetDegreeDistribution && firstConn.targetDegreeDistribution && !Utility.arraysEqual(conn.targetDegreeDistribution!.data, firstConn.targetDegreeDistribution!.data)
       ) {
         this.multiEditing = false;
-        console.log("INCONSISTENT!");
       }
 
-      console.log(edge);
       this.sourceName += (edge.source.data as Cluster).name + " ";
       this.targetName += (edge.target.data as Cluster).name + " ";
     }
@@ -194,10 +208,62 @@ export class TabConnectionsComponent {
   }
 
   public onChangeDistributionSource(value: boolean) {
-    // if value then set to uniform with correct extent else set to undefined
+    // A) Uniform distribution
+    // B) Actual distribution (preferred)
+
+    // Pros and Cons
+    // A) Simple, no problems with multi, does not really matter anyway
+    // B) A bit nicer, more user-friendly (bonus), BUT too many handles
+
+    let distribution: Series | undefined = undefined;
+    if (value) {
+      // Effective range, scale to 1 to reflect that scale doesn't matter
+      distribution = {
+        data: [
+          { x: 1, y: 0.5 },
+          { x: 1, y: 0.5 }
+        ],
+        xExtent: [1, 1],
+        yExtent: [0, 1]
+      };
+      for (const edge of this.connections) {
+        const dist = this.config.configuration.value.instance.clusterMeasures.get(edge.source.id)!.degreeDistribution;
+        // distribution = Utility.addDistributions(distribution, dist);
+        distribution.xExtent[1] = Math.max(distribution.xExtent[1], dist.xExtent[1]);
+      }
+      distribution.data[1].x = distribution.xExtent[1];
+      // const max = distribution.data.reduce((a, b) => Math.max(a, b.y), 0);
+      // Utility.multiplyPointValues(distribution.data, 1 / max);
+      // distribution.yExtent = [0, 1];
+    }
+    for (const edge of this.connections) {
+      const conn = edge.data as ClusterConnection;
+      conn.sourceDegreeDistribution = structuredClone(distribution);
+    }
+    this.degreeDistributionSource = distribution;
   }
 
   public onChangeDistributionTarget(value: boolean) {
-
+    let distribution: Series | undefined = undefined;
+    if (value) {
+      distribution = {
+        data: [
+          { x: 1, y: 0.5 },
+          { x: 1, y: 0.5 }
+        ],
+        xExtent: [1, 1],
+        yExtent: [0, 1]
+      };
+      for (const edge of this.connections) {
+        const dist = this.config.configuration.value.instance.clusterMeasures.get(edge.target.id)!.degreeDistribution;
+        distribution.xExtent[1] = Math.max(distribution.xExtent[1], dist.xExtent[1]);
+      }
+      distribution.data[1].x = distribution.xExtent[1];
+    }
+    for (const edge of this.connections) {
+      const conn = edge.data as ClusterConnection;
+      conn.targetDegreeDistribution = structuredClone(distribution);
+    }
+    this.degreeDistributionTarget = distribution;
   }
 }
