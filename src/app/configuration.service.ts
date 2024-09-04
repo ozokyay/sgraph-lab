@@ -365,27 +365,6 @@ export class ConfigurationService {
       const measures = compute(graph);
       this.configuration.value.instance.clusterMeasures.set(cluster, measures);
     }
-
-
-    // TODO: Remove the following loop
-
-    // Now aggregate aggregatable measures for groups up the tree
-    // for (const node of this.configuration.value.definition.graph.nodes.keys()) {
-    //   const cluster = node.data as Cluster;
-    //   if (cluster.children.length > 0) {
-    //     continue;
-    //   }
-    //   const measures = this.configuration.value.instance.clusterMeasures.get(cluster.id)!;
-    //   let parent = this.configuration.value.definition.graph.nodeDictionary.get(cluster.parent);
-    //   while (parent != undefined) {
-    //     const c = parent.data as Cluster;
-    //     const m = this.configuration.value.instance.clusterMeasures.get(c.id)!;
-    //     m.nodeCount += measures.nodeCount;
-    //     m.edgeCount += measures.edgeCount;
-    //     m.degreeDistribution = Utility.addDistributions(m.degreeDistribution, measures.degreeDistribution);
-    //     parent = this.configuration.value.definition.graph.nodeDictionary.get(c.parent);
-    //   }
-    // }
   }
 
   // Must prevent data race
@@ -401,7 +380,7 @@ export class ConfigurationService {
       measures.diameter = await this.python.getDiameter();  
       if (signal.aborted) { return measures; }
       if (!Number.isNaN(measures.diameter)) {
-        measures.eigenvectorCentralityDistribution = await this.python.getGraphMeasure("eigenvector_centrality", 20); // Requires connected graph 
+        measures.eigenvectorCentralityDistribution = await this.python.getGraphMeasure("eigenvector_centrality", 20); // Requires connected graph  
       }
       if (signal.aborted) { return measures; }
       measures.degreeAssortativity = await this.python.getSimpleMeasure("degree_assortativity_coefficient");

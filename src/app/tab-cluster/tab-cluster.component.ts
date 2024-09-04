@@ -90,7 +90,7 @@ export class TabClusterComponent {
     if (this.cluster != undefined) {
       if (this.config.configuration.value.definition.graph.getNodes()
           .map(v => v.data as Cluster)
-          .find(c => c.name == this.cluster?.name)) {
+          .find(c => c != this.cluster && c.name == this.cluster?.name)) {
           this.cluster.name += "~1";
       }
       this.config.trackHistory("Rename cluster " + this.cluster.id);

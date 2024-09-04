@@ -173,7 +173,7 @@ export class VisMatrixComponent {
 
     let maxEdges = data.reduce((v, m) => Math.max(v, (m.edge.data as ClusterConnection)?.edgeCount), 0);
     maxEdges = Math.max(maxEdges, [...this.config.configuration.value.instance.clusterMeasures.values()].reduce((v, m) => Math.max(v, m.edgeCount), 0));
-    const colorScale = d3.scaleSequential(d3.interpolateBlues).domain([0, maxEdges]);
+    const colorScale = d3.scaleSequential(d3.interpolateGreys).domain([0, maxEdges]);
 
     const color = (d: MatrixCell) => {
       const conn = d.edge.data as ClusterConnection;
