@@ -299,7 +299,6 @@ export class ConfigurationService {
       // a) Enough nodes for maxEdges available
       // b) maxEdges accurate (must take away leaves from the recursion parent)
       // c) For some reason, distribution only reflected on low desired node counts -> Correct behavior, but seems unexpected
-      // d) Must shuffle inside buckets?
 
       Utility.multiplyPointValues(scaled, count1 / sum);
       nodes1 = Utility.drawProportionally(count1, buckets1, scaled);

@@ -4,7 +4,7 @@ import * as d3 from 'd3';
 import { Cluster } from '../cluster';
 import { AdjacencyList, Edge, Node } from '../graph';
 import { Utility } from '../utility';
-import { EmptyConnection } from '../cluster-connection';
+import { ClusterConnection, EmptyConnection } from '../cluster-connection';
 
 interface MatrixCell {
   cx: Node,
@@ -170,26 +170,19 @@ export class VisMatrixComponent {
 
     this.xScale.domain(nodes.map(v => (v.data as Cluster).name));
     this.yScale.domain(nodes.map(v => (v.data as Cluster).name).reverse());
-    // const otherExtent = d3.extent(data.filter(d => d.x != d.y).map(d => d.link.edgeCount)) as [number, number];
-    const otherScale = d3.scaleSequential(d3.interpolateBlues).domain([0, 1]);
-    const selfScale = d3.scaleSequential(d3.interpolateBlues).domain([0, 1]);
+
+    let maxEdges = data.reduce((v, m) => Math.max(v, (m.edge.data as ClusterConnection)?.edgeCount), 0);
+    maxEdges = Math.max(maxEdges, [...this.config.configuration.value.instance.clusterMeasures.values()].reduce((v, m) => Math.max(v, m.edgeCount), 0));
+    const colorScale = d3.scaleSequential(d3.interpolateBlues).domain([0, maxEdges]);
 
     const color = (d: MatrixCell) => {
-
-      // color scale relative to max
-      // from white to blue
-      // max is including self
-
+      const conn = d.edge.data as ClusterConnection;
       if (d.highlight) {
-        return "#FFFDC4";
-      }
-
-      return selfScale(0);
-      
-      if (d.x == d.y) {
-        // return selfScale(d.link.edgeCount);
+        return "orange";
+      } else if (d.cx != d.cy) {
+        return colorScale(conn.edgeCount);
       } else {
-        // return otherScale(d.link.edgeCount); // TODO: Ideally also want relative density here [0, 1]
+        return colorScale(this.config.configuration.value.instance.clusterMeasures.get(d.edge.source.id)!.edgeCount);
       }
     }
 
