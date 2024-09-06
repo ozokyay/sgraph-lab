@@ -140,10 +140,8 @@ export class TabConnectionsComponent {
         conn.sourceNodeCount != firstConn.sourceNodeCount ||
         conn.targetNodeCount != firstConn.targetNodeCount ||
         conn.degreeAssortativity != firstConn.degreeAssortativity ||
-        (conn.sourceDegreeDistribution && !firstConn.sourceDegreeDistribution) || // Stooopid
-        (conn.targetDegreeDistribution && !firstConn.targetDegreeDistribution) ||
-        (!conn.sourceDegreeDistribution && firstConn.sourceDegreeDistribution) ||
-        (!conn.targetDegreeDistribution && firstConn.targetDegreeDistribution) ||
+        (!conn.sourceDegreeDistribution != !firstConn.sourceDegreeDistribution) ||
+        (!conn.targetDegreeDistribution != !firstConn.targetDegreeDistribution) ||
         conn.sourceDegreeDistribution && firstConn.sourceDegreeDistribution && !Utility.arraysEqual(conn.sourceDegreeDistribution!.data, firstConn.sourceDegreeDistribution!.data) ||
         conn.targetDegreeDistribution && firstConn.targetDegreeDistribution && !Utility.arraysEqual(conn.targetDegreeDistribution!.data, firstConn.targetDegreeDistribution!.data)
       ) {

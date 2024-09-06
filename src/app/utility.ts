@@ -261,12 +261,12 @@ export class Utility {
       return distribution;
     }
 
-    public static arraysEqual(a: any[], b: any[]): boolean {
+    public static arraysEqual(a: Point[], b: Point[]): boolean {
       if (a.length != b.length) {
         return false;
       }
       for (let i = 0; i < a.length; i++) {
-        if (a[i] != b[i]) {
+        if (a[i].x != b[i].x || a[i].y != b[i].y) {
           return false;
         }
       }

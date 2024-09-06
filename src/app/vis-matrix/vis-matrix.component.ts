@@ -5,6 +5,7 @@ import { Cluster } from '../cluster';
 import { AdjacencyList, Edge, Node } from '../graph';
 import { Utility } from '../utility';
 import { ClusterConnection, EmptyConnection } from '../cluster-connection';
+import { MGGenerator } from '../generators';
 
 interface MatrixCell {
   cx: Node,
@@ -120,17 +121,17 @@ export class VisMatrixComponent {
       return;
     }
 
-    const nodes = Utility.getNodeDepths(graph)
-      // .filter(([v, d]) => d == level || d < level && (v.data as Cluster).children.length == 0)
-      .filter(([v, d]) => d <= level)
-      .map(([v, d]) => v);
+    let nodes = graph.getNodes().filter(v => (v.data as Cluster).parent == -1);
+    nodes = this.bfs(nodes.map(v => [v, 0]), level);
 
-    
-    // IDEA
-    // - Alternative layer stepping with layer 0 that shows all layers simultaneously
-    // - Alternative alternative stepping that is monotonously increasing through tree
-    // - Same ideas also apply to minimap
-    // - Allows for ANY edges to be selected
+    // Two ordering schemes:
+    // - by parent (no dividers, nothing is easy)
+    // - by layer (dividers divide layers, easy navigation across layers)
+
+    // Two selection schemes:
+    // - full matrix with switch button
+    // - no option, use groups for 1:N -> What if a new group does not fit into the current hierarchy?
+    // - Redundancy with groups??
 
     // Further scenarios (no usecase)
     // - Multiple edges
@@ -141,7 +142,7 @@ export class VisMatrixComponent {
     // Matrix cells
     const data: MatrixCell[] = [];
     for (let y = 0; y < nodes.length; y++) {
-      for (let x = 0; x < y + 1; x++) {
+      for (let x = 0; x < nodes.length; x++) {
         const nodeX = nodes[x];
         const nodeY = nodes[y];
         const edges = graph.nodes.get(nodeX)!;
@@ -169,7 +170,7 @@ export class VisMatrixComponent {
     }
 
     this.xScale.domain(nodes.map(v => (v.data as Cluster).name));
-    this.yScale.domain(nodes.map(v => (v.data as Cluster).name).reverse());
+    this.yScale.domain(nodes.map(v => (v.data as Cluster).name));
 
     let maxEdges = data.reduce((v, m) => Math.max(v, (m.edge.data as ClusterConnection)?.edgeCount), 0);
     maxEdges = Math.max(maxEdges, [...this.config.configuration.value.instance.clusterMeasures.values()].reduce((v, m) => Math.max(v, m.edgeCount), 0));
@@ -281,5 +282,24 @@ export class VisMatrixComponent {
     //   .attr("cx", -16)
     //   .attr("cy", -0.5)
     //   .attr("fill", "lightgray");
+  }
+
+  private bfs(queue: [Node, number][], limit: number): Node[] {
+    const output: Node[] = [];
+    while (queue.length > 0) {
+      const [currentNode, depth] = queue.shift()!;
+      if (currentNode) {
+        output.push(currentNode);
+        const cluster = currentNode.data as Cluster;
+        if (depth >= limit - 1) {
+          continue;
+        }
+        for (const c of cluster.children) {
+          const child = this.config.configuration.value.definition.graph.nodeDictionary.get(c)!;
+          queue.push([child, depth + 1]);
+        }
+      }
+    }
+    return output;
   }
 }
