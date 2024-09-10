@@ -12,7 +12,7 @@ interface MatrixCell {
   cy: Node,
   x: string,
   y: string,
-  edge: Edge,
+  edge?: Edge,
   highlight: boolean
 }
 
@@ -133,6 +133,11 @@ export class VisMatrixComponent {
     // - no option, use groups for 1:N -> What if a new group does not fit into the current hierarchy?
     // - Redundancy with groups??
 
+    // - Color Scheme orange/blue (can be orange/white optionally)
+    // - Toggle when clicking
+    // - Select 1:N when clicking center (shouldbe possible)
+    // - Avg parent?? (must be solved)
+
     // Further scenarios (no usecase)
     // - Multiple edges
     // - Cluster generators generate children
@@ -145,45 +150,62 @@ export class VisMatrixComponent {
       for (let x = 0; x < nodes.length; x++) {
         const nodeX = nodes[x];
         const nodeY = nodes[y];
-        const edges = graph.nodes.get(nodeX)!;
-        const entry = edges.find(([e, v]) => v.id == nodeY.id); // This could be handled by service or tab-cluster-list
-        let edge = entry != undefined ? entry[0] : undefined;
-
-        if (edge == undefined) {
-          edge = this.config.selectedConnections.value.find(e => e.source == nodeX && e.target == nodeY || e.source == nodeY && e.target == nodeX);
-        }
-
-        if (edge == undefined) {
-          edge = { source: nodeX, target: nodeY, data: structuredClone(EmptyConnection) };
-        }
-
         const cell: MatrixCell = {
           cx: nodeX,
           cy: nodeY,
           x: (nodeX.data as Cluster).name,
           y: (nodeY.data as Cluster).name,
-          edge: edge,
           highlight: this.config.selectedConnections.value.find(e => e.source == nodeX && e.target == nodeY || e.source == nodeY && e.target == nodeX) != undefined
         };
         data.push(cell);
       }
     }
 
+    // Edge assignment
+    const allEdges: Edge[] = [];
+    for (let i = 0; i < nodes.length; i++) {
+      const nodeX = nodes[i];
+      const edges = graph.nodes.get(nodes[i])!;
+      for (let j = 0; j < i; j++) {
+        const nodeY = nodes[j];
+        // Check graph
+        const entry = edges.find(([e, v]) => v.id == nodeY.id); // This could be handled by service or tab-cluster-list
+        let edge = entry != undefined ? entry[0] : undefined;
+
+        // Check selected
+        if (edge == undefined) {
+          edge = this.config.selectedConnections.value.find(e => e.source == nodeX && e.target == nodeY || e.source == nodeY && e.target == nodeX);
+        }
+
+        // Create
+        if (edge == undefined) {
+          edge = { source: nodeX, target: nodeY, data: structuredClone(EmptyConnection) };
+        }
+
+        data[i * nodes.length + j].edge = edge;
+        data[j * nodes.length + i].edge = edge;
+        allEdges.push(edge);
+      }
+
+      data[i * nodes.length + i].edge = { source: nodeX, target: nodeX, data: structuredClone(EmptyConnection) };
+    }
+
     this.xScale.domain(nodes.map(v => (v.data as Cluster).name));
     this.yScale.domain(nodes.map(v => (v.data as Cluster).name));
 
-    let maxEdges = data.reduce((v, m) => Math.max(v, (m.edge.data as ClusterConnection)?.edgeCount), 0);
+    let maxEdges = data.reduce((v, m) => Math.max(v, (m.edge!.data as ClusterConnection)?.edgeCount), 0);
     maxEdges = Math.max(maxEdges, [...this.config.configuration.value.instance.clusterMeasures.values()].reduce((v, m) => Math.max(v, m.edgeCount), 0));
-    const colorScale = d3.scaleSequential(d3.interpolateGreys).domain([0, maxEdges]);
+    const logScale = d3.scaleLog().domain([1, maxEdges + 1]).range([0, 1]);
+    const colorScale = d3.scaleSequential(d3.interpolateGreys).domain([0, 1]);
 
     const color = (d: MatrixCell) => {
-      const conn = d.edge.data as ClusterConnection;
+      const conn = d.edge!.data as ClusterConnection;
       if (d.highlight) {
         return "orange";
       } else if (d.cx != d.cy) {
-        return colorScale(conn.edgeCount);
+        return colorScale(logScale(conn.edgeCount + 1));
       } else {
-        return colorScale(this.config.configuration.value.instance.clusterMeasures.get(d.edge.source.id)!.edgeCount);
+        return colorScale(logScale(this.config.configuration.value.instance.clusterMeasures.get(d.edge!.source.id)!.edgeCount + 1));
       }
     }
 
@@ -199,18 +221,33 @@ export class VisMatrixComponent {
       .attr("stroke-width", 4)
       .on("click", (_, d) => {
         if (d.cx != d.cy) {
-          // Add to selected
-
-          // IDEA
-          // - Selected connections only get added to the graph if #edges > 0
-          // - This is handled by tab-connections
-          // - Create missing connections in selection UI
-          // - Create connections here always
-
+          // 1:1
           if (d.highlight) {
-            this.config.selectedConnections.value.splice(this.config.selectedConnections.value.indexOf(d.edge), 1);
+            this.config.selectedConnections.value.splice(this.config.selectedConnections.value.indexOf(d.edge!), 1);
           } else {
-            this.config.selectedConnections.value.push(d.edge);
+            this.config.selectedConnections.value.push(d.edge!);
+          }
+          this.config.selectedConnections.next(this.config.selectedConnections.value);
+        } else {
+          // 1:N
+          // Get respective edges
+          const selection = (this.config.selectedConnections.value
+            .map((e, i) => [e, i]) as [Edge, number][])
+            .filter(([e, i]) => e.source == d.cx || e.target == d.cx);
+
+          // Also want missing - single pass?
+          if (selection.length == nodes.length - 1) {
+            for (const [e, i] of selection.reverse()) {
+              this.config.selectedConnections.value.splice(i, 1);
+            }
+          } else {
+            // Add missing
+            // Search through all real edges
+            for (const edge of allEdges) {
+              if ((edge.source == d.cx || edge.target == d.cx) && selection.find(([e, i]) => e == edge) == undefined) {
+                this.config.selectedConnections.value.push(edge);
+              }
+            }
           }
           this.config.selectedConnections.next(this.config.selectedConnections.value);
         }
