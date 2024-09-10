@@ -361,6 +361,7 @@ export class ConfigurationService {
     this.configuration.value.instance.globalMeasures = compute(this.configuration.value.instance.graph);
 
     // Per cluster
+    this.configuration.value.instance.clusterMeasures.clear();
     for (const [cluster, graph] of this.configuration.value.instance.clusters) {
       const measures = compute(graph);
       this.configuration.value.instance.clusterMeasures.set(cluster, measures);

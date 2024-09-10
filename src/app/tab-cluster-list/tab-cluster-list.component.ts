@@ -102,7 +102,7 @@ export class TabClusterListComponent {
       id: id,
       parent: parent !== undefined ? parent.id : -1,
       color: "black",
-      name: parent === undefined ? "Cluster " + this.numberToLetters(id + 1) : parent.name + "." + (sIndex + 1),
+      name: parent === undefined ? "Cluster " + this.numberToLetters(sIndex + 1) : parent.name + "." + (sIndex + 1),
       generator: new CLGenerator(structuredClone(DegreesDefault), true),
       children: [],
       changeUUID: crypto.randomUUID(),

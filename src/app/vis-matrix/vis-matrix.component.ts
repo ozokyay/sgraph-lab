@@ -38,8 +38,12 @@ export class VisMatrixComponent {
   @ViewChild('svg')
   container!: ElementRef;
 
+  @ViewChild('svg2')
+  container2!: ElementRef;
+
   xAxis!: d3.Selection<any, unknown, null, undefined>;
   yAxis!: d3.Selection<any, unknown, null, undefined>;
+  legAxis!: d3.Selection<any, unknown, null, undefined>;
   svg!: d3.Selection<any, unknown, null, undefined>;
   rects!: d3.Selection<any, unknown, null, undefined>;
   dividersHorizontal!: d3.Selection<any, unknown, null, undefined>;
@@ -48,6 +52,7 @@ export class VisMatrixComponent {
 
   xScale!: d3.ScaleBand<string>;
   yScale!: d3.ScaleBand<string>;
+  legScale!: d3.ScaleLogarithmic<number, number>;
 
   initialized = false;
 
@@ -111,6 +116,42 @@ export class VisMatrixComponent {
       .attr("y2", this.height)
       .style("stroke", "black")
       .style("stroke-width", 2);
+    
+    
+    const svg2 = d3.select(this.container2.nativeElement)
+      .attr("viewBox", `0 0 ${this.width + this.margin.left + this.margin.right + 5} ${40}`)
+      .append("g");
+
+    const domain = d3.range(0, 1, 0.1);
+    const color = d3.scaleSequential(d3.interpolateGreys).domain([0, 1]);
+
+    svg2.append("defs")
+      .append("linearGradient")
+      .attr("id", "linear-gradient")
+      .attr("x1", "0%")
+      .attr("y1", "0%")
+      .attr("x2", "100%")
+      .attr("y2", "0%")
+      .selectAll("stop")
+      .data(domain)
+      .enter()
+      .append("stop")
+      .attr("offset", d => d)
+      .attr("stop-color", d => color(d));
+
+    svg2.append("rect")
+      .attr("x", 5)
+      .attr("y", 0)
+      .attr("width", this.width + this.margin.left + 1)
+      .attr("height", 20)
+      .style("fill", "url(#linear-gradient)");
+    
+    this.legScale = d3.scaleLog()
+      .domain([1, 100])
+      .range([0, this.width + this.margin.left])
+    this.legAxis = svg2.append("g")
+      .attr("transform", `translate(5, 20)`) 
+      .call(d3.axisBottom(this.legScale));
 
     this.initialized = true;
     this.render(this.config.configuration.value.definition.graph, this.config.level.value);
@@ -124,10 +165,6 @@ export class VisMatrixComponent {
     let nodes = graph.getNodes().filter(v => (v.data as Cluster).parent == -1);
     nodes = this.bfs(nodes.map(v => [v, 0]), level);
 
-    // Two ordering schemes:
-    // - by parent (no dividers, nothing is easy)
-    // - by layer (dividers divide layers, easy navigation across layers)
-
     // Two selection schemes:
     // - full matrix with switch button
     // - no option, use groups for 1:N -> What if a new group does not fit into the current hierarchy?
@@ -135,7 +172,6 @@ export class VisMatrixComponent {
 
     // - Color Scheme orange/blue (can be orange/white optionally)
     // - Toggle when clicking
-    // - Select 1:N when clicking center (shouldbe possible)
     // - Avg parent?? (must be solved)
 
     // Further scenarios (no usecase)
@@ -292,6 +328,10 @@ export class VisMatrixComponent {
       .attr("dx", "-.8em")
       .attr("dy", ".15em")
       .attr("transform", "rotate(-65)");
+
+
+    this.legScale.domain([1, maxEdges]);
+    this.legAxis.call(d3.axisBottom(this.legScale).ticks(6));
 
     // # Circles around axis ticks
 
