@@ -13,7 +13,11 @@ interface MatrixCell {
   x: string,
   y: string,
   edge?: Edge,
-  highlight: boolean
+  highlight: boolean,
+  dividerX: boolean,
+  dividerX2: boolean,
+  dividerY: boolean,
+  dividerY2: boolean
 }
 
 @Component({
@@ -47,7 +51,9 @@ export class VisMatrixComponent {
   svg!: d3.Selection<any, unknown, null, undefined>;
   rects!: d3.Selection<any, unknown, null, undefined>;
   dividersHorizontal!: d3.Selection<any, unknown, null, undefined>;
+  dividersHorizontal2!: d3.Selection<any, unknown, null, undefined>;
   dividersVertical!: d3.Selection<any, unknown, null, undefined>;
+  dividersVertical2!: d3.Selection<any, unknown, null, undefined>;
   borders!: d3.Selection<any, unknown, null, undefined>;
 
   xScale!: d3.ScaleBand<string>;
@@ -92,6 +98,8 @@ export class VisMatrixComponent {
     this.rects = this.svg.append("g");
     this.dividersHorizontal = this.svg.append("g");
     this.dividersVertical = this.svg.append("g");
+    this.dividersHorizontal2 = this.svg.append("g");
+    this.dividersVertical2 = this.svg.append("g");
     this.borders = this.svg.append("g");
 
     this.xAxis = this.svg.append("g")
@@ -162,8 +170,11 @@ export class VisMatrixComponent {
       return;
     }
 
+    const levels: number[] = [];
     let nodes = graph.getNodes().filter(v => (v.data as Cluster).parent == -1);
-    nodes = this.bfs(nodes.map(v => [v, 0]), level);
+    nodes = this.bfs(nodes.map(v => [v, 0]), level, levels);
+
+    console.log(levels);
 
     // Two selection schemes:
     // - full matrix with switch button
@@ -191,7 +202,11 @@ export class VisMatrixComponent {
           cy: nodeY,
           x: (nodeX.data as Cluster).name,
           y: (nodeY.data as Cluster).name,
-          highlight: this.config.selectedConnections.value.find(e => e.source == nodeX && e.target == nodeY || e.source == nodeY && e.target == nodeX) != undefined
+          highlight: this.config.selectedConnections.value.find(e => e.source == nodeX && e.target == nodeY || e.source == nodeY && e.target == nodeX) != undefined,
+          dividerX: levels.indexOf(y + 1) != -1 && x <= y,
+          dividerY: levels.indexOf(x + 1) != -1 && y <= x,
+          dividerX2: levels.indexOf(y) != -1 && x <= y - 1,
+          dividerY2: levels.indexOf(x) != -1 && y <= x - 1
         };
         data.push(cell);
       }
@@ -248,10 +263,10 @@ export class VisMatrixComponent {
     const rects = this.rects.selectAll("rect")
       .data(data)
       .join("rect")
-      .attr("x", d => this.xScale(d.x)! + 1)
-      .attr("y", d => this.yScale(d.y)! + 1)
-      .attr("width", this.xScale.bandwidth() - 2)
-      .attr("height", this.yScale.bandwidth() - 2)
+      .attr("x", d => this.xScale(d.x)! + (d.dividerY2 ? 1 : 0))
+      .attr("y", d => this.yScale(d.y)! + (d.dividerX ? 1 : 0))
+      .attr("width", d => this.xScale.bandwidth() - (d.dividerY ? 1 : 0) - (d.dividerY2 ? 1 : 0))
+      .attr("height", d => this.yScale.bandwidth() - (d.dividerX ? 1 : 0) - (d.dividerX2 ? 1 : 0))
       .style("fill", d => color(d))
       // .attr("stroke", d => d.highlight ? "#ff6f00" : "transparent")
       .attr("stroke-width", 4)
@@ -292,22 +307,44 @@ export class VisMatrixComponent {
     this.dividersVertical.selectAll("line")
       .data(data)
       .join("line")
-      .attr("x1", d => this.xScale(d.x)! + this.xScale.bandwidth())
-      .attr("x2", d => this.xScale(d.x)! + this.xScale.bandwidth())
-      .attr("y1", d => this.yScale(d.y)!)
+      .attr("x1", d => this.xScale(d.x)! + this.xScale.bandwidth() - (d.dividerY ? 1 : 0))
+      .attr("x2", d => this.xScale(d.x)! + this.xScale.bandwidth() - (d.dividerY ? 1 : 0))
+      .attr("y1", d => this.yScale(d.y)! + (d.dividerY && d.dividerX ? 0.5 : 0))
       .attr("y2", d => this.yScale(d.y)! + this.yScale.bandwidth())
       .style("stroke", "black")
-      .style("stroke-width", 2);
+      .style("stroke-width", 1);
+
+    this.dividersVertical2.selectAll("line")
+      .data(data)
+      .join("line")
+      .attr("x1", d => this.xScale(d.x)! + this.xScale.bandwidth() + 1)
+      .attr("x2", d => this.xScale(d.x)! + this.xScale.bandwidth() + 1)
+      .attr("y1", d => this.yScale(d.y)!)
+      .attr("y2", d => this.yScale(d.y)! + this.yScale.bandwidth())
+      .attr("visibility", d => d.dividerY ? "visible" : "hidden")
+      .style("stroke", "black")
+      .style("stroke-width", d => 1);
 
     this.dividersHorizontal.selectAll("line")
       .data(data)
       .join("line")
       .attr("x1", d => this.xScale(d.x)!)
       .attr("x2", d => this.xScale(d.x)! + this.xScale.bandwidth())
-      .attr("y1", d => this.yScale(d.y)!)
-      .attr("y2", d => this.yScale(d.y)!)
+      .attr("y1", d => this.yScale(d.y)! - (d.dividerX ? 1 : 0))
+      .attr("y2", d => this.yScale(d.y)! - (d.dividerX ? 1 : 0))
       .style("stroke", "black")
-      .style("stroke-width", 2);
+      .style("stroke-width", 1);
+    
+    this.dividersHorizontal2.selectAll("line")
+      .data(data)
+      .join("line")
+      .attr("x1", d => this.xScale(d.x)!)
+      .attr("x2", d => this.xScale(d.x)! + this.xScale.bandwidth() - (d.dividerY ? 1 : 0))
+      .attr("y1", d => this.yScale(d.y)! + 1)
+      .attr("y2", d => this.yScale(d.y)! + 1)
+      .attr("visibility", d => d.dividerX ? "visible" : "hidden")
+      .style("stroke", "black")
+      .style("stroke-width", 1);
     
     // # Text inside cell
 
@@ -320,8 +357,8 @@ export class VisMatrixComponent {
     //   .text(d => d.c);
     
 
-    this.xAxis.call(d3.axisBottom(this.xScale));
-    this.yAxis.call(d3.axisLeft(this.yScale));
+    this.xAxis.call(d3.axisBottom(this.xScale).tickSizeOuter(0));
+    this.yAxis.call(d3.axisLeft(this.yScale).tickSizeOuter(0));
 
     this.xAxis.selectAll("text")  
       .style("text-anchor", "end")
@@ -361,11 +398,17 @@ export class VisMatrixComponent {
     //   .attr("fill", "lightgray");
   }
 
-  private bfs(queue: [Node, number][], limit: number): Node[] {
+  private bfs(queue: [Node, number][], limit: number, levels: number[] = []): Node[] {
+    const depthLevels: number[] = [];
     const output: Node[] = [];
     while (queue.length > 0) {
       const [currentNode, depth] = queue.shift()!;
       if (currentNode) {
+        if (depthLevels.length == 0 && depth > 0 || depth > depthLevels[depthLevels.length - 1]) {
+          depthLevels.push(depth);
+          levels.push(output.length);
+        }
+        console.log(`${(currentNode.data as Cluster).name} ${depth}`);
         output.push(currentNode);
         const cluster = currentNode.data as Cluster;
         if (depth >= limit - 1) {
