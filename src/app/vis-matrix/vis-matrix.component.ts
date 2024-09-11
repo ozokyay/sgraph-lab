@@ -100,7 +100,7 @@ export class VisMatrixComponent {
     this.dividersVertical = this.svg.append("g");
     this.dividersHorizontal2 = this.svg.append("g");
     this.dividersVertical2 = this.svg.append("g");
-    this.borders = this.svg.append("g");
+    // this.borders = this.svg.append("g");
 
     this.xAxis = this.svg.append("g")
       .attr("transform", `translate(0, ${this.height})`)
@@ -109,21 +109,21 @@ export class VisMatrixComponent {
     this.yAxis = this.svg.append("g")
       .call(d3.axisLeft(this.yScale));
 
-    this.borders.append("line")
-      .attr("x1", 0)
-      .attr("x2", this.width)
-      .attr("y1", this.height)
-      .attr("y2", this.height)
-      .style("stroke", "black")
-      .style("stroke-width", 2);
+    // this.borders.append("line")
+    //   .attr("x1", 0)
+    //   .attr("x2", this.width)
+    //   .attr("y1", this.height)
+    //   .attr("y2", this.height)
+    //   .style("stroke", "black")
+    //   .style("stroke-width", 2);
   
-    this.borders.append("line")
-      .attr("x1", 0)
-      .attr("x2", 0)
-      .attr("y1", 0)
-      .attr("y2", this.height)
-      .style("stroke", "black")
-      .style("stroke-width", 2);
+    // this.borders.append("line")
+    //   .attr("x1", 0)
+    //   .attr("x2", 0)
+    //   .attr("y1", 0)
+    //   .attr("y2", this.height)
+    //   .style("stroke", "black")
+    //   .style("stroke-width", 2);
     
     
     const svg2 = d3.select(this.container2.nativeElement)
@@ -173,8 +173,6 @@ export class VisMatrixComponent {
     const levels: number[] = [];
     let nodes = graph.getNodes().filter(v => (v.data as Cluster).parent == -1);
     nodes = this.bfs(nodes.map(v => [v, 0]), level, levels);
-
-    console.log(levels);
 
     // Two selection schemes:
     // - full matrix with switch button
@@ -360,12 +358,42 @@ export class VisMatrixComponent {
     this.xAxis.call(d3.axisBottom(this.xScale).tickSizeOuter(0));
     this.yAxis.call(d3.axisLeft(this.yScale).tickSizeOuter(0));
 
-    this.xAxis.selectAll("text")  
+    this.xAxis.selectAll("text")
+      .data(nodes)
       .style("text-anchor", "end")
-      .attr("dx", "-.8em")
-      .attr("dy", ".15em")
-      .attr("transform", "rotate(-65)");
+      // .attr("dx", Math.min(1, 17 / nodes.length) * -15)
+      // .attr("dy", Math.max(1, nodes.length / 17) * -2 + 2)
+      .attr("transform", `translate(${Math.min(1, 17 / nodes.length) * -4 - 9}, ${10}) rotate(-65)`)
+      .attr("color", d => this.config.selectedConnections.value.find(e => e.source == d || e.target == d) ? "darkorange" : "black")
+      .attr("font-size", `${Math.min(1, 17 / nodes.length)}em`);
+    
+    this.yAxis.selectAll("text")
+      .data(nodes)
+      .style("text-anchor", "end")
+      .attr("x", -15)
+      .attr("color", d => this.config.selectedConnections.value.find(e => e.source == d || e.target == d) ? "darkorange" : "black")
+      .attr("font-size", `${Math.min(1, 17 / nodes.length)}em`);
 
+    this.xAxis.selectAll("g")
+      .data(nodes)
+      .join("g")
+      .append("rect")
+      // .attr("x", Math.min(1, 17 / nodes.length) * -12)
+      // .attr("y", Math.max(1, nodes.length / 17) - 1)
+      .attr("width", Math.min(1, 17 / nodes.length) * 3)
+      .attr("height", Math.min(1, 17 / nodes.length) * 10)
+      .attr("fill", d => (d.data as Cluster).color)
+      .attr("transform", `translate(${Math.min(1, 17 / nodes.length) * -6},${10}) rotate(-65)`);
+
+    this.yAxis.selectAll("g")
+      .data(nodes)
+      .join("g")
+      .append("rect")
+      .attr("x", -12)
+      .attr("y", Math.min(1, 17 / nodes.length) * -6)
+      .attr("width", Math.min(1, 17 / nodes.length) * 3)
+      .attr("height", Math.min(1, 17 / nodes.length) * 10)
+      .attr("fill", d => (d.data as Cluster).color);
 
     this.legScale.domain([1, maxEdges]);
     this.legAxis.call(d3.axisBottom(this.legScale).ticks(6));
@@ -408,7 +436,6 @@ export class VisMatrixComponent {
           depthLevels.push(depth);
           levels.push(output.length);
         }
-        console.log(`${(currentNode.data as Cluster).name} ${depth}`);
         output.push(currentNode);
         const cluster = currentNode.data as Cluster;
         if (depth >= limit - 1) {
