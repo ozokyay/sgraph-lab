@@ -358,41 +358,39 @@ export class VisMatrixComponent {
     this.xAxis.call(d3.axisBottom(this.xScale).tickSizeOuter(0));
     this.yAxis.call(d3.axisLeft(this.yScale).tickSizeOuter(0));
 
+    const scalingFactor = Math.min(1, 17 / nodes.length);
+
     this.xAxis.selectAll("text")
       .data(nodes)
       .style("text-anchor", "end")
-      // .attr("dx", Math.min(1, 17 / nodes.length) * -15)
-      // .attr("dy", Math.max(1, nodes.length / 17) * -2 + 2)
-      .attr("transform", `translate(${Math.min(1, 17 / nodes.length) * -4 - 9}, ${10}) rotate(-65)`)
+      .attr("transform", `translate(${scalingFactor * -4 - 9}, ${10}) rotate(-65)`)
       .attr("color", d => this.config.selectedConnections.value.find(e => e.source == d || e.target == d) ? "darkorange" : "black")
-      .attr("font-size", `${Math.min(1, 17 / nodes.length)}em`);
+      .attr("font-size", `${scalingFactor}em`);
     
     this.yAxis.selectAll("text")
       .data(nodes)
       .style("text-anchor", "end")
       .attr("x", -15)
       .attr("color", d => this.config.selectedConnections.value.find(e => e.source == d || e.target == d) ? "darkorange" : "black")
-      .attr("font-size", `${Math.min(1, 17 / nodes.length)}em`);
+      .attr("font-size", `${scalingFactor}em`);
 
     this.xAxis.selectAll("g")
       .data(nodes)
       .join("g")
       .append("rect")
-      // .attr("x", Math.min(1, 17 / nodes.length) * -12)
-      // .attr("y", Math.max(1, nodes.length / 17) - 1)
-      .attr("width", Math.min(1, 17 / nodes.length) * 3)
-      .attr("height", Math.min(1, 17 / nodes.length) * 10)
+      .attr("width", scalingFactor * 3)
+      .attr("height", scalingFactor * 10)
       .attr("fill", d => (d.data as Cluster).color)
-      .attr("transform", `translate(${Math.min(1, 17 / nodes.length) * -6},${10}) rotate(-65)`);
+      .attr("transform", `translate(${scalingFactor * -6},${10}) rotate(-65)`);
 
     this.yAxis.selectAll("g")
       .data(nodes)
       .join("g")
       .append("rect")
       .attr("x", -12)
-      .attr("y", Math.min(1, 17 / nodes.length) * -6)
-      .attr("width", Math.min(1, 17 / nodes.length) * 3)
-      .attr("height", Math.min(1, 17 / nodes.length) * 10)
+      .attr("y", scalingFactor * -6)
+      .attr("width", scalingFactor * 3)
+      .attr("height", scalingFactor * 10)
       .attr("fill", d => (d.data as Cluster).color);
 
     this.legScale.domain([1, maxEdges]);

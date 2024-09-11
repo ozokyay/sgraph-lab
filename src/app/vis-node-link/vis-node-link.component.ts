@@ -56,6 +56,12 @@ export class VisNodeLinkComponent {
       this.graph = this.prepare(config.instance.graph);
       await this.runLayout(this.graph, this.abort.signal);
     });
+    config.selectedConnections.subscribe(async () => {
+      if (config.configuration.value.instance.graph.nodes.length > 0 && this.graph != undefined) {
+        this.createNodes(this.graph);
+        this.render(this.graph);
+      }
+    });
     config.layoutSettings.subscribe(async () => {
       if (config.configuration.value.instance.graph.nodes.length > 0) {
         this.abort.abort();
@@ -128,6 +134,11 @@ export class VisNodeLinkComponent {
     const degrees = this.config.measures.value.globalMeasures.degrees;
     const degreesExtent = d3.extent(degrees.values()) as [number, number];
     const radiusScale = d3.scaleLinear().domain(degreesExtent).range(this.nodeRadiusRange);
+
+    const selectedEdges = [...this.config.configuration.value.instance.connections.entries()]
+                              .filter(([k, v]) => this.config.selectedConnections.value.indexOf(k) != -1)
+                              .flatMap(([k, v]) => v);
+
     for (const node of graph.nodes) {
       const gfx = new PIXI.Graphics({ zIndex: 1 });
       let radius = this.nodeRadius;
@@ -135,8 +146,14 @@ export class VisNodeLinkComponent {
         radius = radiusScale(degrees.get(node)!);
       }
       gfx.circle(0, 0, radius);
-      gfx.stroke({ width: 4, color: 'black' });
-      gfx.fill({ color: this.getNodeColor(node, this.config.graphicsSettings.value.nodeColoring) });
+
+      // Alpha: This node has selected incident edges
+      // This does not only depend on cluster id, but must be from the correct edge bundle which makes things inefficient
+      const anySelection = this.config.selectedConnections.value.length > 0;
+      const alpha = !anySelection || selectedEdges.find(e => e.source == node || e.target == node) ? 1 : 0.2;
+
+      gfx.stroke({ width: 3, color: 'black', alpha: alpha });
+      gfx.fill({ color: this.getNodeColor(node, this.config.graphicsSettings.value.nodeColoring), alpha: alpha });
       gfx.interactive = true;
       gfx.onmouseenter = () => {
         gfx.tint = 0x9A9A9A;
@@ -284,6 +301,13 @@ export class VisNodeLinkComponent {
     // Apply graphics settings
     const settings = this.config.graphicsSettings.value;
 
+
+    // Join with selectedConnections to determine alpha/highlight value
+    const anySelection = this.config.selectedConnections.value.length > 0;
+    const selectedEdges = [...this.config.configuration.value.instance.connections.entries()]
+                            .filter(([k, v]) => this.config.selectedConnections.value.indexOf(k) != -1)
+                            .flatMap(([k, v]) => v);
+
     // Render edges
     this.edgeGraphics?.destroy();
     this.edgeGraphics = new PIXI.Graphics();
@@ -292,16 +316,20 @@ export class VisNodeLinkComponent {
       const data = edge.data as EdgeData;
       const source = edge.source.data as NodeData;
       const target = edge.target.data as NodeData;
+
+      // Transparency of unselected if there is an active selection
+      const alpha = !anySelection || selectedEdges.indexOf(edge) != -1 ? 1 : 0.2;
+
       const middle = {
         x: (source.layoutPosition.x + target.layoutPosition.x) / 2,
         y: (source.layoutPosition.y + target.layoutPosition.y) / 2
       };
       this.edgeGraphics.moveTo(source.layoutPosition.x * this.edgeScale, source.layoutPosition.y * this.edgeScale);
       this.edgeGraphics.lineTo(middle.x * this.edgeScale, middle.y * this.edgeScale);
-      this.edgeGraphics.stroke({width: 1, color: this.getNodeColor(edge.source, settings.edgeColoring) });
+      this.edgeGraphics.stroke({width: 1, color: this.getNodeColor(edge.source, settings.edgeColoring), alpha: alpha });
       this.edgeGraphics.moveTo(middle.x * this.edgeScale, middle.y * this.edgeScale);
       this.edgeGraphics.lineTo(target.layoutPosition.x * this.edgeScale, target.layoutPosition.y * this.edgeScale);
-      this.edgeGraphics.stroke({width: 1, color: this.getNodeColor(edge.target, settings.edgeColoring) });
+      this.edgeGraphics.stroke({width: 1, color: this.getNodeColor(edge.target, settings.edgeColoring), alpha: alpha });
     }
     
     // Set node positions
