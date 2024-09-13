@@ -250,7 +250,16 @@ export class VisMatrixComponent {
     const color = (d: MatrixCell) => {
       const conn = d.edge!.data as ClusterConnection;
       if (d.highlight) {
-        return "orange";
+        // Color alternatives
+        // -> circle
+        // -> arrow
+        // -> gradient
+        // -> inlayed border
+        if (d.cx == d.edge!.source) {
+          return "orange";
+        } else {
+          return "blue";
+        }
       } else if (d.cx != d.cy) {
         return colorScale(logScale(conn.edgeCount + 1));
       } else {
@@ -274,6 +283,9 @@ export class VisMatrixComponent {
           if (d.highlight) {
             this.config.selectedConnections.value.splice(this.config.selectedConnections.value.indexOf(d.edge!), 1);
           } else {
+            if (d.cx != d.edge!.source) {
+              [d.edge!.source, d.edge!.target] = [d.edge?.target!, d.edge!.source];
+            }
             this.config.selectedConnections.value.push(d.edge!);
           }
           this.config.selectedConnections.next(this.config.selectedConnections.value);
@@ -283,6 +295,8 @@ export class VisMatrixComponent {
           const selection = (this.config.selectedConnections.value
             .map((e, i) => [e, i]) as [Edge, number][])
             .filter(([e, i]) => e.source == d.cx || e.target == d.cx);
+
+          // Same behavior as 1:1 but broadcast to 1:N
 
           // Also want missing - single pass?
           if (selection.length == nodes.length - 1) {
@@ -294,10 +308,23 @@ export class VisMatrixComponent {
             // Search through all real edges
             for (const edge of allEdges) {
               if ((edge.source == d.cx || edge.target == d.cx) && selection.find(([e, i]) => e == edge) == undefined) {
+                if (d.cx != edge.source) {
+                  [edge.source, edge.target] = [edge.target, edge.source];
+                }
                 this.config.selectedConnections.value.push(edge);
               }
             }
           }
+          this.config.selectedConnections.next(this.config.selectedConnections.value);
+        }
+      })
+      .on("contextmenu", (e, d) => {
+        e.preventDefault();
+        if (d.cx == d.cy) {
+          return;
+        }
+        if (d.highlight) {
+          [d.edge!.source, d.edge!.target] = [d.edge?.target!, d.edge!.source];
           this.config.selectedConnections.next(this.config.selectedConnections.value);
         }
       });
