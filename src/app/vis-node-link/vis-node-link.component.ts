@@ -266,10 +266,11 @@ export class VisNodeLinkComponent {
       this.render(graph);
     };
 
+    const settings = this.config.layoutSettings.value;
     await this.layout.runForces(
       nodeDataBuffer, edgeDataBuffer,
       nodeLength, edgeLength,
-      0.5, 0.05 + Math.log(1 + this.config.layoutSettings.value.gravity / 100), 100, this.config.layoutSettings.value.gravity,
+      0.5, 0.05 + Math.log(1 + settings.gravity / 100), settings.iterations, settings.gravity,
       sourceEdgeDataBuffer, targetEdgeDataBuffer, frame, signal
     );
 

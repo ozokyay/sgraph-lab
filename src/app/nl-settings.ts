@@ -1,6 +1,7 @@
 export interface LayoutSettings {
     sampling: number,
-    gravity: number
+    gravity: number,
+    iterations: number
 }
 
 export interface GraphicsSettings {
@@ -11,7 +12,8 @@ export interface GraphicsSettings {
 
 export const DefaultLayout: LayoutSettings = {
     sampling: 1,
-    gravity: 0.1
+    gravity: 0.1,
+    iterations: 100
 }
 
 export const DefaultGraphics: GraphicsSettings = {

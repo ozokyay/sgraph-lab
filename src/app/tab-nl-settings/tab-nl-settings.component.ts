@@ -4,6 +4,7 @@ import { MatSliderModule } from '@angular/material/slider';
 import { ConfigurationService } from '../configuration.service';
 import { DefaultGraphics, DefaultLayout, GraphicsSettings, LayoutSettings } from '../nl-settings';
 import { FormsModule } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
 
 @Component({
   selector: 'app-tab-nl-settings',
@@ -11,6 +12,7 @@ import { FormsModule } from '@angular/forms';
   imports: [
     MatSliderModule,
     MatSlideToggleModule,
+    MatButtonModule,
     FormsModule
   ],
   templateUrl: './tab-nl-settings.component.html',
