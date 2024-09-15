@@ -7,6 +7,7 @@ import * as d3 from 'd3';
 import { Utility } from '../utility';
 import Rand from 'rand-seed';
 import { Cluster } from '../cluster';
+import { Point } from '../point';
 
 @Component({
   selector: 'app-vis-node-link',
@@ -59,7 +60,7 @@ export class VisNodeLinkComponent {
     config.selectedConnections.subscribe(async () => {
       if (config.configuration.value.instance.graph.nodes.length > 0 && this.graph != undefined) {
         this.createNodes(this.graph);
-        this.render(this.graph);
+        this.render(this.graph, this.abort.signal);
       }
     });
     config.layoutSettings.subscribe(async () => {
@@ -67,20 +68,60 @@ export class VisNodeLinkComponent {
         this.abort.abort();
         this.abort = new AbortController();
         this.graph = this.prepare(config.configuration.value.instance.graph);
-        await this.runLayout(config.configuration.value.instance.graph, this.abort.signal);
+        await this.runLayout(this.graph, this.abort.signal); // Alternative: layout with full graph and don't show all (no performance benefit)
       }
     });
     config.graphicsSettings.subscribe(() => {
       if (config.configuration.value.instance.graph.nodes.length > 0 && this.graph != undefined) {
         this.createNodes(this.graph);
-        this.render(this.graph);
+        this.render(this.graph, this.abort.signal);
       }
     });
     config.selectedDiffusionSeeds.subscribe(() => {
       if (this.graph != undefined && this.graph.nodes.length > 0) {
         this.createNodes(this.graph);
-        this.render(this.graph);
+        this.render(this.graph, this.abort.signal);
       }
+    });
+    config.level.subscribe(() => {
+
+      // Idea: need layout centroids, so always compute layout but change how nodes are rendered
+      // - Maybe don't add nodes to stage
+      // - Maybe extra SVG vis => send centroids to service or even compute layout there
+      //   - New vis needs something like edge strength
+      //   - New vis Might need more node encoding
+      //   - New vis does not have to scale (hopefully?)
+      //   - Ways to skip to minimap OR: morph into minimap for better overview
+      //   - BUT: No smooth transition to node display in this arrangement - is that a problem or not?
+
+      // Risk assessment:
+      // - Can do anything in SVG
+      // - Limits in raster: gradients?
+
+      // Advantages of raster:
+      // - only change nodes/render function
+      // - no extra d3/svg handling
+      // - maybe make more modular (starting positio, layout)
+
+      // Options
+      // A) Sync with matrix, aggregate lower levels into higher ones, but need one lower?
+      // B) Switch between nodes/clusters
+
+      // Convex hull when?
+
+      // Minimap
+      // - Specialized for 1:N
+      // - Non-overlapping
+
+      // Adaptive NL
+      // - Incorporates everything into one
+      // - Would be nice if not separate vis => can toggle nodes to clusters => how to draw? => any less confusing/benefit?
+
+      // 1. Normal NL
+      // 2. Aggregated levels
+      // 3. Tree
+      // 4. Minimap, ausblenden oder fade
+      // 5. Circle packing
     });
   }
 
@@ -182,7 +223,7 @@ export class VisNodeLinkComponent {
     }
 
     if (graph.nodes.length == 0) {
-      this.render(graph);
+      this.render(graph, signal);
       return;
     }
 
@@ -191,8 +232,12 @@ export class VisNodeLinkComponent {
     const sourceEdges: Array<number> = [];
     const targetEdges: Array<number> = [];
 
+    // Node ID remapping to avoid gaps
+    // Assume IDs aren't read anywhere
+
     for (let i = 0; i < graph.nodes.length; i++) {
       const node = graph.nodes[i];
+      node.id = i;
       const data = node.data as NodeData;
       if (data.layoutPosition.x == 0 && data.layoutPosition.y == 0) {
         data.layoutPosition = {
@@ -263,7 +308,24 @@ export class VisNodeLinkComponent {
         };
       }
 
-      this.render(graph);
+      // Update centroids
+      // TODO: This breaks when applying sampling
+      const centroids: [number, Point][] = [];
+      for (const [id, cluster] of this.config.configuration.value.instance.clusters) {
+        let c: Point = { x: 0, y: 0 };
+        for (const node of cluster.nodes) {
+          const data = node.data as NodeData;
+          c.x += data.layoutPosition.x;
+          c.y += data.layoutPosition.y;
+        }
+        c.x /= cluster.nodes.length;
+        c.y /= cluster.nodes.length;
+        centroids.push([id, c]);
+      }
+      this.config.centroids.next(centroids);
+
+      // Render
+      this.render(graph, signal);
     };
 
     const settings = this.config.layoutSettings.value;
@@ -277,9 +339,13 @@ export class VisNodeLinkComponent {
     // Layout finished
   }
 
-  private render(graph: EdgeList) {
-    if (this.graph == undefined) {
+  private render(graph: EdgeList, signal: AbortSignal) {
+    if (graph == undefined) {
       console.log("No graph");
+      return;
+    }
+
+    if (signal.aborted) {
       return;
     }
 
@@ -313,7 +379,7 @@ export class VisNodeLinkComponent {
     this.edgeGraphics?.destroy();
     this.edgeGraphics = new PIXI.Graphics();
     this.stage.addChild(this.edgeGraphics);
-    for (const edge of this.graph.edges) {
+    for (const edge of graph.edges) {
       const data = edge.data as EdgeData;
       const source = edge.source.data as NodeData;
       const target = edge.target.data as NodeData;
@@ -334,7 +400,7 @@ export class VisNodeLinkComponent {
     }
     
     // Set node positions
-    for (const node of this.graph.nodes) {
+    for (const node of graph.nodes) {
       const data = node.data as NodeData;
       let gfx = this.nodeDict.get(node)!;
       gfx.position = {

@@ -62,17 +62,19 @@ export class Utility {
     }
 
     public static sampleRandomEdges(input: EdgeList, edgeCount: number): EdgeList {
-        const nodes: Node[] = [];
-        const edges: Edge[] = [];
         const allEdges = [...input.edges];
     
         // Random edge sampling
         Utility.shuffleArray(allEdges);
         const sample = allEdges.slice(0, edgeCount)
+        const nodeSet = new Set<Node>();
         for (const e of sample) {
-          const edge = e;
-          nodes.push(edge.source, edge.target);
-          edges.push(e);
+          if (!nodeSet.has(e.source)) {
+            nodeSet.add(e.source);
+          }
+          if (!nodeSet.has(e.target)) {
+            nodeSet.add(e.target);
+          }
         }
         // Induced subgraph
         // for (const e of allEdges) {
@@ -80,7 +82,7 @@ export class Utility {
         //     edges.add(e);
         //   }
         // }
-        return { nodes: nodes, edges: sample };
+        return { nodes: [...nodeSet.values()], edges: sample };
     }
 
     public static addDistributions(d1: Series, d2: Series): Series {

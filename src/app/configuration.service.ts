@@ -10,6 +10,7 @@ import { ClusterConnection } from './cluster-connection';
 import { DefaultGraphics, DefaultLayout, GraphicsSettings, LayoutSettings } from './nl-settings';
 import { PythonService } from './python.service';
 import { Uniform10 } from './series';
+import { Point } from './point';
 
 @Injectable({
   providedIn: 'root'
@@ -28,6 +29,7 @@ export class ConfigurationService {
   public level = new BehaviorSubject<number>(1);
   public layoutSettings = new BehaviorSubject<LayoutSettings>(DefaultLayout);
   public graphicsSettings = new BehaviorSubject<GraphicsSettings>(DefaultGraphics);
+  public centroids = new BehaviorSubject<[number, Point][]>([]);
   public history = new BehaviorSubject<GraphConfiguration[]>([structuredClone(this.configuration.value)]);
 
   private abort: AbortController = new AbortController();
