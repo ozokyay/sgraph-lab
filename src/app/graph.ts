@@ -112,6 +112,7 @@ export interface Edge {
 export interface NodeData {
     clusterID: number,
     layoutPosition: Point,
+    samplingID: number;
     attributes: number[]
 }
 

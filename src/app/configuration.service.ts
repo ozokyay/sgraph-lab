@@ -225,6 +225,7 @@ export class ConfigurationService {
       n.data = {
         clusterID: cluster.id,
         layoutPosition: { x:0, y: 0 },
+        samplingID: -1,
         attributes: []
       }
     }

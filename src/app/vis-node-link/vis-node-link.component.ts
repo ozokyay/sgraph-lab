@@ -85,6 +85,12 @@ export class VisNodeLinkComponent {
     });
     config.level.subscribe(() => {
 
+      // Implementation
+      // - create nodes from centroids
+      // - maybe prefer old centroid computation: gives centroids for higher order clusters
+      // - 
+      // - no layout pass on level change
+
       // Idea: need layout centroids, so always compute layout but change how nodes are rendered
       // - Maybe don't add nodes to stage
       // - Maybe extra SVG vis => send centroids to service or even compute layout there
@@ -232,13 +238,10 @@ export class VisNodeLinkComponent {
     const sourceEdges: Array<number> = [];
     const targetEdges: Array<number> = [];
 
-    // Node ID remapping to avoid gaps
-    // Assume IDs aren't read anywhere
-
     for (let i = 0; i < graph.nodes.length; i++) {
       const node = graph.nodes[i];
-      node.id = i;
       const data = node.data as NodeData;
+      data.samplingID = i;
       if (data.layoutPosition.x == 0 && data.layoutPosition.y == 0) {
         data.layoutPosition = {
           x: Utility.rand.next() - 0.5,
@@ -248,22 +251,22 @@ export class VisNodeLinkComponent {
       nodeData.push(0.0, data.layoutPosition.x, data.layoutPosition.y, 1.0);
     }
     for (let i = 0; i < graph.edges.length; i++) {
-      const source = graph.edges[i].source;
-      const target = graph.edges[i].target;
-      edgeData.push(source.id, target.id);
+      const source = graph.edges[i].source.data as NodeData;
+      const target = graph.edges[i].target.data as NodeData;
+      edgeData.push(source.samplingID, target.samplingID);
     }
 
-    graph.edges.sort(function (a, b) { return (a.source.id > b.source.id) ? 1 : ((b.source.id > a.source.id) ? -1 : 0); });
+    graph.edges.sort((a, b) => (a.source.data as NodeData).samplingID - (b.source.data as NodeData).samplingID);
     for (let i = 0; i < graph.edges.length; i++) {
-      const source = graph.edges[i].source;
-      const target = graph.edges[i].target;
-      sourceEdges.push(source.id, target.id);
+      const source = graph.edges[i].source.data as NodeData;
+      const target = graph.edges[i].target.data as NodeData;
+      sourceEdges.push(source.samplingID, target.samplingID);
     }
-    graph.edges.sort(function (a, b) { return (a.target.id > b.target.id) ? 1 : ((b.target.id > a.target.id) ? -1 : 0); });
+    graph.edges.sort((a, b) => (a.target.data as NodeData).samplingID - (b.target.data as NodeData).samplingID);
     for (let i = 0; i < graph.edges.length; i++) {
-      const source = graph.edges[i].source;
-      const target = graph.edges[i].target;
-      targetEdges.push(source.id, target.id);
+      const source = graph.edges[i].source.data as NodeData;
+      const target = graph.edges[i].target.data as NodeData;
+      targetEdges.push(source.samplingID, target.samplingID);
     }
 
     const nodeDataBuffer = this.device.createBuffer({
@@ -309,18 +312,23 @@ export class VisNodeLinkComponent {
       }
 
       // Update centroids
-      // TODO: This breaks when applying sampling
       const centroids: [number, Point][] = [];
       for (const [id, cluster] of this.config.configuration.value.instance.clusters) {
         let c: Point = { x: 0, y: 0 };
+        let i = 0;
         for (const node of cluster.nodes) {
           const data = node.data as NodeData;
-          c.x += data.layoutPosition.x;
-          c.y += data.layoutPosition.y;
+          if (data.samplingID != -1) {
+            c.x += data.layoutPosition.x;
+            c.y += data.layoutPosition.y;
+            i++;
+          }
         }
-        c.x /= cluster.nodes.length;
-        c.y /= cluster.nodes.length;
-        centroids.push([id, c]);
+        c.x /= i;
+        c.y /= i;
+        if (i > 0) {
+          centroids.push([id, c]);
+        }
       }
       this.config.centroids.next(centroids);
 
