@@ -385,20 +385,29 @@ export class VisMatrixComponent {
     this.xAxis.call(d3.axisBottom(this.xScale).tickSizeOuter(0));
     this.yAxis.call(d3.axisLeft(this.yScale).tickSizeOuter(0));
 
+    const label = (d: Node): string => {
+      const conn = this.config.selectedConnections.value.find(e => e.source == d || e.target == d);
+      if (conn == undefined) {
+        return "normal";
+      } else {
+        return "bold";
+      }
+    };
+
     const scalingFactor = Math.min(1, 17 / nodes.length);
 
     this.xAxis.selectAll("text")
       .data(nodes)
       .style("text-anchor", "end")
       .attr("transform", `translate(${scalingFactor * -4 - 9}, ${10}) rotate(-65)`)
-      .attr("color", d => this.config.selectedConnections.value.find(e => e.source == d || e.target == d) ? "darkorange" : "black")
+      .attr("font-weight", d => label(d))
       .attr("font-size", `${scalingFactor}em`);
     
     this.yAxis.selectAll("text")
       .data(nodes)
       .style("text-anchor", "end")
       .attr("x", -15)
-      .attr("color", d => this.config.selectedConnections.value.find(e => e.source == d || e.target == d) ? "darkorange" : "black")
+      .attr("font-weight", d => label(d))
       .attr("font-size", `${scalingFactor}em`);
 
     this.xAxis.selectAll("g")

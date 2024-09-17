@@ -7,7 +7,8 @@ export interface LayoutSettings {
 export interface GraphicsSettings {
     nodeColoring: boolean,
     edgeColoring: boolean,
-    nodeRadius: boolean
+    nodeRadius: boolean,
+    clusterLevel: boolean
 }
 
 export const DefaultLayout: LayoutSettings = {
@@ -19,5 +20,6 @@ export const DefaultLayout: LayoutSettings = {
 export const DefaultGraphics: GraphicsSettings = {
     nodeColoring: true,
     edgeColoring: true,
-    nodeRadius: false
+    nodeRadius: false,
+    clusterLevel: false
 }

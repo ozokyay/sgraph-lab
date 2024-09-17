@@ -18,6 +18,7 @@ import { TabStatisticsComponent } from './tab-statistics/tab-statistics.componen
 import { TabInformationDiffusionComponent } from "./tab-information-diffusion/tab-information-diffusion.component";
 import { VisMatrixComponent } from "./vis-matrix/vis-matrix.component";
 import { VisLevelComponent } from "./vis-level/vis-level.component";
+import { VisNodeLink2Component } from './vis-node-link-2/vis-node-link-2.component';
 
 @Component({
     selector: 'app-root',
@@ -38,6 +39,7 @@ import { VisLevelComponent } from "./vis-level/vis-level.component";
     TabNlSettingsComponent,
     TabStatisticsComponent,
     VisNodeLinkComponent,
+    VisNodeLink2Component,
     TabInformationDiffusionComponent,
     VisMatrixComponent,
     VisLevelComponent

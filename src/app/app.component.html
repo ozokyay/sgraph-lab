@@ -4,6 +4,9 @@
 <div id="container">
   <as-split #vertical unit="percent" direction="horizontal" (dragStart)="onDragStart()" (dragEnd)="onDragEnd()" restrictMove="true">
     <as-split-area size="20">
+      <app-vis-node-link-2></app-vis-node-link-2>
+    </as-split-area>
+    <as-split-area size="20">
       <div class="padded">
         <app-vis-level />
         <h3>Cluster Connections</h3>

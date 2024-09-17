@@ -16,7 +16,7 @@ import { Point } from '../point';
   templateUrl: './vis-node-link.component.html',
   styleUrl: './vis-node-link.component.css'
 })
-export class VisNodeLinkComponent {
+export class VisNodeLinkComponent implements AfterViewInit, OnDestroy {
 
   private edgeScale = 500;
   private nodeRadius = 3;
@@ -33,6 +33,10 @@ export class VisNodeLinkComponent {
   private edgeGraphics?: PIXI.Graphics = undefined;
   private graph?: EdgeList = undefined;
   private abort: AbortController = new AbortController();
+  private clusterLevel: boolean = false;
+  private centroidLerp: number = 0;
+  private centroidLerpStart: number = 0;
+  private lastRenderTime: number = 0;
 
   @ViewChild('container')
   private container!: ElementRef;
@@ -71,14 +75,19 @@ export class VisNodeLinkComponent {
         await this.runLayout(this.graph, this.abort.signal); // Alternative: layout with full graph and don't show all (no performance benefit)
       }
     });
-    config.graphicsSettings.subscribe(() => {
+    config.graphicsSettings.subscribe(s => {
       if (config.configuration.value.instance.graph.nodes.length > 0 && this.graph != undefined) {
+        if (this.clusterLevel != s.clusterLevel) {
+          this.clusterLevel = s.clusterLevel;
+          this.centroidLerpStart = 0;
+          requestAnimationFrame(s => this.centroidInterpolation(s));
+        }
         this.createNodes(this.graph);
         this.render(this.graph, this.abort.signal);
       }
     });
     config.selectedDiffusionSeeds.subscribe(() => {
-      if (this.graph != undefined && this.graph.nodes.length > 0) {
+      if (this.graph != undefined && this.graph.nodes.length > 0 && this.config.centroids.value.size == this.config.configuration.value.definition.graph.nodes.size) {
         this.createNodes(this.graph);
         this.render(this.graph, this.abort.signal);
       }
@@ -302,7 +311,7 @@ export class VisNodeLinkComponent {
     new Uint32Array(targetEdgeDataBuffer.getMappedRange()).set(targetEdges);
     targetEdgeDataBuffer.unmap();
 
-    const frame = (positions: number[]) => {
+    const frame = (positions: number[], timestamp: number) => {
       // Assemble node data
       for (let i = 0; i < 4 * nodeLength; i = i + 4) {
         (graph.nodes[i / 4].data as NodeData).layoutPosition = {
@@ -312,7 +321,7 @@ export class VisNodeLinkComponent {
       }
 
       // Update centroids
-      const centroids: [number, Point][] = [];
+      this.config.centroids.value.clear();
       for (const [id, cluster] of this.config.configuration.value.instance.clusters) {
         let c: Point = { x: 0, y: 0 };
         let i = 0;
@@ -327,13 +336,13 @@ export class VisNodeLinkComponent {
         c.x /= i;
         c.y /= i;
         if (i > 0) {
-          centroids.push([id, c]);
+          this.config.centroids.value.set(id, c);
         }
       }
-      this.config.centroids.next(centroids);
+      this.config.centroids.next(this.config.centroids.value);
 
       // Render
-      this.render(graph, signal);
+      this.render(graph, signal, timestamp);
     };
 
     const settings = this.config.layoutSettings.value;
@@ -347,7 +356,7 @@ export class VisNodeLinkComponent {
     // Layout finished
   }
 
-  private render(graph: EdgeList, signal: AbortSignal) {
+  private render(graph: EdgeList, signal: AbortSignal, timestamp?: number) {
     if (graph == undefined) {
       console.log("No graph");
       return;
@@ -355,6 +364,14 @@ export class VisNodeLinkComponent {
 
     if (signal.aborted) {
       return;
+    }
+
+    if (timestamp != undefined) {
+      if (timestamp == this.lastRenderTime) {
+        return;
+      } else {
+        this.lastRenderTime = timestamp;
+      }
     }
 
     // Zoom and pan
@@ -383,6 +400,28 @@ export class VisNodeLinkComponent {
                             .filter(([k, v]) => this.config.selectedConnections.value.indexOf(k) != -1)
                             .flatMap(([k, v]) => v);
 
+
+    // Set node positions
+    // Lerp for possible cluster aggregation
+    for (const node of graph.nodes) {
+      const data = node.data as NodeData;
+      const centroid = this.config.centroids.value.get(data.clusterID)!;
+      data.renderPosition = Utility.lerpP(data.layoutPosition, centroid, this.centroidLerp);
+      let gfx = this.nodeDict.get(node)!;
+      gfx.position = {
+        x: data.renderPosition.x * this.edgeScale,
+        y: data.renderPosition.y * this.edgeScale
+      };
+
+      
+
+      // Change fill/tint depending on selection
+      // Or re-create nodes in subject change subscription event
+
+      // Kind of prefer tint here tbh (less calls other than render)
+      // Or just call createNodes(), easy
+    }
+
     // Render edges
     this.edgeGraphics?.destroy();
     this.edgeGraphics = new PIXI.Graphics();
@@ -396,31 +435,15 @@ export class VisNodeLinkComponent {
       const alpha = !anySelection || selectedEdges.indexOf(edge) != -1 ? 1 : 0.2;
 
       const middle = {
-        x: (source.layoutPosition.x + target.layoutPosition.x) / 2,
-        y: (source.layoutPosition.y + target.layoutPosition.y) / 2
+        x: (source.renderPosition.x + target.renderPosition.x) / 2,
+        y: (source.renderPosition.y + target.renderPosition.y) / 2
       };
-      this.edgeGraphics.moveTo(source.layoutPosition.x * this.edgeScale, source.layoutPosition.y * this.edgeScale);
+      this.edgeGraphics.moveTo(source.renderPosition.x * this.edgeScale, source.renderPosition.y * this.edgeScale);
       this.edgeGraphics.lineTo(middle.x * this.edgeScale, middle.y * this.edgeScale);
       this.edgeGraphics.stroke({width: 1, color: this.getNodeColor(edge.source, settings.edgeColoring), alpha: alpha });
       this.edgeGraphics.moveTo(middle.x * this.edgeScale, middle.y * this.edgeScale);
-      this.edgeGraphics.lineTo(target.layoutPosition.x * this.edgeScale, target.layoutPosition.y * this.edgeScale);
+      this.edgeGraphics.lineTo(target.renderPosition.x * this.edgeScale, target.renderPosition.y * this.edgeScale);
       this.edgeGraphics.stroke({width: 1, color: this.getNodeColor(edge.target, settings.edgeColoring), alpha: alpha });
-    }
-    
-    // Set node positions
-    for (const node of graph.nodes) {
-      const data = node.data as NodeData;
-      let gfx = this.nodeDict.get(node)!;
-      gfx.position = {
-        x: data.layoutPosition.x * this.edgeScale,
-        y: data.layoutPosition.y * this.edgeScale
-      };
-
-      // Change fill/tint depending on selection
-      // Or re-create nodes in subject change subscription event
-
-      // Kind of prefer tint here tbh (less calls other than render)
-      // Or just call createNodes(), easy
     }
 
     // Render convex hull
@@ -430,7 +453,7 @@ export class VisNodeLinkComponent {
     // const cluster1 = [...this.config.configuration.value.instance.clusters.values()][0].nodes;
     // const points: [number, number][] = cluster1.map(n => {
     //   const data = n.data as NodeData;
-    //   return [data.layoutPosition.x, data.layoutPosition.y];
+    //   return [data.renderPosition.x, data.renderPosition.y];
     // });
     // const hull = d3.polygonHull(points)!;
     // for (let i = 0; i < hull.length; i++) {
@@ -455,11 +478,29 @@ export class VisNodeLinkComponent {
     }
   }
 
-  private ngOnDestroy() {
+  private centroidInterpolation(start: number) {
+    if (this.centroidLerpStart == 0) {
+      this.centroidLerpStart = start + (this.clusterLevel ? this.centroidLerp : 1 - this.centroidLerp) * 1000;
+    }
+    const elapsed = Math.min(1000, start - this.centroidLerpStart); // milliseconds
+    if (this.clusterLevel) {
+      this.centroidLerp = elapsed / 1000;
+    } else {
+      this.centroidLerp = 1 - elapsed / 1000;
+    }
+    if (this.graph != undefined) {
+      this.render(this.graph, this.abort.signal, start);
+    }
+    if (elapsed < 1000) {
+      requestAnimationFrame(s => this.centroidInterpolation(s));
+    }
+  }
+
+  public ngOnDestroy() {
     this.app.destroy();
   }
 
-  private ngAfterViewInit() {
+  public ngAfterViewInit() {
     this.app = new PIXI.Application();
     (async () => {
       await this.app.init({

@@ -498,4 +498,15 @@ export class Utility {
       }
       return depth;
     }
+
+    public static lerp(a: number, b: number, t: number): number {
+      return t * (b - a) + a;
+    }
+
+    public static lerpP(a: Point, b: Point, t: number): Point {
+      return {
+        x: t * (b.x - a.x) + a.x,
+        y: t * (b.y - a.y) + a.y
+       };
+    }
 }

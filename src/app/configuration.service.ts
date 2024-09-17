@@ -29,7 +29,7 @@ export class ConfigurationService {
   public level = new BehaviorSubject<number>(1);
   public layoutSettings = new BehaviorSubject<LayoutSettings>(DefaultLayout);
   public graphicsSettings = new BehaviorSubject<GraphicsSettings>(DefaultGraphics);
-  public centroids = new BehaviorSubject<[number, Point][]>([]);
+  public centroids = new BehaviorSubject<Map<number, Point>>(new Map());
   public history = new BehaviorSubject<GraphConfiguration[]>([structuredClone(this.configuration.value)]);
 
   private abort: AbortController = new AbortController();
@@ -224,7 +224,8 @@ export class ConfigurationService {
     for (const n of g.nodes) {
       n.data = {
         clusterID: cluster.id,
-        layoutPosition: { x:0, y: 0 },
+        layoutPosition: { x: 0, y: 0 },
+        renderPosition: { x: 0, y: 0 },
         samplingID: -1,
         attributes: []
       }
