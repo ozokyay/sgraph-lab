@@ -30,7 +30,7 @@ export class VisNodeLinkComponent implements AfterViewInit, OnDestroy {
   private transform = new d3.ZoomTransform(1, 0, 0);
   private zoom = d3.zoom();
   private nodeDict: Map<Node, PIXI.Graphics> = new Map();
-  private edgeGraphics?: PIXI.Graphics = undefined;
+  private edgeGraphics!: PIXI.Graphics;
   private graph?: EdgeList = undefined;
   private abort: AbortController = new AbortController();
   private clusterLevel: boolean = false;
@@ -162,11 +162,7 @@ export class VisNodeLinkComponent implements AfterViewInit, OnDestroy {
 
   private prepare(graph: EdgeList): EdgeList {
     // Prepare stage
-    this.stage?.destroy(true);
-    this.stage = new PIXI.Container({
-      isRenderGroup: true
-    });
-    this.app.stage.addChild(this.stage);
+    // this.stage?.destroy(true);
 
     // Prepare graph
     const settings = this.config.layoutSettings.value;
@@ -423,9 +419,7 @@ export class VisNodeLinkComponent implements AfterViewInit, OnDestroy {
     }
 
     // Render edges
-    this.edgeGraphics?.destroy();
-    this.edgeGraphics = new PIXI.Graphics();
-    this.stage.addChild(this.edgeGraphics);
+    this.edgeGraphics.clear();
     for (const edge of graph.edges) {
       const data = edge.data as EdgeData;
       const source = edge.source.data as NodeData;
@@ -509,6 +503,12 @@ export class VisNodeLinkComponent implements AfterViewInit, OnDestroy {
         antialias: true
       });
       this.container.nativeElement.appendChild(this.app.canvas);
+      this.stage = new PIXI.Container({
+        isRenderGroup: true
+      });
+      this.app.stage.addChild(this.stage);
+      this.edgeGraphics = new PIXI.Graphics();
+      this.stage.addChild(this.edgeGraphics);
       this.resize();
     })();
   }

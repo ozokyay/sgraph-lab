@@ -32,15 +32,18 @@ export class VisNodeLink2Component implements AfterViewInit, OnDestroy {
   private transform = new d3.ZoomTransform(1, 0, 0);
   private zoom = d3.zoom();
   private nodeDict: Map<Node, PIXI.Graphics> = new Map();
-  private edgeGraphics?: PIXI.Graphics = undefined;
+  private edgeGraphics!: PIXI.Graphics;
   private graph?: EdgeList = undefined;
   private abort: AbortController = new AbortController();
+  private edgeWidthScale!: d3.ScaleLinear<number, number, never>;
 
   @Input()
   public mode: "aggregate" | "minimap" = "aggregate";
 
   @ViewChild('container')
   private container!: ElementRef;
+  @ViewChild('canvas')
+  private canvas!: ElementRef;
   @ViewChild('tooltip')
   private tooltip!: ElementRef;
 
@@ -56,9 +59,12 @@ export class VisNodeLink2Component implements AfterViewInit, OnDestroy {
       this.graph = this.prepare(new EdgeList(config.definition.graph));
     });
     config.centroids.subscribe(() => {
-      this.abort.abort();
-      this.abort = new AbortController();
-      // Initial layout or render if no own layout
+      if (this.graph != undefined && this.graph.nodes.length > 0) {
+        this.abort.abort();
+        this.abort = new AbortController();
+        // Initial layout or render if no own layout
+        this.render(this.graph, this.abort.signal); 
+      }
     });
     config.selectedConnections.subscribe(async () => {
       if (config.configuration.value.instance.graph.nodes.length > 0 && this.graph != undefined) {
@@ -134,13 +140,6 @@ export class VisNodeLink2Component implements AfterViewInit, OnDestroy {
   }
 
   private prepare(graph: EdgeList): EdgeList {
-    // Prepare stage
-    this.stage?.destroy(true);
-    this.stage = new PIXI.Container({
-      isRenderGroup: true
-    });
-    this.app.stage.addChild(this.stage);
-
     // Add other levels somewhere else (max dist from others)?
     // Or minimap + circle packing??
     // Or just be limited not working across levels
@@ -179,10 +178,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnDestroy {
 
     for (const node of graph.nodes) {
       const gfx = new PIXI.Graphics({ zIndex: 1 });
-      let radius = this.nodeRadius;
-      if (this.config.graphicsSettings.value.nodeRadius) {
-        radius = radiusScale(measures.get(node.id)!.nodeCount);
-      }
+      const radius = radiusScale(measures.get(node.id)!.nodeCount);
       gfx.circle(0, 0, radius);
 
       // Alpha: This node has selected incident edges
@@ -206,6 +202,9 @@ export class VisNodeLink2Component implements AfterViewInit, OnDestroy {
       this.nodeDict.set(node, gfx);
       this.stage.addChild(gfx);
     }
+
+    const extent = d3.extent(graph.edges.map(e => (e.data as ClusterConnection).edgeCount)) as [number, number];
+    this.edgeWidthScale = d3.scaleLinear().domain(extent).range(this.edgeWidthRange);
   }
 
   private render(graph: EdgeList, signal: AbortSignal) {
@@ -238,37 +237,38 @@ export class VisNodeLink2Component implements AfterViewInit, OnDestroy {
     const settings = this.config.graphicsSettings.value;
 
     // Render edges
-    this.edgeGraphics?.destroy();
-    this.edgeGraphics = new PIXI.Graphics();
-    this.stage.addChild(this.edgeGraphics);
+    this.edgeGraphics?.clear();    
     for (const edge of graph.edges) {
       const data = edge.data as ClusterConnection;
       const source = edge.source.data as Cluster;
       const target = edge.target.data as Cluster;
+
+      const sourcePos = this.config.centroids.value.get(source.id)!;
+      const targetPos = this.config.centroids.value.get(source.id)!;
 
       // Transparency of unselected if there is an active selection
       // const alpha = !anySelection || selectedEdges.indexOf(edge) != -1 ? 1 : 0.2;
       const alpha = 1;
 
       const middle = {
-        x: (source.layoutPosition.x + target.layoutPosition.x) / 2,
-        y: (source.layoutPosition.y + target.layoutPosition.y) / 2
+        x: (sourcePos.x + targetPos.x) / 2,
+        y: (sourcePos.y + targetPos.y) / 2
       };
-      this.edgeGraphics.moveTo(source.layoutPosition.x * this.edgeScale, source.layoutPosition.y * this.edgeScale);
+      this.edgeGraphics.moveTo(sourcePos.x * this.edgeScale, sourcePos.y * this.edgeScale);
       this.edgeGraphics.lineTo(middle.x * this.edgeScale, middle.y * this.edgeScale);
-      this.edgeGraphics.stroke({width: 1, color: this.getNodeColor(edge.source, settings.edgeColoring), alpha: alpha });
+      this.edgeGraphics.stroke({width: this.edgeWidthScale(data.edgeCount), color: this.getNodeColor(edge.source, settings.edgeColoring), alpha: alpha });
       this.edgeGraphics.moveTo(middle.x * this.edgeScale, middle.y * this.edgeScale);
-      this.edgeGraphics.lineTo(target.layoutPosition.x * this.edgeScale, target.layoutPosition.y * this.edgeScale);
-      this.edgeGraphics.stroke({width: 1, color: this.getNodeColor(edge.target, settings.edgeColoring), alpha: alpha });
+      this.edgeGraphics.lineTo(targetPos.x * this.edgeScale, targetPos.y * this.edgeScale);
+      this.edgeGraphics.stroke({width: this.edgeWidthScale(data.edgeCount), color: this.getNodeColor(edge.target, settings.edgeColoring), alpha: alpha });
     }
     
     // Set node positions
     for (const node of graph.nodes) {
-      const data = node.data as NodeData;
+      const pos = this.config.centroids.value.get(node.id)!;
       let gfx = this.nodeDict.get(node)!;
       gfx.position = {
-        x: data.layoutPosition.x * this.edgeScale,
-        y: data.layoutPosition.y * this.edgeScale
+        x: pos.x * this.edgeScale,
+        y: pos.y * this.edgeScale
       };
 
       // Change fill/tint depending on selection
@@ -301,6 +301,12 @@ export class VisNodeLink2Component implements AfterViewInit, OnDestroy {
         antialias: true
       });
       this.container.nativeElement.appendChild(this.app.canvas);
+      this.stage = new PIXI.Container({
+        isRenderGroup: true
+      });
+      this.app.stage.addChild(this.stage);
+      this.edgeGraphics = new PIXI.Graphics();
+      this.stage.addChild(this.edgeGraphics);
       this.resize();
     })();
   }
