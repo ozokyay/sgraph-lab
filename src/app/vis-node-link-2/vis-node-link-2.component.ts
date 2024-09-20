@@ -36,6 +36,10 @@ export class VisNodeLink2Component implements AfterViewInit, OnDestroy {
   private graph?: EdgeList = undefined;
   private abort: AbortController = new AbortController();
   private edgeWidthScale!: d3.ScaleLinear<number, number, never>;
+  private circleSpacingNode?: Node = undefined;
+  private circleSpacingLerp: number = 0;
+  private circleSpacingLerpStart: number = 0;
+  private lastRenderTime: number = 0;
 
   @Input()
   public mode: "aggregate" | "minimap" = "aggregate";
@@ -81,6 +85,23 @@ export class VisNodeLink2Component implements AfterViewInit, OnDestroy {
       if (config.configuration.value.instance.graph.nodes.length > 0 && this.graph != undefined) {
         this.createNodes(this.graph);
         this.render(this.graph, this.abort.signal);
+      }
+    });
+    // A) Different kind of selected cluster
+    // B) Different list mode as well for sync
+    //    - based on active tab
+    //    - no cluster creation/edit?
+    //    - Horizontal split?
+    //    - Predfined layout: Tabs or Combobox Vis select
+    //    - Free layout: Golden layout - maybe not compatible with angular
+    //    - highlight in NL
+    //    - stronger highlight in list?
+    //    - Adv NL vs mat: understanding edits (smooth anim vs reorder)
+    config.selectedCluster.subscribe(c => {
+      // Change circleSpacing atom sim stuff
+      const highlight = false;
+      if (c != undefined && highlight) {
+
       }
     });
     config.level.subscribe(() => {
@@ -207,7 +228,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnDestroy {
     this.edgeWidthScale = d3.scaleLinear().domain(extent).range(this.edgeWidthRange);
   }
 
-  private render(graph: EdgeList, signal: AbortSignal) {
+  private render(graph: EdgeList, signal: AbortSignal, timestamp?: number) {
     if (graph == undefined) {
       console.log("No graph");
       return;
@@ -215,6 +236,14 @@ export class VisNodeLink2Component implements AfterViewInit, OnDestroy {
 
     if (signal.aborted) {
       return;
+    }
+
+    if (timestamp != undefined) {
+      if (timestamp == this.lastRenderTime) {
+        return;
+      } else {
+        this.lastRenderTime = timestamp;
+      }
     }
 
     // Zoom and pan
@@ -243,8 +272,12 @@ export class VisNodeLink2Component implements AfterViewInit, OnDestroy {
       const source = edge.source.data as Cluster;
       const target = edge.target.data as Cluster;
 
+      if (data.edgeCount == 0) {
+        return;
+      }
+
       const sourcePos = this.config.centroids.value.get(source.id)!;
-      const targetPos = this.config.centroids.value.get(source.id)!;
+      const targetPos = this.config.centroids.value.get(target.id)!;
 
       // Transparency of unselected if there is an active selection
       // const alpha = !anySelection || selectedEdges.indexOf(edge) != -1 ? 1 : 0.2;
@@ -256,10 +289,11 @@ export class VisNodeLink2Component implements AfterViewInit, OnDestroy {
       };
       this.edgeGraphics.moveTo(sourcePos.x * this.edgeScale, sourcePos.y * this.edgeScale);
       this.edgeGraphics.lineTo(middle.x * this.edgeScale, middle.y * this.edgeScale);
-      this.edgeGraphics.stroke({width: this.edgeWidthScale(data.edgeCount), color: this.getNodeColor(edge.source, settings.edgeColoring), alpha: alpha });
+      // this.getNodeColor(edge.source, settings.edgeColoring)
+      this.edgeGraphics.stroke({width: this.edgeWidthScale(data.edgeCount), color: "black", alpha: alpha });
       this.edgeGraphics.moveTo(middle.x * this.edgeScale, middle.y * this.edgeScale);
       this.edgeGraphics.lineTo(targetPos.x * this.edgeScale, targetPos.y * this.edgeScale);
-      this.edgeGraphics.stroke({width: this.edgeWidthScale(data.edgeCount), color: this.getNodeColor(edge.target, settings.edgeColoring), alpha: alpha });
+      this.edgeGraphics.stroke({width: this.edgeWidthScale(data.edgeCount), color: "black", alpha: alpha });
     }
     
     // Set node positions
@@ -285,6 +319,24 @@ export class VisNodeLink2Component implements AfterViewInit, OnDestroy {
       return cluster.color;
     } else {
       return 0x000000
+    }
+  }
+
+  private circleSpacingInterpolation(start: number) {
+    if (this.circleSpacingLerpStart == 0) {
+      this.circleSpacingLerpStart = start + (this.circleSpacingNode ? this.circleSpacingLerp : 1 - this.circleSpacingLerp) * 1000;
+    }
+    const elapsed = Math.min(1000, start - this.circleSpacingLerpStart); // milliseconds
+    if (this.circleSpacingLerp) {
+      this.circleSpacingLerp = elapsed / 1000;
+    } else {
+      this.circleSpacingLerp = 1 - elapsed / 1000;
+    }
+    if (this.graph != undefined) {
+      this.render(this.graph, this.abort.signal, start);
+    }
+    if (elapsed < 1000) {
+      requestAnimationFrame(s => this.circleSpacingInterpolation(s));
     }
   }
 
