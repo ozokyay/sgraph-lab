@@ -9,6 +9,7 @@ import Rand from 'rand-seed';
 import { Cluster } from '../cluster';
 import { Point } from '../point';
 import { ClusterConnection } from '../cluster-connection';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-vis-node-link-2',
@@ -51,8 +52,12 @@ export class VisNodeLink2Component implements AfterViewInit, OnDestroy {
   @ViewChild('tooltip')
   private tooltip!: ElementRef;
 
-  constructor(private config: ConfigurationService) {
-    config.configuration.subscribe(config => {
+  private subscriptions: Subscription[] = [];
+
+  constructor(private config: ConfigurationService) { }
+
+  private init() {
+    this.subscriptions.push(this.config.configuration.subscribe(config => {
       // Even anything to do here? Only act on centroids?
       // => Minimap needs centroids
       // => Simple higher levels need centroids
@@ -61,32 +66,32 @@ export class VisNodeLink2Component implements AfterViewInit, OnDestroy {
       // => A) implement circle packing twice, layout per cluster?
       // => B) circle packing only here
       this.graph = this.prepare(new EdgeList(config.definition.graph));
-    });
-    config.centroids.subscribe(() => {
+    }));
+    this.subscriptions.push(this.config.centroids.subscribe(() => {
       if (this.graph != undefined && this.graph.nodes.length > 0) {
         this.abort.abort();
         this.abort = new AbortController();
         // Initial layout or render if no own layout
         this.render(this.graph, this.abort.signal); 
       }
-    });
-    config.selectedConnections.subscribe(async () => {
-      if (config.configuration.value.instance.graph.nodes.length > 0 && this.graph != undefined) {
+    }));
+    this.subscriptions.push(this.config.selectedConnections.subscribe(async () => {
+      if (this.config.configuration.value.instance.graph.nodes.length > 0 && this.graph != undefined) {
         this.createNodes(this.graph);
         this.render(this.graph, this.abort.signal);
       }
-    });
-    config.layoutSettings.subscribe(async () => {
-      if (config.configuration.value.instance.graph.nodes.length > 0) {
+    }));
+    this.subscriptions.push(this.config.layoutSettings.subscribe(async () => {
+      if (this.config.configuration.value.instance.graph.nodes.length > 0) {
         // Only for manual maybe
       }
-    });
-    config.graphicsSettings.subscribe(() => {
-      if (config.configuration.value.instance.graph.nodes.length > 0 && this.graph != undefined) {
+    }));
+    this.subscriptions.push(this.config.graphicsSettings.subscribe(() => {
+      if (this.config.configuration.value.instance.graph.nodes.length > 0 && this.graph != undefined) {
         this.createNodes(this.graph);
         this.render(this.graph, this.abort.signal);
       }
-    });
+    }));
     // A) Different kind of selected cluster
     // B) Different list mode as well for sync
     //    - based on active tab
@@ -97,14 +102,14 @@ export class VisNodeLink2Component implements AfterViewInit, OnDestroy {
     //    - highlight in NL
     //    - stronger highlight in list?
     //    - Adv NL vs mat: understanding edits (smooth anim vs reorder)
-    config.selectedCluster.subscribe(c => {
+    this.subscriptions.push(this.config.selectedCluster.subscribe(c => {
       // Change circleSpacing atom sim stuff
       const highlight = false;
       if (c != undefined && highlight) {
 
       }
-    });
-    config.level.subscribe(() => {
+    }));
+    this.subscriptions.push(this.config.level.subscribe(() => {
 
       // Implementation
       // - create nodes from centroids
@@ -157,7 +162,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnDestroy {
       // Gravity for every wanted centroid position
 
       // This could actually be it...
-    });
+    }));
   }
 
   private prepare(graph: EdgeList): EdgeList {
@@ -231,6 +236,10 @@ export class VisNodeLink2Component implements AfterViewInit, OnDestroy {
   private render(graph: EdgeList, signal: AbortSignal, timestamp?: number) {
     if (graph == undefined) {
       console.log("No graph");
+      return;
+    }
+
+    if (this.app.canvas == undefined) {
       return;
     }
 
@@ -342,6 +351,11 @@ export class VisNodeLink2Component implements AfterViewInit, OnDestroy {
 
   public ngOnDestroy() {
     this.app.destroy();
+    this.abort.abort();
+    for (const sub of this.subscriptions) {
+      sub.unsubscribe();
+    }
+    this.subscriptions = [];
   }
 
   public ngAfterViewInit() {
@@ -360,6 +374,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnDestroy {
       this.edgeGraphics = new PIXI.Graphics();
       this.stage.addChild(this.edgeGraphics);
       this.resize();
+      this.init();
     })();
   }
 

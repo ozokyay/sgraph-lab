@@ -19,6 +19,7 @@ import { TabInformationDiffusionComponent } from "./tab-information-diffusion/ta
 import { VisMatrixComponent } from "./vis-matrix/vis-matrix.component";
 import { VisLevelComponent } from "./vis-level/vis-level.component";
 import { VisNodeLink2Component } from './vis-node-link-2/vis-node-link-2.component';
+import { VisContainerComponent } from "./vis-container/vis-container.component";
 
 @Component({
     selector: 'app-root',
@@ -42,17 +43,21 @@ import { VisNodeLink2Component } from './vis-node-link-2/vis-node-link-2.compone
     VisNodeLink2Component,
     TabInformationDiffusionComponent,
     VisMatrixComponent,
-    VisLevelComponent
+    VisLevelComponent,
+    VisContainerComponent
 ]
 })
 export class AppComponent implements OnInit {
 
   public pyodideReady = false;
   public selectedTabIndex = 0;
-  public dragging = false;
+  public dragging: boolean[] = [false, false];
+  
+  @ViewChild('containerPrimary')
+  private containerPrimary!: VisContainerComponent;
 
-  @ViewChild('nodeLinkDiagram')
-  private nodeLinkDiagram!: VisNodeLinkComponent;
+  @ViewChild('containerSecondary')
+  private containerSecondary!: VisContainerComponent;
   
   constructor(public python: PythonService) {
     
@@ -67,18 +72,14 @@ export class AppComponent implements OnInit {
     this.pyodideReady = true;
   }
 
-  public onDragStart() {
-    this.dragging = true;
-  }
-
-  public onDragEnd() {
-    this.dragging = false;
-  }
-
   @HostListener('document:mousemove')
   onMouseMove() {
-    if (this.dragging) {
-      this.nodeLinkDiagram.resize();
+    if (this.dragging[0]) {
+      this.containerPrimary.resize();
+      this.containerSecondary.resize();
+    }
+    if (this.dragging[1]) {
+      this.containerSecondary.resize();
     }
   }
 }

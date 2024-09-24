@@ -8,6 +8,7 @@ import { Utility } from '../utility';
 import Rand from 'rand-seed';
 import { Cluster } from '../cluster';
 import { Point } from '../point';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-vis-node-link',
@@ -38,6 +39,8 @@ export class VisNodeLinkComponent implements AfterViewInit, OnDestroy {
   private centroidLerpStart: number = 0;
   private lastRenderTime: number = 0;
 
+  private subscriptions: Subscription[] = [];
+
   @ViewChild('container')
   private container!: ElementRef;
   @ViewChild('tooltip')
@@ -48,7 +51,13 @@ export class VisNodeLinkComponent implements AfterViewInit, OnDestroy {
 
   constructor(private config: ConfigurationService) {
     this.initWebGPU();
-    config.configuration.subscribe(async config => {
+  }
+
+  private init() {
+    const ready = () => this.graph != undefined &&
+                        this.graph.nodes.length > 0 &&
+                        this.config.centroids.value.size == this.config.configuration.value.definition.graph.nodes.size;
+    this.subscriptions.push(this.config.configuration.subscribe(async config => {
       if (this.layout == undefined) {
         if (config.instance.graph.nodes.length > 0) {
           console.log("Layout initialization failed.");
@@ -60,84 +69,38 @@ export class VisNodeLinkComponent implements AfterViewInit, OnDestroy {
       this.abort = new AbortController();
       this.graph = this.prepare(config.instance.graph);
       await this.runLayout(this.graph, this.abort.signal);
-    });
-    config.selectedConnections.subscribe(async () => {
-      if (config.configuration.value.instance.graph.nodes.length > 0 && this.graph != undefined) {
-        this.createNodes(this.graph);
-        this.render(this.graph, this.abort.signal);
+    }));
+    this.subscriptions.push(this.config.selectedConnections.subscribe(async () => {
+      if (ready()) {
+        this.createNodes(this.graph!);
+        this.render(this.graph!, this.abort.signal);
       }
-    });
-    config.layoutSettings.subscribe(async () => {
-      if (config.configuration.value.instance.graph.nodes.length > 0) {
+    }));
+    this.subscriptions.push(this.config.layoutSettings.subscribe(async () => {
+      if (this.config.configuration.value.instance.graph.nodes.length > 0) {
         this.abort.abort();
         this.abort = new AbortController();
-        this.graph = this.prepare(config.configuration.value.instance.graph);
+        this.graph = this.prepare(this.config.configuration.value.instance.graph);
         await this.runLayout(this.graph, this.abort.signal); // Alternative: layout with full graph and don't show all (no performance benefit)
       }
-    });
-    config.graphicsSettings.subscribe(s => {
-      if (config.configuration.value.instance.graph.nodes.length > 0 && this.graph != undefined) {
+    }));
+    this.subscriptions.push(this.config.graphicsSettings.subscribe(s => {
+      if (ready()) {
         if (this.clusterLevel != s.clusterLevel) {
           this.clusterLevel = s.clusterLevel;
           this.centroidLerpStart = 0;
           requestAnimationFrame(s => this.centroidInterpolation(s));
         }
-        this.createNodes(this.graph);
-        this.render(this.graph, this.abort.signal);
+        this.createNodes(this.graph!);
+        this.render(this.graph!, this.abort.signal);
       }
-    });
-    config.selectedDiffusionSeeds.subscribe(() => {
-      if (this.graph != undefined && this.graph.nodes.length > 0 && this.config.centroids.value.size == this.config.configuration.value.definition.graph.nodes.size) {
-        this.createNodes(this.graph);
-        this.render(this.graph, this.abort.signal);
+    }));
+    this.subscriptions.push(this.config.selectedDiffusionSeeds.subscribe(() => {
+      if (ready()) {
+        this.createNodes(this.graph!);
+        this.render(this.graph!, this.abort.signal);
       }
-    });
-    config.level.subscribe(() => {
-
-      // Implementation
-      // - create nodes from centroids
-      // - maybe prefer old centroid computation: gives centroids for higher order clusters
-      // - 
-      // - no layout pass on level change
-
-      // Idea: need layout centroids, so always compute layout but change how nodes are rendered
-      // - Maybe don't add nodes to stage
-      // - Maybe extra SVG vis => send centroids to service or even compute layout there
-      //   - New vis needs something like edge strength
-      //   - New vis Might need more node encoding
-      //   - New vis does not have to scale (hopefully?)
-      //   - Ways to skip to minimap OR: morph into minimap for better overview
-      //   - BUT: No smooth transition to node display in this arrangement - is that a problem or not?
-
-      // Risk assessment:
-      // - Can do anything in SVG
-      // - Limits in raster: gradients?
-
-      // Advantages of raster:
-      // - only change nodes/render function
-      // - no extra d3/svg handling
-      // - maybe make more modular (starting positio, layout)
-
-      // Options
-      // A) Sync with matrix, aggregate lower levels into higher ones, but need one lower?
-      // B) Switch between nodes/clusters
-
-      // Convex hull when?
-
-      // Minimap
-      // - Specialized for 1:N
-      // - Non-overlapping
-
-      // Adaptive NL
-      // - Incorporates everything into one
-      // - Would be nice if not separate vis => can toggle nodes to clusters => how to draw? => any less confusing/benefit?
-
-      // 1. Normal NL
-      // 2. Aggregated levels
-      // 3. Tree
-      // 4. Minimap, ausblenden oder fade
-      // 5. Circle packing
-    });
+    }));
   }
 
   private async initWebGPU() {
@@ -492,6 +455,12 @@ export class VisNodeLinkComponent implements AfterViewInit, OnDestroy {
 
   public ngOnDestroy() {
     this.app.destroy();
+    this.abort.abort();
+    this.device?.destroy();
+    for (const sub of this.subscriptions) {
+      sub.unsubscribe();
+    }
+    this.subscriptions = [];
   }
 
   public ngAfterViewInit() {
@@ -510,6 +479,7 @@ export class VisNodeLinkComponent implements AfterViewInit, OnDestroy {
       this.edgeGraphics = new PIXI.Graphics();
       this.stage.addChild(this.edgeGraphics);
       this.resize();
+      this.init();
     })();
   }
 
@@ -517,6 +487,10 @@ export class VisNodeLinkComponent implements AfterViewInit, OnDestroy {
   public resize(): void {
     this.width = this.container.nativeElement.offsetWidth;
     this.height = this.container.nativeElement.offsetHeight;
+
+    this.width = 300;
+    this.height = 300;
+    
     this.app.renderer.resize(this.width * window.devicePixelRatio, this.height * window.devicePixelRatio);
     this.app.canvas.style!.width = `${this.width}px`;
     this.app.canvas.style!.height = `${this.height}px`;

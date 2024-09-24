@@ -1,4 +1,4 @@
-import { Component, ElementRef, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnDestroy, ViewChild } from '@angular/core';
 import { ConfigurationService } from '../configuration.service';
 import * as d3 from 'd3';
 import { Cluster } from '../cluster';
@@ -6,6 +6,7 @@ import { AdjacencyList, Edge, Node } from '../graph';
 import { Utility } from '../utility';
 import { ClusterConnection, EmptyConnection } from '../cluster-connection';
 import { MGGenerator } from '../generators';
+import { Subscription } from 'rxjs';
 
 interface MatrixCell {
   cx: Node,
@@ -27,7 +28,7 @@ interface MatrixCell {
   templateUrl: './vis-matrix.component.html',
   styleUrl: './vis-matrix.component.css'
 })
-export class VisMatrixComponent {
+export class VisMatrixComponent implements AfterViewInit, OnDestroy {
 
 
   // TODO:
@@ -60,31 +61,33 @@ export class VisMatrixComponent {
   yScale!: d3.ScaleBand<string>;
   legScale!: d3.ScaleLogarithmic<number, number>;
 
-  initialized = false;
+  private subscriptions: Subscription[] = [];
 
   // Margin and aspect ratio
   margin = { top: 10, right: 10, bottom: 80, left: 80 };
   width = 300 - this.margin.left - this.margin.right;
   height = 300 - this.margin.top - this.margin.bottom;
 
-  constructor(private config: ConfigurationService) {
-    config.configuration.subscribe(cfg => {
+  constructor(private config: ConfigurationService) {}
+
+  private init() {
+    this.subscriptions.push(this.config.configuration.subscribe(cfg => {
       // Render new graph
       this.render(this.config.configuration.value.definition.graph, this.config.level.value);
-    });
-    config.history.subscribe(cfg => {
+    }));
+    this.subscriptions.push(this.config.history.subscribe(cfg => {
       // Render if renamed
       if (cfg[cfg.length - 1].message.startsWith("Rename cluster")) {
         this.render(this.config.configuration.value.definition.graph, this.config.level.value);
       }
-    });
-    config.selectedConnections.subscribe(c => {
+    }));
+    this.subscriptions.push(this.config.selectedConnections.subscribe(c => {
       // This also handles level change
       this.render(this.config.configuration.value.definition.graph, this.config.level.value);
-    });
+    }));
   }
 
-  ngAfterViewInit(): void {
+  public ngAfterViewInit(): void {
     this.xScale = d3.scaleBand().range([0, this.width]);
     this.yScale = d3.scaleBand().range([this.height, 0]);
 
@@ -161,15 +164,17 @@ export class VisMatrixComponent {
       .attr("transform", `translate(5, 20)`) 
       .call(d3.axisBottom(this.legScale));
 
-    this.initialized = true;
-    this.render(this.config.configuration.value.definition.graph, this.config.level.value);
+    this.init();
+  }
+
+  public ngOnDestroy() {
+    for (const sub of this.subscriptions) {
+      sub.unsubscribe();
+    }
+    this.subscriptions = [];
   }
 
   render(graph: AdjacencyList, level: number) {
-    if (!this.initialized) {
-      return;
-    }
-
     const levels: number[] = [];
     let nodes = graph.getNodes().filter(v => (v.data as Cluster).parent == -1);
     nodes = this.bfs(nodes.map(v => [v, 0]), level, levels);

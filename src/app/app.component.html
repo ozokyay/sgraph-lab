@@ -2,20 +2,25 @@
   <h3 class="center">Loading Pyodide...</h3>
 </div>
 <div id="container">
-  <as-split #vertical unit="percent" direction="horizontal" (dragStart)="onDragStart()" (dragEnd)="onDragEnd()" restrictMove="true">
+  <as-split #vertical unit="percent" direction="horizontal" (dragStart)="dragging[0] = true" (dragEnd)="dragging[0] = false" restrictMove="true">
     <as-split-area size="20">
-      <app-vis-node-link-2></app-vis-node-link-2>
-    </as-split-area>
-    <as-split-area size="20">
-      <div class="padded">
-        <app-vis-level />
-        <h3>Cluster Connections</h3>
-        <app-vis-matrix />
-        <app-tab-cluster-list />
-      </div>
+      <as-split unit="percent" direction="vertical" restrictMove="true" (dragStart)="dragging[1] = true" (dragStop)="dragging[1] = false">
+        <as-split-area size="50">
+          <!-- height: calc(100% - 20px) -->
+          <div class="padded">
+            <app-vis-level />
+            <app-vis-container #containerSecondary/>
+          </div>
+        </as-split-area>
+        <as-split-area size="50">
+          <div class="padded">
+            <app-tab-cluster-list />
+          </div>
+        </as-split-area>
+      </as-split>
     </as-split-area>
     <as-split-area size="50">
-      <app-vis-node-link #nodeLinkDiagram></app-vis-node-link>
+      <app-vis-container #containerPrimary></app-vis-container>
     </as-split-area>
     <as-split-area size="*" class="noscroll">
       <mat-tab-group class="scroll" (selectedTabChange)="onSelectedTabChange()" [(selectedIndex)]="selectedTabIndex">

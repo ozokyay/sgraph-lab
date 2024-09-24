@@ -1,0 +1,16 @@
+<mat-form-field>
+    <mat-label>Visualization</mat-label>
+    <mat-select #selectVis value="matrix">
+        <mat-option value="matrix">Connections Matrix</mat-option>
+        <mat-option value="circle-space">Connections Node-Link Diagram</mat-option>
+        <mat-option value="node-link">Result Node-Link Diagram</mat-option>
+    </mat-select>
+</mat-form-field>
+<br>
+@if(selectVis.value == "matrix") {
+    <app-vis-matrix #matrix class="fit-height"></app-vis-matrix>
+} @else if (selectVis.value == "circle-space") {
+    <app-vis-node-link-2 #nodeLink2  class="fit-height"></app-vis-node-link-2>
+} @else if (selectVis.value == "node-link") {
+    <app-vis-node-link #nodeLink class="fit-height"></app-vis-node-link>
+}
