@@ -1,4 +1,5 @@
 .fit-height {
     display: block;
-    height: calc(100% - 76px);
+    flex: 1;
+    overflow: hidden;
 }

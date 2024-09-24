@@ -57,6 +57,16 @@ export class VisNodeLinkComponent implements AfterViewInit, OnDestroy {
     const ready = () => this.graph != undefined &&
                         this.graph.nodes.length > 0 &&
                         this.config.centroids.value.size == this.config.configuration.value.definition.graph.nodes.size;
+
+    // Moving layout to service:
+    // - Same events to trigger pass
+    // - Frame output event (sampled, layouted graph ready to be rendered)
+
+    // This component only renders: graph, connections (highlight), graphicsSettings, diffusionSeeds
+
+    // Alternative hack: always keep this on, fade in/out
+    // Unclean: Different results in different vis is very unprofessional
+
     this.subscriptions.push(this.config.configuration.subscribe(async config => {
       if (this.layout == undefined) {
         if (config.instance.graph.nodes.length > 0) {
@@ -485,12 +495,8 @@ export class VisNodeLinkComponent implements AfterViewInit, OnDestroy {
 
   @HostListener('window:resize')
   public resize(): void {
-    this.width = this.container.nativeElement.offsetWidth;
-    this.height = this.container.nativeElement.offsetHeight;
-
-    this.width = 300;
-    this.height = 300;
-    
+    this.width = this.container.nativeElement.clientWidth;
+    this.height = this.container.nativeElement.clientHeight;
     this.app.renderer.resize(this.width * window.devicePixelRatio, this.height * window.devicePixelRatio);
     this.app.canvas.style!.width = `${this.width}px`;
     this.app.canvas.style!.height = `${this.height}px`;

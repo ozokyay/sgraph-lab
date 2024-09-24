@@ -52,6 +52,9 @@ export class ConfigurationService {
     // Publish
     this.configuration.next(this.configuration.value);
 
+    // Layout
+    // TODO
+
     // Slow measures
     t = performance.now();
     this.abort.abort();
