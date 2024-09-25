@@ -20,8 +20,8 @@ import { MatButtonModule } from '@angular/material/button';
 })
 export class TabNlSettingsComponent {
 
-  public layoutSettings: LayoutSettings = DefaultLayout;
-  public graphicsSettings: GraphicsSettings = DefaultGraphics;
+  public layoutSettings: LayoutSettings = structuredClone(DefaultLayout);
+  public graphicsSettings: GraphicsSettings = structuredClone(DefaultGraphics);
 
   constructor(private config: ConfigurationService) {}
 

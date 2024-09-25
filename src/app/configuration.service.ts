@@ -11,6 +11,7 @@ import { DefaultGraphics, DefaultLayout, GraphicsSettings, LayoutSettings } from
 import { PythonService } from './python.service';
 import { Uniform10 } from './series';
 import { Point } from './point';
+import { ForceDirected } from './graphwagu/webgpu/force_directed';
 
 @Injectable({
   providedIn: 'root'
@@ -29,12 +30,23 @@ export class ConfigurationService {
   public level = new BehaviorSubject<number>(1);
   public layoutSettings = new BehaviorSubject<LayoutSettings>(DefaultLayout);
   public graphicsSettings = new BehaviorSubject<GraphicsSettings>(DefaultGraphics);
+  public sample = new BehaviorSubject<EdgeList>({ nodes: [], edges: [] });
   public centroids = new BehaviorSubject<Map<number, Point>>(new Map());
+  public forceDirectedLayout = new BehaviorSubject<EdgeList>({ nodes: [], edges: [] });
   public history = new BehaviorSubject<GraphConfiguration[]>([structuredClone(this.configuration.value)]);
 
   private abort: AbortController = new AbortController();
+  private layout?: ForceDirected;
 
-  constructor(private python: PythonService) {}
+  constructor(private python: PythonService) {
+    this.initWebGPU();
+    this.layoutSettings.subscribe(l => {
+      if (l === DefaultLayout) {
+        return;
+      }
+      this.runLayout(this.configuration.value.instance.graph, this.layout, this.abort.signal);
+    });
+  }
    
   public async update(message: string) {
     this.configuration.value.message = message;
@@ -52,13 +64,15 @@ export class ConfigurationService {
     // Publish
     this.configuration.next(this.configuration.value);
 
+    // Slow stuff ahead
+    this.abort.abort();
+    this.abort = new AbortController();
+
     // Layout
-    // TODO
+    this.runLayout(this.configuration.value.instance.graph, this.layout, this.abort.signal);
 
     // Slow measures
     t = performance.now();
-    this.abort.abort();
-    this.abort = new AbortController();
     await this.computeSlowMeasures(this.abort.signal);
     console.log(`Slow measures took ${performance.now() - t} ms`);
     this.measures.next(this.measures.value);
@@ -408,5 +422,156 @@ export class ConfigurationService {
       if (signal.aborted) { return; }
       this.configuration.value.instance.clusterMeasures.set(cluster, measures);
     }
+  }
+
+  private async initWebGPU() {
+    if (!navigator.gpu) {
+      alert("NetworkBuilder requires WebGPU. You may be using an incompatible Browser.");
+      return;
+    }
+    const adapter = (await navigator.gpu.requestAdapter({ powerPreference: "high-performance" }))!;
+    if (!adapter) {
+      alert("NetworkBuilder requires WebGPU. You may be using an incompatible Browser.");
+      return;
+    }
+    const device = await adapter.requestDevice({
+      requiredLimits: {
+          "maxStorageBufferBindingSize": adapter.limits.maxStorageBufferBindingSize,
+          "maxComputeWorkgroupsPerDimension": adapter.limits.maxComputeWorkgroupsPerDimension
+      }
+    });
+    this.layout = new ForceDirected(device);
+    console.log("Layout intialized.");
+  }
+
+  private async runLayout(graph: EdgeList, layout: ForceDirected | undefined, signal: AbortSignal) {
+    if (layout == undefined) {
+      console.log("WebGPU initialization failed.");
+      return;
+    }
+
+    const layoutSettings = this.layoutSettings.value;
+    Utility.rand = new Rand(this.configuration.value.definition.seed.toString());
+    if (layoutSettings.sampling < 1 || true) {
+      graph = Utility.sampleRandomEdges(graph, layoutSettings.sampling * graph.edges.length);
+    }
+    this.sample.next(graph);
+
+    if (graph.nodes.length == 0) {
+      this.forceDirectedLayout.next(graph);
+      return;
+    }
+
+    const nodeData: Array<number> = [];
+    const edgeData: Array<number> = [];
+    const sourceEdges: Array<number> = [];
+    const targetEdges: Array<number> = [];
+
+    for (let i = 0; i < graph.nodes.length; i++) {
+      const node = graph.nodes[i];
+      const data = node.data as NodeData;
+      data.samplingID = i;
+      if (data.layoutPosition.x == 0 && data.layoutPosition.y == 0) {
+        data.layoutPosition = {
+          x: Utility.rand.next() - 0.5,
+          y: Utility.rand.next() - 0.5
+        }
+      }
+      nodeData.push(0.0, data.layoutPosition.x, data.layoutPosition.y, 1.0);
+    }
+    for (let i = 0; i < graph.edges.length; i++) {
+      const source = graph.edges[i].source.data as NodeData;
+      const target = graph.edges[i].target.data as NodeData;
+      edgeData.push(source.samplingID, target.samplingID);
+    }
+
+    graph.edges.sort((a, b) => (a.source.data as NodeData).samplingID - (b.source.data as NodeData).samplingID);
+    for (let i = 0; i < graph.edges.length; i++) {
+      const source = graph.edges[i].source.data as NodeData;
+      const target = graph.edges[i].target.data as NodeData;
+      sourceEdges.push(source.samplingID, target.samplingID);
+    }
+    graph.edges.sort((a, b) => (a.target.data as NodeData).samplingID - (b.target.data as NodeData).samplingID);
+    for (let i = 0; i < graph.edges.length; i++) {
+      const source = graph.edges[i].source.data as NodeData;
+      const target = graph.edges[i].target.data as NodeData;
+      targetEdges.push(source.samplingID, target.samplingID);
+    }
+
+    const nodeDataBuffer = layout.device.createBuffer({
+      size: nodeData.length * 4,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
+      mappedAtCreation: true,
+    });
+    new Float32Array(nodeDataBuffer.getMappedRange()).set(nodeData);
+    nodeDataBuffer.unmap();
+    const edgeDataBuffer = layout.device.createBuffer({
+      size: edgeData.length * 4,
+      usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE,
+      mappedAtCreation: true
+    });
+    new Uint32Array(edgeDataBuffer.getMappedRange()).set(edgeData);
+    edgeDataBuffer.unmap();
+
+    const edgeLength = edgeData.length;
+    const nodeLength = nodeData.length / 4;
+
+    const sourceEdgeDataBuffer = layout.device.createBuffer({
+      size: edgeData.length * 4,
+      usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE,
+      mappedAtCreation: true
+    });
+    new Uint32Array(sourceEdgeDataBuffer.getMappedRange()).set(sourceEdges);
+    sourceEdgeDataBuffer.unmap();
+    const targetEdgeDataBuffer = layout.device.createBuffer({
+      size: edgeData.length * 4,
+      usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE,
+      mappedAtCreation: true
+    });
+    new Uint32Array(targetEdgeDataBuffer.getMappedRange()).set(targetEdges);
+    targetEdgeDataBuffer.unmap();
+
+    const frame = (positions: number[], timestamp: number) => {
+      // Assemble node data
+      for (let i = 0; i < 4 * nodeLength; i = i + 4) {
+        (graph.nodes[i / 4].data as NodeData).layoutPosition = {
+            x: positions[i + 1],
+            y: positions[i + 2]
+        };
+      }
+
+      // Update centroids
+      this.centroids.value.clear();
+      for (const [id, cluster] of this.configuration.value.instance.clusters) {
+        let c: Point = { x: 0, y: 0 };
+        let i = 0;
+        for (const node of cluster.nodes) {
+          const data = node.data as NodeData;
+          if (data.samplingID != -1) {
+            c.x += data.layoutPosition.x;
+            c.y += data.layoutPosition.y;
+            i++;
+          }
+        }
+        c.x /= i;
+        c.y /= i;
+        if (i > 0) {
+          this.centroids.value.set(id, c);
+        }
+      }
+      this.centroids.next(this.centroids.value);
+
+      // Output new frame
+      this.forceDirectedLayout.next(graph);
+    };
+
+    await layout.runForces(
+      nodeDataBuffer, edgeDataBuffer,
+      nodeLength, edgeLength,
+      0.5, 0.05 + Math.log(1 + layoutSettings.gravity / 100), layoutSettings.iterations, layoutSettings.gravity,
+      sourceEdgeDataBuffer, targetEdgeDataBuffer, frame, signal
+    );
+
+    // Layout finished
   }
 }

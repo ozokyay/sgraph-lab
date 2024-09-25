@@ -32,7 +32,6 @@ export class VisNodeLinkComponent implements AfterViewInit, OnDestroy {
   private zoom = d3.zoom();
   private nodeDict: Map<Node, PIXI.Graphics> = new Map();
   private edgeGraphics!: PIXI.Graphics;
-  private graph?: EdgeList = undefined;
   private abort: AbortController = new AbortController();
   private clusterLevel: boolean = false;
   private centroidLerp: number = 0;
@@ -46,108 +45,40 @@ export class VisNodeLinkComponent implements AfterViewInit, OnDestroy {
   @ViewChild('tooltip')
   private tooltip!: ElementRef;
 
-  private device?: GPUDevice = undefined;
-  private layout?: ForceDirected = undefined;
-
-  constructor(private config: ConfigurationService) {
-    this.initWebGPU();
-  }
+  constructor(private config: ConfigurationService) {}
 
   private init() {
-    const ready = () => this.graph != undefined &&
-                        this.graph.nodes.length > 0 &&
-                        this.config.centroids.value.size == this.config.configuration.value.definition.graph.nodes.size;
-
-    // Moving layout to service:
-    // - Same events to trigger pass
-    // - Frame output event (sampled, layouted graph ready to be rendered)
-
-    // This component only renders: graph, connections (highlight), graphicsSettings, diffusionSeeds
-
-    // Alternative hack: always keep this on, fade in/out
-    // Unclean: Different results in different vis is very unprofessional
-
-    this.subscriptions.push(this.config.configuration.subscribe(async config => {
-      if (this.layout == undefined) {
-        if (config.instance.graph.nodes.length > 0) {
-          console.log("Layout initialization failed.");
-        }
-        return;
-      }
-
+    this.subscriptions.push(this.config.sample.subscribe(graph => {
       this.abort.abort();
       this.abort = new AbortController();
-      this.graph = this.prepare(config.instance.graph);
-      await this.runLayout(this.graph, this.abort.signal);
+      this.createNodes(graph);
+    }));
+    this.subscriptions.push(this.config.forceDirectedLayout.subscribe(graph => {
+      this.render(graph, this.abort.signal);
     }));
     this.subscriptions.push(this.config.selectedConnections.subscribe(async () => {
-      if (ready()) {
-        this.createNodes(this.graph!);
-        this.render(this.graph!, this.abort.signal);
-      }
-    }));
-    this.subscriptions.push(this.config.layoutSettings.subscribe(async () => {
-      if (this.config.configuration.value.instance.graph.nodes.length > 0) {
-        this.abort.abort();
-        this.abort = new AbortController();
-        this.graph = this.prepare(this.config.configuration.value.instance.graph);
-        await this.runLayout(this.graph, this.abort.signal); // Alternative: layout with full graph and don't show all (no performance benefit)
+      if (this.config.forceDirectedLayout.value.nodes.length > 0) {
+        this.createNodes(this.config.forceDirectedLayout.value);
+        this.render(this.config.forceDirectedLayout.value, this.abort.signal);
       }
     }));
     this.subscriptions.push(this.config.graphicsSettings.subscribe(s => {
-      if (ready()) {
+      if (this.config.forceDirectedLayout.value.nodes.length > 0) {
         if (this.clusterLevel != s.clusterLevel) {
           this.clusterLevel = s.clusterLevel;
           this.centroidLerpStart = 0;
-          requestAnimationFrame(s => this.centroidInterpolation(s));
+          requestAnimationFrame(s => this.centroidInterpolation(this.config.forceDirectedLayout.value, s));
         }
-        this.createNodes(this.graph!);
-        this.render(this.graph!, this.abort.signal);
+        this.createNodes(this.config.forceDirectedLayout.value);
+        this.render(this.config.forceDirectedLayout.value, this.abort.signal);
       }
     }));
     this.subscriptions.push(this.config.selectedDiffusionSeeds.subscribe(() => {
-      if (ready()) {
-        this.createNodes(this.graph!);
-        this.render(this.graph!, this.abort.signal);
+      if (this.config.forceDirectedLayout.value.nodes.length > 0) {
+        this.createNodes(this.config.forceDirectedLayout.value);
+        this.render(this.config.forceDirectedLayout.value, this.abort.signal);
       }
     }));
-  }
-
-  private async initWebGPU() {
-    if (!navigator.gpu) {
-      alert("NetworkBuilder requires WebGPU. You may be using an incompatible Browser.");
-      return;
-    }
-    const adapter = (await navigator.gpu.requestAdapter({ powerPreference: "high-performance" }))!;
-    if (!adapter) {
-      alert("NetworkBuilder requires WebGPU. You may be using an incompatible Browser.");
-      return;
-    }
-    this.device = await adapter.requestDevice({
-      requiredLimits: {
-          "maxStorageBufferBindingSize": adapter.limits.maxStorageBufferBindingSize,
-          "maxComputeWorkgroupsPerDimension": adapter.limits.maxComputeWorkgroupsPerDimension
-      }
-    });
-    this.layout = new ForceDirected(this.device);
-    console.log("Layout intialized.");
-  }
-
-  private prepare(graph: EdgeList): EdgeList {
-    // Prepare stage
-    // this.stage?.destroy(true);
-
-    // Prepare graph
-    const settings = this.config.layoutSettings.value;
-    Utility.rand = new Rand(this.config.configuration.value.definition.seed.toString());
-    if (settings.sampling < 1) {
-      graph = Utility.sampleRandomEdges(graph, settings.sampling * graph.edges.length);
-    }
-
-    // Prepare nodes
-    this.createNodes(graph);
-
-    return graph;
   }
 
   private createNodes(graph: EdgeList) {
@@ -198,131 +129,6 @@ export class VisNodeLinkComponent implements AfterViewInit, OnDestroy {
       this.nodeDict.set(node, gfx);
       this.stage.addChild(gfx);
     }
-  }
-
-  private async runLayout(graph: EdgeList, signal: AbortSignal) {
-    if (this.device == undefined || this.layout == undefined) {
-      console.log("WebGPU initialization failed.");
-      return;
-    }
-
-    if (graph.nodes.length == 0) {
-      this.render(graph, signal);
-      return;
-    }
-
-    const nodeData: Array<number> = [];
-    const edgeData: Array<number> = [];
-    const sourceEdges: Array<number> = [];
-    const targetEdges: Array<number> = [];
-
-    for (let i = 0; i < graph.nodes.length; i++) {
-      const node = graph.nodes[i];
-      const data = node.data as NodeData;
-      data.samplingID = i;
-      if (data.layoutPosition.x == 0 && data.layoutPosition.y == 0) {
-        data.layoutPosition = {
-          x: Utility.rand.next() - 0.5,
-          y: Utility.rand.next() - 0.5
-        }
-      }
-      nodeData.push(0.0, data.layoutPosition.x, data.layoutPosition.y, 1.0);
-    }
-    for (let i = 0; i < graph.edges.length; i++) {
-      const source = graph.edges[i].source.data as NodeData;
-      const target = graph.edges[i].target.data as NodeData;
-      edgeData.push(source.samplingID, target.samplingID);
-    }
-
-    graph.edges.sort((a, b) => (a.source.data as NodeData).samplingID - (b.source.data as NodeData).samplingID);
-    for (let i = 0; i < graph.edges.length; i++) {
-      const source = graph.edges[i].source.data as NodeData;
-      const target = graph.edges[i].target.data as NodeData;
-      sourceEdges.push(source.samplingID, target.samplingID);
-    }
-    graph.edges.sort((a, b) => (a.target.data as NodeData).samplingID - (b.target.data as NodeData).samplingID);
-    for (let i = 0; i < graph.edges.length; i++) {
-      const source = graph.edges[i].source.data as NodeData;
-      const target = graph.edges[i].target.data as NodeData;
-      targetEdges.push(source.samplingID, target.samplingID);
-    }
-
-    const nodeDataBuffer = this.device.createBuffer({
-      size: nodeData.length * 4,
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
-      mappedAtCreation: true,
-    });
-    new Float32Array(nodeDataBuffer.getMappedRange()).set(nodeData);
-    nodeDataBuffer.unmap();
-    const edgeDataBuffer = this.device.createBuffer({
-      size: edgeData.length * 4,
-      usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE,
-      mappedAtCreation: true
-    });
-    new Uint32Array(edgeDataBuffer.getMappedRange()).set(edgeData);
-    edgeDataBuffer.unmap();
-
-    const edgeLength = edgeData.length;
-    const nodeLength = nodeData.length / 4;
-
-    const sourceEdgeDataBuffer = this.device.createBuffer({
-      size: edgeData.length * 4,
-      usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE,
-      mappedAtCreation: true
-    });
-    new Uint32Array(sourceEdgeDataBuffer.getMappedRange()).set(sourceEdges);
-    sourceEdgeDataBuffer.unmap();
-    const targetEdgeDataBuffer = this.device.createBuffer({
-      size: edgeData.length * 4,
-      usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE,
-      mappedAtCreation: true
-    });
-    new Uint32Array(targetEdgeDataBuffer.getMappedRange()).set(targetEdges);
-    targetEdgeDataBuffer.unmap();
-
-    const frame = (positions: number[], timestamp: number) => {
-      // Assemble node data
-      for (let i = 0; i < 4 * nodeLength; i = i + 4) {
-        (graph.nodes[i / 4].data as NodeData).layoutPosition = {
-            x: positions[i + 1],
-            y: positions[i + 2]
-        };
-      }
-
-      // Update centroids
-      this.config.centroids.value.clear();
-      for (const [id, cluster] of this.config.configuration.value.instance.clusters) {
-        let c: Point = { x: 0, y: 0 };
-        let i = 0;
-        for (const node of cluster.nodes) {
-          const data = node.data as NodeData;
-          if (data.samplingID != -1) {
-            c.x += data.layoutPosition.x;
-            c.y += data.layoutPosition.y;
-            i++;
-          }
-        }
-        c.x /= i;
-        c.y /= i;
-        if (i > 0) {
-          this.config.centroids.value.set(id, c);
-        }
-      }
-      this.config.centroids.next(this.config.centroids.value);
-
-      // Render
-      this.render(graph, signal, timestamp);
-    };
-
-    const settings = this.config.layoutSettings.value;
-    await this.layout.runForces(
-      nodeDataBuffer, edgeDataBuffer,
-      nodeLength, edgeLength,
-      0.5, 0.05 + Math.log(1 + settings.gravity / 100), settings.iterations, settings.gravity,
-      sourceEdgeDataBuffer, targetEdgeDataBuffer, frame, signal
-    );
-
-    // Layout finished
   }
 
   private render(graph: EdgeList, signal: AbortSignal, timestamp?: number) {
@@ -445,7 +251,7 @@ export class VisNodeLinkComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  private centroidInterpolation(start: number) {
+  private centroidInterpolation(graph: EdgeList, start: number) {
     if (this.centroidLerpStart == 0) {
       this.centroidLerpStart = start + (this.clusterLevel ? this.centroidLerp : 1 - this.centroidLerp) * 1000;
     }
@@ -455,18 +261,15 @@ export class VisNodeLinkComponent implements AfterViewInit, OnDestroy {
     } else {
       this.centroidLerp = 1 - elapsed / 1000;
     }
-    if (this.graph != undefined) {
-      this.render(this.graph, this.abort.signal, start);
-    }
+    this.render(graph, this.abort.signal, start);
     if (elapsed < 1000) {
-      requestAnimationFrame(s => this.centroidInterpolation(s));
+      requestAnimationFrame(s => this.centroidInterpolation(graph, s));
     }
   }
 
   public ngOnDestroy() {
     this.app.destroy();
     this.abort.abort();
-    this.device?.destroy();
     for (const sub of this.subscriptions) {
       sub.unsubscribe();
     }

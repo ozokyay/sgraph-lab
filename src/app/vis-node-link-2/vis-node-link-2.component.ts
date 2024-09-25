@@ -1,6 +1,5 @@
 import { Component, ElementRef, ViewChild, HostListener, AfterViewInit, OnDestroy, Input } from '@angular/core';
 import { ConfigurationService } from '../configuration.service';
-import { ForceDirected } from '../graphwagu/webgpu/force_directed';
 import { Edge, EdgeData, EdgeList, Node, NodeData } from '../graph';
 import * as PIXI from 'pixi.js';
 import * as d3 from 'd3';
