@@ -56,7 +56,7 @@ export class VisNodeLinkComponent implements AfterViewInit, OnDestroy {
     this.subscriptions.push(this.config.forceDirectedLayout.subscribe(graph => {
       this.render(graph, this.abort.signal);
     }));
-    this.subscriptions.push(this.config.selectedConnections.subscribe(async () => {
+    this.subscriptions.push(this.config.selectedConnections.subscribe(() => {
       if (this.config.forceDirectedLayout.value.nodes.length > 0) {
         this.createNodes(this.config.forceDirectedLayout.value);
         this.render(this.config.forceDirectedLayout.value, this.abort.signal);
@@ -180,9 +180,12 @@ export class VisNodeLinkComponent implements AfterViewInit, OnDestroy {
     // Lerp for possible cluster aggregation
     for (const node of graph.nodes) {
       const data = node.data as NodeData;
-      const centroid = this.config.centroids.value.get(data.clusterID)!;
+      const centroid = this.config.centroids.value.get(data.clusterID);
+      const gfx = this.nodeDict.get(node);
+      if (data == undefined || centroid == undefined || gfx == undefined) {
+        return;
+      }
       data.renderPosition = Utility.lerpP(data.layoutPosition, centroid, this.centroidLerp);
-      let gfx = this.nodeDict.get(node)!;
       gfx.position = {
         x: data.renderPosition.x * this.edgeScale,
         y: data.renderPosition.y * this.edgeScale

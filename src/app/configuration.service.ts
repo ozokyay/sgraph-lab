@@ -35,7 +35,8 @@ export class ConfigurationService {
   public forceDirectedLayout = new BehaviorSubject<EdgeList>({ nodes: [], edges: [] });
   public history = new BehaviorSubject<GraphConfiguration[]>([structuredClone(this.configuration.value)]);
 
-  private abort: AbortController = new AbortController();
+  private abortMeasures: AbortController = new AbortController();
+  private abortLayout: AbortController = new AbortController();
   private layout?: ForceDirected;
 
   constructor(private python: PythonService) {
@@ -44,7 +45,9 @@ export class ConfigurationService {
       if (l === DefaultLayout) {
         return;
       }
-      this.runLayout(this.configuration.value.instance.graph, this.layout, this.abort.signal);
+      this.abortLayout.abort();
+      this.abortLayout = new AbortController();
+      this.runLayout(this.configuration.value.instance.graph, this.layout, this.abortLayout.signal);
     });
   }
    
@@ -64,16 +67,16 @@ export class ConfigurationService {
     // Publish
     this.configuration.next(this.configuration.value);
 
-    // Slow stuff ahead
-    this.abort.abort();
-    this.abort = new AbortController();
-
     // Layout
-    this.runLayout(this.configuration.value.instance.graph, this.layout, this.abort.signal);
+    this.abortLayout.abort();
+    this.abortLayout = new AbortController();
+    this.runLayout(this.configuration.value.instance.graph, this.layout, this.abortLayout.signal);
 
     // Slow measures
     t = performance.now();
-    await this.computeSlowMeasures(this.abort.signal);
+    this.abortMeasures.abort();
+    this.abortMeasures = new AbortController();
+    await this.computeSlowMeasures(this.abortMeasures.signal);
     console.log(`Slow measures took ${performance.now() - t} ms`);
     this.measures.next(this.measures.value);
   }
@@ -452,7 +455,7 @@ export class ConfigurationService {
 
     const layoutSettings = this.layoutSettings.value;
     Utility.rand = new Rand(this.configuration.value.definition.seed.toString());
-    if (layoutSettings.sampling < 1 || true) {
+    if (layoutSettings.sampling < 1) {
       graph = Utility.sampleRandomEdges(graph, layoutSettings.sampling * graph.edges.length);
     }
     this.sample.next(graph);

@@ -48,7 +48,7 @@ export class TabInformationDiffusionComponent {
       this.seedNodes.clear();
       this.originalSeedNodes.clear();
       this.onPause();
-      this.onReset();
+      this.onReset(true);
     });
     config.selectedDiffusionSeeds.subscribe(seeds => {
       this.seedNodes = seeds;
@@ -70,7 +70,7 @@ export class TabInformationDiffusionComponent {
     this.running = false;
   }
 
-  public onReset() {
+  public onReset(noSeedEvent: boolean = false) {
     // Clear all node/edge highlights
     this.step = 0;
     this.dirty = false;
@@ -83,8 +83,11 @@ export class TabInformationDiffusionComponent {
     this.totalActive = { data: [], xExtent: [0, 10], yExtent: [0, this.graph!.nodes.size] };
     this.stepActive = { data: [], xExtent: [0, 10], yExtent: [0, this.graph!.nodes.size] };
 
-    // Render
-    this.config.selectedDiffusionSeeds.next(this.seedNodes);
+    // Prevent event chaining
+    if (!noSeedEvent) {
+      // Render
+      this.config.selectedDiffusionSeeds.next(this.seedNodes);
+    }
   }
 
   public onClear() {
