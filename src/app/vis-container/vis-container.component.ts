@@ -28,6 +28,18 @@ export class VisContainerComponent {
   @ViewChild('nodeLink')
   private child3!: VisNodeLinkComponent;
 
+  // Need switch event
+  // 1. enable new vis, set new vis 0%
+  // 2. start animation, start fade
+  // 3. disable old vis
+
+  // Layer scrolling?
+  // Combobox only?
+
+  // Idea:
+  // 1. Level goes into vis container
+  // 2. nls not combined (node level different from cluster hierarchy level)
+
   public resize() {
     this.child2?.resize();
     this.child3?.resize();

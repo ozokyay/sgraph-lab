@@ -43,9 +43,6 @@ export class VisMatrixComponent implements AfterViewInit, OnDestroy {
   @ViewChild('svg')
   container!: ElementRef;
 
-  @ViewChild('svg2')
-  container2!: ElementRef;
-
   xAxis!: d3.Selection<any, unknown, null, undefined>;
   yAxis!: d3.Selection<any, unknown, null, undefined>;
   legAxis!: d3.Selection<any, unknown, null, undefined>;
@@ -55,7 +52,6 @@ export class VisMatrixComponent implements AfterViewInit, OnDestroy {
   dividersHorizontal2!: d3.Selection<any, unknown, null, undefined>;
   dividersVertical!: d3.Selection<any, unknown, null, undefined>;
   dividersVertical2!: d3.Selection<any, unknown, null, undefined>;
-  borders!: d3.Selection<any, unknown, null, undefined>;
 
   xScale!: d3.ScaleBand<string>;
   yScale!: d3.ScaleBand<string>;
@@ -66,7 +62,8 @@ export class VisMatrixComponent implements AfterViewInit, OnDestroy {
   // Margin and aspect ratio
   margin = { top: 10, right: 10, bottom: 80, left: 80 };
   width = 300 - this.margin.left - this.margin.right;
-  height = 300 - this.margin.top - this.margin.bottom;
+  height = 340 - this.margin.top - this.margin.bottom;
+  legendHeight = 40;
 
   constructor(private config: ConfigurationService) {}
 
@@ -89,12 +86,14 @@ export class VisMatrixComponent implements AfterViewInit, OnDestroy {
 
   public ngAfterViewInit(): void {
     this.xScale = d3.scaleBand().range([0, this.width]);
-    this.yScale = d3.scaleBand().range([this.height, 0]);
+    this.yScale = d3.scaleBand().range([this.height - this.legendHeight - this.margin.top, 0]);
 
     this.svg = d3.select(this.container.nativeElement)
       .attr("preserveAspectRatio", "xMinYMin meet")
       .attr("viewBox", `0 0 ${this.width + this.margin.left + this.margin.right} ${this.height + this.margin.top + this.margin.bottom}`)
       .style("font", "1rem verdana")
+      .style("width", "100%")
+      .style("height", "100%")
       .append("g")
       .attr("transform", `translate(${this.margin.left},${this.margin.top})`);
     
@@ -103,40 +102,20 @@ export class VisMatrixComponent implements AfterViewInit, OnDestroy {
     this.dividersVertical = this.svg.append("g");
     this.dividersHorizontal2 = this.svg.append("g");
     this.dividersVertical2 = this.svg.append("g");
-    // this.borders = this.svg.append("g");
 
     this.xAxis = this.svg.append("g")
-      .attr("transform", `translate(0, ${this.height})`)
+      .attr("transform", `translate(0, ${this.height - this.legendHeight - this.margin.top})`)
       .call(d3.axisBottom(this.xScale));
   
     this.yAxis = this.svg.append("g")
       .call(d3.axisLeft(this.yScale));
 
-    // this.borders.append("line")
-    //   .attr("x1", 0)
-    //   .attr("x2", this.width)
-    //   .attr("y1", this.height)
-    //   .attr("y2", this.height)
-    //   .style("stroke", "black")
-    //   .style("stroke-width", 2);
-  
-    // this.borders.append("line")
-    //   .attr("x1", 0)
-    //   .attr("x2", 0)
-    //   .attr("y1", 0)
-    //   .attr("y2", this.height)
-    //   .style("stroke", "black")
-    //   .style("stroke-width", 2);
-    
-    
-    const svg2 = d3.select(this.container2.nativeElement)
-      .attr("viewBox", `0 0 ${this.width + this.margin.left + this.margin.right + 5} ${40}`)
-      .append("g");
+    // Scale viewbox with resize?
 
     const domain = d3.range(0, 1, 0.1);
     const color = d3.scaleSequential(d3.interpolateGreys).domain([0, 1]);
 
-    svg2.append("defs")
+    this.svg.append("defs")
       .append("linearGradient")
       .attr("id", "linear-gradient")
       .attr("x1", "0%")
@@ -150,19 +129,27 @@ export class VisMatrixComponent implements AfterViewInit, OnDestroy {
       .attr("offset", d => d)
       .attr("stop-color", d => color(d));
 
-    svg2.append("rect")
-      .attr("x", 5)
+    const legend = this.svg.append("g")
+      .attr("transform", `translate(0, ${this.height + this.margin.bottom - this.margin.top - this.legendHeight})`);
+
+    legend.append("rect")
+      .attr("x", 0)
       .attr("y", 0)
-      .attr("width", this.width + this.margin.left + 1)
+      .attr("width", this.width + 1)
       .attr("height", 20)
       .style("fill", "url(#linear-gradient)");
     
     this.legScale = d3.scaleLog()
       .domain([1, 100])
-      .range([0, this.width + this.margin.left])
-    this.legAxis = svg2.append("g")
-      .attr("transform", `translate(5, 20)`) 
+      .range([0, this.width])
+    this.legAxis = legend.append("g")
+      .attr("transform", `translate(0, 20)`) 
       .call(d3.axisBottom(this.legScale));
+
+    legend.append("text")
+      .text("Edge count:")
+      .attr("transform", `translate(-75, 15)`)
+      .style("font", "0.65rem verdana");
 
     this.init();
   }
