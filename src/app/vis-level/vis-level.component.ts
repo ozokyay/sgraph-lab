@@ -20,6 +20,8 @@ export class VisLevelComponent {
   public level = 1;
   public maxLevel = 1
 
+  // @Output()
+
   constructor(private config: ConfigurationService) {
     config.level.subscribe(l => {
       this.level = l;

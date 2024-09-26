@@ -64,6 +64,9 @@ export class VisNodeLink2Component implements AfterViewInit, OnDestroy {
       // => Circle packing doesn't need centroids, but also requires full nodes option
       // => A) implement circle packing twice, layout per cluster?
       // => B) circle packing only here
+
+      // How to sync with cluster list (conflicting vis can be open -> highlight only one last clicked in vis)
+
       this.graph = this.prepare(new EdgeList(config.definition.graph));
     }));
     this.subscriptions.push(this.config.centroids.subscribe(() => {

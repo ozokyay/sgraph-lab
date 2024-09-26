@@ -85,18 +85,27 @@ export class VisMatrixComponent implements AfterViewInit, OnDestroy {
   }
 
   public ngAfterViewInit(): void {
-    this.xScale = d3.scaleBand().range([0, this.width]);
-    this.yScale = d3.scaleBand().range([this.height - this.legendHeight - this.margin.top, 0]);
-
     this.svg = d3.select(this.container.nativeElement)
       .attr("preserveAspectRatio", "xMinYMin meet")
-      .attr("viewBox", `0 0 ${this.width + this.margin.left + this.margin.right} ${this.height + this.margin.top + this.margin.bottom}`)
+      // .attr("viewBox", `0 0 ${this.width + this.margin.left + this.margin.right} ${this.height + this.margin.top + this.margin.bottom}`)
       .style("font", "1rem verdana")
       .style("width", "100%")
       .style("height", "100%")
       .append("g")
       .attr("transform", `translate(${this.margin.left},${this.margin.top})`);
-    
+
+    const actualWidth = this.container.nativeElement.clientWidth;
+    const actualHeight = this.container.nativeElement.clientHeight;
+    const size = Math.min(actualWidth, actualHeight) * 0.5;
+    this.width = size;
+    this.height = size + this.legendHeight;
+    d3.select(this.container.nativeElement)
+      .attr("viewBox", `0 0 ${this.width + this.margin.left + this.margin.right} ${this.height + this.margin.top + this.margin.bottom}`);
+    console.log(size);
+
+    this.xScale = d3.scaleBand().range([0, this.width]);
+    this.yScale = d3.scaleBand().range([this.height - this.legendHeight - this.margin.top, 0]);
+
     this.rects = this.svg.append("g");
     this.dividersHorizontal = this.svg.append("g");
     this.dividersVertical = this.svg.append("g");

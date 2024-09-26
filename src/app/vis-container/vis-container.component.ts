@@ -4,6 +4,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { VisMatrixComponent } from '../vis-matrix/vis-matrix.component';
 import { VisNodeLink2Component } from '../vis-node-link-2/vis-node-link-2.component';
 import { VisNodeLinkComponent } from '../vis-node-link/vis-node-link.component';
+import { VisLevelComponent } from '../vis-level/vis-level.component';
 
 @Component({
   selector: 'app-vis-container',
@@ -13,7 +14,8 @@ import { VisNodeLinkComponent } from '../vis-node-link/vis-node-link.component';
     MatSelectModule,
     VisMatrixComponent,
     VisNodeLinkComponent,
-    VisNodeLink2Component
+    VisNodeLink2Component,
+    VisLevelComponent
   ],
   templateUrl: './vis-container.component.html',
   styleUrl: './vis-container.component.css'
@@ -33,12 +35,12 @@ export class VisContainerComponent {
   // 2. start animation, start fade
   // 3. disable old vis
 
-  // Layer scrolling?
-  // Combobox only?
-
   // Idea:
   // 1. Level goes into vis container
-  // 2. nls not combined (node level different from cluster hierarchy level)
+  // 2. nls not combined (node level different from cluster hierarchy level) but maybe switch in upper right instead of combobox?
+
+  // Dropdown links, level rechts (aligned)
+  // Level wird property der vis (input. ngOnChanges) anstatt service
 
   public resize() {
     this.child2?.resize();

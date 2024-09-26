@@ -1,11 +1,14 @@
-<mat-form-field style="flex: 0;">
-    <mat-label>Visualization</mat-label>
-    <mat-select #selectVis value="matrix">
-        <mat-option value="matrix">Connections Matrix</mat-option>
-        <mat-option value="circle-space">Connections Node-Link Diagram</mat-option>
-        <mat-option value="node-link">Result Node-Link Diagram</mat-option>
-    </mat-select>
-</mat-form-field>
+<div style="flex: 0; margin: 10px 10px 0px 10px; display: flex; align-items: center;">
+    <mat-form-field style="margin-right: auto;" subscriptSizing="dynamic">
+        <mat-label>Visualization</mat-label>
+        <mat-select #selectVis value="matrix">
+            <mat-option value="matrix">Connections Matrix</mat-option>
+            <mat-option value="circle-space">Connections Node-Link Diagram</mat-option>
+            <mat-option value="node-link">Result Node-Link Diagram</mat-option>
+        </mat-select>
+    </mat-form-field>
+    <app-vis-level style="align-self: right;"></app-vis-level>
+</div>
 <br>
 @if(selectVis.value == "matrix") {
     <app-vis-matrix #matrix class="fit-height"></app-vis-matrix>
