@@ -1,4 +1,4 @@
-import { Component, ElementRef, ViewChild, AfterViewInit, OnDestroy } from '@angular/core';
+import { Component, ElementRef, ViewChild, AfterViewInit, OnDestroy, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { ConfigurationService } from '../configuration.service';
 import { ForceDirected } from '../graphwagu/webgpu/force_directed';
 import { EdgeData, EdgeList, Node, NodeData } from '../graph';
@@ -17,7 +17,7 @@ import { Subscription } from 'rxjs';
   templateUrl: './vis-node-link.component.html',
   styleUrl: './vis-node-link.component.css'
 })
-export class VisNodeLinkComponent implements AfterViewInit, OnDestroy {
+export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   private edgeScale = 500;
   private nodeRadius = 3;
@@ -33,12 +33,14 @@ export class VisNodeLinkComponent implements AfterViewInit, OnDestroy {
   private nodeDict: Map<Node, PIXI.Graphics> = new Map();
   private edgeGraphics!: PIXI.Graphics;
   private abort: AbortController = new AbortController();
-  private clusterLevel: boolean = false;
   private centroidLerp: number = 0;
   private centroidLerpStart: number = 0;
   private lastRenderTime: number = 0;
 
   private subscriptions: Subscription[] = [];
+
+  @Input()
+  public combineClusters = false;
 
   @ViewChild('container')
   private container!: ElementRef;
@@ -64,11 +66,6 @@ export class VisNodeLinkComponent implements AfterViewInit, OnDestroy {
     }));
     this.subscriptions.push(this.config.graphicsSettings.subscribe(s => {
       if (this.config.forceDirectedLayout.value.nodes.length > 0) {
-        if (this.clusterLevel != s.clusterLevel) {
-          this.clusterLevel = s.clusterLevel;
-          this.centroidLerpStart = 0;
-          requestAnimationFrame(s => this.centroidInterpolation(this.config.forceDirectedLayout.value, s));
-        }
         this.createNodes(this.config.forceDirectedLayout.value);
         this.render(this.config.forceDirectedLayout.value, this.abort.signal);
       }
@@ -158,7 +155,7 @@ export class VisNodeLinkComponent implements AfterViewInit, OnDestroy {
     zoom({ transform: this.transform });
 
     let zooming = d3.select(this.app.canvas as any)
-      .call(this.zoom.on('zoom', zoom));
+      .call(this.zoom.on('zoom', zoom).filter((e: any) => (!e.ctrlKey || e.type === 'wheel') && !e.button && !e.shiftKey));
     
     // Initial zoom
     if (this.transform.x == 0 && this.transform.y == 0) {
@@ -256,10 +253,10 @@ export class VisNodeLinkComponent implements AfterViewInit, OnDestroy {
 
   private centroidInterpolation(graph: EdgeList, start: number) {
     if (this.centroidLerpStart == 0) {
-      this.centroidLerpStart = start + (this.clusterLevel ? this.centroidLerp : 1 - this.centroidLerp) * 1000;
+      this.centroidLerpStart = start + (this.combineClusters ? this.centroidLerp : 1 - this.centroidLerp) * 1000;
     }
     const elapsed = Math.min(1000, start - this.centroidLerpStart); // milliseconds
-    if (this.clusterLevel) {
+    if (this.combineClusters) {
       this.centroidLerp = elapsed / 1000;
     } else {
       this.centroidLerp = 1 - elapsed / 1000;
@@ -297,6 +294,15 @@ export class VisNodeLinkComponent implements AfterViewInit, OnDestroy {
       this.resize();
       this.init();
     })();
+  }
+
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes["combineClusters"] &&
+      changes["combineClusters"].previousValue != this.combineClusters &&
+      this.config.forceDirectedLayout.value.nodes.length > 0) {
+      this.centroidLerpStart = 0;
+      requestAnimationFrame(s => this.centroidInterpolation(this.config.forceDirectedLayout.value, s));
+    }
   }
 
   public resize(): void {

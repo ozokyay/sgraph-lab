@@ -2,4 +2,32 @@
     display: block;
     flex: 1;
     overflow: hidden;
+    position: relative;
+}
+
+.absolute {
+    position: absolute;
+    display: block;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+}
+
+@keyframes fade {
+    from {opacity: 0;}
+    to {opacity: 1;}
+}
+
+.fade-in {
+    animation-name: fade;
+    animation-duration: 1s;
+    animation-fill-mode: forwards;
+}
+
+.fade-out {
+    animation-name: fade;
+    animation-duration: 1s;
+    animation-direction: reverse;
+    animation-fill-mode: forwards;
 }

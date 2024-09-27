@@ -267,7 +267,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnDestroy {
     zoom({ transform: this.transform });
 
     let zooming = d3.select(this.app.canvas as any)
-      .call(this.zoom.on('zoom', zoom));
+      .call(this.zoom.on('zoom', zoom).filter((e: any) => (!e.ctrlKey || e.type === 'wheel') && !e.button && !e.shiftKey));
     
     // Initial zoom
     if (this.transform.x == 0 && this.transform.y == 0) {

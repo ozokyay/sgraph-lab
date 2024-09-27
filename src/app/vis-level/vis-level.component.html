@@ -4,8 +4,8 @@
         <button mat-raised-button class="button" (click)="onDecrement()" [disabled]="level == 1">
             <mat-icon>remove</mat-icon>
         </button>
-        <span class="label mat-title-large">{{level}}</span>
-        <button mat-raised-button class="button" (click)="onIncrement()" [disabled]="level == maxLevel">
+        <span class="label mat-title-large">{{levelText}}</span>
+        <button mat-raised-button class="button" (click)="onIncrement()" [disabled]="level == (allowNodeLevel ? 0 : maxLevel)">
             <mat-icon>add</mat-icon>
         </button>
     </div>
