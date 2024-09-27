@@ -14,10 +14,10 @@
         <app-vis-matrix #matrix style="height: 100%;" [level]="level"></app-vis-matrix>
     } @else if (visualization == "node-link") {
         @if (nl1) {
-            <app-vis-node-link #nodeLink class="absolute" [class.fade-in]="!combineClusters" [class.fade-out]="combineClusters" [combineClusters]="combineClusters"></app-vis-node-link>
+            <app-vis-node-link #nodeLink class="absolute" [@showHide]="combineClusters ? 'hidden' : 'shown'" [class.ignore-pointer]="combineClusters" [combineClusters]="combineClusters"></app-vis-node-link>
         }
         @if (nl2) {
-            <app-vis-node-link-2 #nodeLink2 class="absolute"></app-vis-node-link-2>
+            <app-vis-node-link-2 #nodeLink2 class="absolute"  [@showHide]="combineClusters ? 'shown' : 'hidden'" [class.ignore-pointer]="!combineClusters"></app-vis-node-link-2>
         }
     }
 </div>

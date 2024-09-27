@@ -40,7 +40,7 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
   private subscriptions: Subscription[] = [];
 
   @Input()
-  public combineClusters = false;
+  public combineClusters = true;
 
   @ViewChild('container')
   private container!: ElementRef;
