@@ -1,4 +1,4 @@
-import { Component, ViewChild } from '@angular/core';
+import { Component, Input, ViewChild } from '@angular/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { VisMatrixComponent } from '../vis-matrix/vis-matrix.component';
@@ -21,6 +21,11 @@ import { VisLevelComponent } from '../vis-level/vis-level.component';
   styleUrl: './vis-container.component.css'
 })
 export class VisContainerComponent {
+  public level = 1;
+
+  @Input()
+  public visualization: "matrix" | "circle-spacing" | "node-link" = "matrix";
+
   @ViewChild('matrix')
   private child1!: VisMatrixComponent;
 
@@ -39,10 +44,8 @@ export class VisContainerComponent {
   // 1. Level goes into vis container
   // 2. nls not combined (node level different from cluster hierarchy level) but maybe switch in upper right instead of combobox?
 
-  // Dropdown links, level rechts (aligned)
-  // Level wird property der vis (input. ngOnChanges) anstatt service
-
   public resize() {
+    this.child1?.resize();
     this.child2?.resize();
     this.child3?.resize();
   }

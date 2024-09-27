@@ -1,18 +1,18 @@
 <div style="flex: 0; margin: 10px 10px 0px 10px; display: flex; align-items: center;">
-    <mat-form-field style="margin-right: auto;" subscriptSizing="dynamic">
+    <mat-form-field style="margin: 5px auto 0 0;" subscriptSizing="dynamic">
         <mat-label>Visualization</mat-label>
-        <mat-select #selectVis value="matrix">
+        <mat-select #selectVis [value]="this.visualization">
             <mat-option value="matrix">Connections Matrix</mat-option>
-            <mat-option value="circle-space">Connections Node-Link Diagram</mat-option>
+            <mat-option value="circle-spacing">Connections Node-Link Diagram</mat-option>
             <mat-option value="node-link">Result Node-Link Diagram</mat-option>
         </mat-select>
     </mat-form-field>
-    <app-vis-level style="align-self: right;"></app-vis-level>
+    <app-vis-level #level style="align-self: right;"></app-vis-level>
 </div>
 <br>
 @if(selectVis.value == "matrix") {
-    <app-vis-matrix #matrix class="fit-height"></app-vis-matrix>
-} @else if (selectVis.value == "circle-space") {
+    <app-vis-matrix #matrix class="fit-height" [level]="level.level" (wheel)="level.onChange($event.deltaY)"></app-vis-matrix>
+} @else if (selectVis.value == "circle-spacing") {
     <app-vis-node-link-2 #nodeLink2  class="fit-height"></app-vis-node-link-2>
 } @else if (selectVis.value == "node-link") {
     <app-vis-node-link #nodeLink class="fit-height"></app-vis-node-link>

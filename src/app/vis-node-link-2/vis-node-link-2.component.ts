@@ -1,4 +1,4 @@
-import { Component, ElementRef, ViewChild, HostListener, AfterViewInit, OnDestroy, Input } from '@angular/core';
+import { Component, ElementRef, ViewChild, AfterViewInit, OnDestroy, Input } from '@angular/core';
 import { ConfigurationService } from '../configuration.service';
 import { Edge, EdgeData, EdgeList, Node, NodeData } from '../graph';
 import * as PIXI from 'pixi.js';
@@ -42,7 +42,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnDestroy {
   private lastRenderTime: number = 0;
 
   @Input()
-  public mode: "aggregate" | "minimap" = "aggregate";
+  public level: number = 1;
 
   @ViewChild('container')
   private container!: ElementRef;
@@ -111,8 +111,9 @@ export class VisNodeLink2Component implements AfterViewInit, OnDestroy {
 
       }
     }));
-    this.subscriptions.push(this.config.level.subscribe(() => {
-
+    
+    // ngOnChanges(): level
+    
       // Implementation
       // - create nodes from centroids
       // - maybe prefer old centroid computation: gives centroids for higher order clusters
@@ -164,7 +165,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnDestroy {
       // Gravity for every wanted centroid position
 
       // This could actually be it...
-    }));
+    
   }
 
   private prepare(graph: EdgeList): EdgeList {
@@ -380,7 +381,6 @@ export class VisNodeLink2Component implements AfterViewInit, OnDestroy {
     })();
   }
 
-  @HostListener('window:resize')
   public resize(): void {
     this.width = this.container.nativeElement.offsetWidth;
     this.height = this.container.nativeElement.offsetHeight;

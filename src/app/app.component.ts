@@ -82,4 +82,10 @@ export class AppComponent implements OnInit {
       this.containerSecondary.resize();
     }
   }
+
+  @HostListener('window:resize')
+  resize() {
+    this.containerPrimary.resize();
+    this.containerSecondary.resize();
+  }
 }

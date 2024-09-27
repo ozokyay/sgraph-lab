@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, EventEmitter, Output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { ConfigurationService } from '../configuration.service';
@@ -20,24 +20,32 @@ export class VisLevelComponent {
   public level = 1;
   public maxLevel = 1
 
-  // @Output()
+  @Output()
+  public levelChange = new EventEmitter<number>();
 
   constructor(private config: ConfigurationService) {
-    config.level.subscribe(l => {
-      this.level = l;
-    });
     config.configuration.subscribe(cfg => {
       this.maxLevel = Utility.getDepth(cfg.definition.graph);
     });
   }
 
   public onIncrement() {
-    this.config.level.next(Math.min(this.maxLevel, this.level + 1));
+    this.level = Math.min(this.maxLevel, this.level + 1);
+    this.levelChange.emit(this.level);
     this.config.selectedConnections.next([]);
   }
 
   public onDecrement() {
-    this.config.level.next(Math.max(1, this.level - 1));
+    this.level = Math.max(1, this.level - 1);
+    this.levelChange.emit(this.level);
     this.config.selectedConnections.next([]);
+  }
+
+  public onChange(value: number) {
+    if (value > 0) {
+      this.onIncrement();
+    } else if (value < 0) {
+      this.onDecrement();
+    }
   }
 }

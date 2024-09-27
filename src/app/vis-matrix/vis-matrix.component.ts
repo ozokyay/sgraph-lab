@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, OnDestroy, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, HostListener, Input, OnChanges, OnDestroy, SimpleChanges, ViewChild } from '@angular/core';
 import { ConfigurationService } from '../configuration.service';
 import * as d3 from 'd3';
 import { Cluster } from '../cluster';
@@ -28,7 +28,7 @@ interface MatrixCell {
   templateUrl: './vis-matrix.component.html',
   styleUrl: './vis-matrix.component.css'
 })
-export class VisMatrixComponent implements AfterViewInit, OnDestroy {
+export class VisMatrixComponent implements AfterViewInit, OnChanges, OnDestroy {
 
 
   // TODO:
@@ -40,6 +40,9 @@ export class VisMatrixComponent implements AfterViewInit, OnDestroy {
   // Show connection strength [min, max] color
   // Selection of arbitrary number of edges
 
+  @Input()
+  level: number = 1;
+
   @ViewChild('svg')
   container!: ElementRef;
 
@@ -47,11 +50,14 @@ export class VisMatrixComponent implements AfterViewInit, OnDestroy {
   yAxis!: d3.Selection<any, unknown, null, undefined>;
   legAxis!: d3.Selection<any, unknown, null, undefined>;
   svg!: d3.Selection<any, unknown, null, undefined>;
+  svgRoot!: d3.Selection<any, unknown, null, undefined>;
   rects!: d3.Selection<any, unknown, null, undefined>;
   dividersHorizontal!: d3.Selection<any, unknown, null, undefined>;
   dividersHorizontal2!: d3.Selection<any, unknown, null, undefined>;
   dividersVertical!: d3.Selection<any, unknown, null, undefined>;
   dividersVertical2!: d3.Selection<any, unknown, null, undefined>;
+  legend!: d3.Selection<any, unknown, null, undefined>;
+  legendRect!: d3.Selection<any, unknown, null, undefined>; 
 
   xScale!: d3.ScaleBand<string>;
   yScale!: d3.ScaleBand<string>;
@@ -64,48 +70,43 @@ export class VisMatrixComponent implements AfterViewInit, OnDestroy {
   width = 300 - this.margin.left - this.margin.right;
   height = 340 - this.margin.top - this.margin.bottom;
   legendHeight = 40;
+  scale = 1;
+
+  debounceResize = false;
 
   constructor(private config: ConfigurationService) {}
 
   private init() {
     this.subscriptions.push(this.config.configuration.subscribe(cfg => {
       // Render new graph
-      this.render(this.config.configuration.value.definition.graph, this.config.level.value);
+      this.render(this.config.configuration.value.definition.graph, this.level);
     }));
     this.subscriptions.push(this.config.history.subscribe(cfg => {
       // Render if renamed
       if (cfg[cfg.length - 1].message.startsWith("Rename cluster")) {
-        this.render(this.config.configuration.value.definition.graph, this.config.level.value);
+        this.render(this.config.configuration.value.definition.graph, this.level);
       }
     }));
     this.subscriptions.push(this.config.selectedConnections.subscribe(c => {
-      // This also handles level change
-      this.render(this.config.configuration.value.definition.graph, this.config.level.value);
+      // Redundant with level change, but level change can only be propagated after this
+      this.render(this.config.configuration.value.definition.graph, this.level);
     }));
   }
 
   public ngAfterViewInit(): void {
-    this.svg = d3.select(this.container.nativeElement)
+    this.svgRoot = d3.select(this.container.nativeElement)
       .attr("preserveAspectRatio", "xMinYMin meet")
       // .attr("viewBox", `0 0 ${this.width + this.margin.left + this.margin.right} ${this.height + this.margin.top + this.margin.bottom}`)
       .style("font", "1rem verdana")
       .style("width", "100%")
-      .style("height", "100%")
-      .append("g")
+      .style("height", "100%");
+
+    this.svg = this.svgRoot.append("g")
       .attr("transform", `translate(${this.margin.left},${this.margin.top})`);
 
-    const actualWidth = this.container.nativeElement.clientWidth;
-    const actualHeight = this.container.nativeElement.clientHeight;
-    const size = Math.min(actualWidth, actualHeight) * 0.5;
-    this.width = size;
-    this.height = size + this.legendHeight;
-    d3.select(this.container.nativeElement)
-      .attr("viewBox", `0 0 ${this.width + this.margin.left + this.margin.right} ${this.height + this.margin.top + this.margin.bottom}`);
-    console.log(size);
 
-    this.xScale = d3.scaleBand().range([0, this.width]);
-    this.yScale = d3.scaleBand().range([this.height - this.legendHeight - this.margin.top, 0]);
-
+    this.xScale = d3.scaleBand();
+    this.yScale = d3.scaleBand();
     this.rects = this.svg.append("g");
     this.dividersHorizontal = this.svg.append("g");
     this.dividersVertical = this.svg.append("g");
@@ -113,14 +114,11 @@ export class VisMatrixComponent implements AfterViewInit, OnDestroy {
     this.dividersVertical2 = this.svg.append("g");
 
     this.xAxis = this.svg.append("g")
-      .attr("transform", `translate(0, ${this.height - this.legendHeight - this.margin.top})`)
       .call(d3.axisBottom(this.xScale));
-  
+
     this.yAxis = this.svg.append("g")
       .call(d3.axisLeft(this.yScale));
-
-    // Scale viewbox with resize?
-
+    
     const domain = d3.range(0, 1, 0.1);
     const color = d3.scaleSequential(d3.interpolateGreys).domain([0, 1]);
 
@@ -137,30 +135,33 @@ export class VisMatrixComponent implements AfterViewInit, OnDestroy {
       .append("stop")
       .attr("offset", d => d)
       .attr("stop-color", d => color(d));
-
-    const legend = this.svg.append("g")
-      .attr("transform", `translate(0, ${this.height + this.margin.bottom - this.margin.top - this.legendHeight})`);
-
-    legend.append("rect")
+    
+    this.legend = this.svg.append("g");
+    this.legendRect = this.legend.append("rect")
       .attr("x", 0)
       .attr("y", 0)
-      .attr("width", this.width + 1)
       .attr("height", 20)
       .style("fill", "url(#linear-gradient)");
     
     this.legScale = d3.scaleLog()
-      .domain([1, 100])
-      .range([0, this.width])
-    this.legAxis = legend.append("g")
+      .domain([1, 100]);
+    this.legAxis = this.legend.append("g")
       .attr("transform", `translate(0, 20)`) 
       .call(d3.axisBottom(this.legScale));
 
-    legend.append("text")
+    this.legend.append("text")
       .text("Edge count:")
       .attr("transform", `translate(-75, 15)`)
       .style("font", "0.65rem verdana");
 
+    this.setSize();
     this.init();
+  }
+
+  public ngOnChanges(changes: SimpleChanges) {
+    if (changes["level"] && !changes["level"].isFirstChange()) {
+      this.render(this.config.configuration.value.definition.graph, this.level);
+    }
   }
 
   public ngOnDestroy() {
@@ -268,13 +269,15 @@ export class VisMatrixComponent implements AfterViewInit, OnDestroy {
       }
     }
 
+    const dividerSpace = this.scale;
+
     const rects = this.rects.selectAll("rect")
       .data(data)
       .join("rect")
-      .attr("x", d => this.xScale(d.x)! + (d.dividerY2 ? 1 : 0))
-      .attr("y", d => this.yScale(d.y)! + (d.dividerX ? 1 : 0))
-      .attr("width", d => this.xScale.bandwidth() - (d.dividerY ? 1 : 0) - (d.dividerY2 ? 1 : 0))
-      .attr("height", d => this.yScale.bandwidth() - (d.dividerX ? 1 : 0) - (d.dividerX2 ? 1 : 0))
+      .attr("x", d => this.xScale(d.x)! + (d.dividerY2 ? dividerSpace : 0))
+      .attr("y", d => this.yScale(d.y)! + (d.dividerX ? dividerSpace : 0))
+      .attr("width", d => this.xScale.bandwidth() - (d.dividerY ? dividerSpace : 0) - (d.dividerY2 ? dividerSpace : 0))
+      .attr("height", d => this.yScale.bandwidth() - (d.dividerX ? dividerSpace : 0) - (d.dividerX2 ? dividerSpace : 0))
       .style("fill", d => color(d))
       // .attr("stroke", d => d.highlight ? "#ff6f00" : "transparent")
       .attr("stroke-width", 4)
@@ -333,9 +336,9 @@ export class VisMatrixComponent implements AfterViewInit, OnDestroy {
     this.dividersVertical.selectAll("line")
       .data(data)
       .join("line")
-      .attr("x1", d => this.xScale(d.x)! + this.xScale.bandwidth() - (d.dividerY ? 1 : 0))
-      .attr("x2", d => this.xScale(d.x)! + this.xScale.bandwidth() - (d.dividerY ? 1 : 0))
-      .attr("y1", d => this.yScale(d.y)! + (d.dividerY && d.dividerX ? 0.5 : 0))
+      .attr("x1", d => this.xScale(d.x)! + this.xScale.bandwidth() - (d.dividerY ? dividerSpace : 0))
+      .attr("x2", d => this.xScale(d.x)! + this.xScale.bandwidth() - (d.dividerY ? dividerSpace : 0))
+      .attr("y1", d => this.yScale(d.y)! + (d.dividerY && d.dividerX ? dividerSpace / 2 : 0))
       .attr("y2", d => this.yScale(d.y)! + this.yScale.bandwidth())
       .style("stroke", "black")
       .style("stroke-width", 1);
@@ -343,8 +346,8 @@ export class VisMatrixComponent implements AfterViewInit, OnDestroy {
     this.dividersVertical2.selectAll("line")
       .data(data)
       .join("line")
-      .attr("x1", d => this.xScale(d.x)! + this.xScale.bandwidth() + 1)
-      .attr("x2", d => this.xScale(d.x)! + this.xScale.bandwidth() + 1)
+      .attr("x1", d => this.xScale(d.x)! + this.xScale.bandwidth() + dividerSpace)
+      .attr("x2", d => this.xScale(d.x)! + this.xScale.bandwidth() + dividerSpace)
       .attr("y1", d => this.yScale(d.y)!)
       .attr("y2", d => this.yScale(d.y)! + this.yScale.bandwidth())
       .attr("visibility", d => d.dividerY ? "visible" : "hidden")
@@ -356,8 +359,8 @@ export class VisMatrixComponent implements AfterViewInit, OnDestroy {
       .join("line")
       .attr("x1", d => this.xScale(d.x)!)
       .attr("x2", d => this.xScale(d.x)! + this.xScale.bandwidth())
-      .attr("y1", d => this.yScale(d.y)! - (d.dividerX ? 1 : 0))
-      .attr("y2", d => this.yScale(d.y)! - (d.dividerX ? 1 : 0))
+      .attr("y1", d => this.yScale(d.y)! - (d.dividerX ? dividerSpace : 0))
+      .attr("y2", d => this.yScale(d.y)! - (d.dividerX ? dividerSpace : 0))
       .style("stroke", "black")
       .style("stroke-width", 1);
     
@@ -365,9 +368,9 @@ export class VisMatrixComponent implements AfterViewInit, OnDestroy {
       .data(data)
       .join("line")
       .attr("x1", d => this.xScale(d.x)!)
-      .attr("x2", d => this.xScale(d.x)! + this.xScale.bandwidth() - (d.dividerY ? 1 : 0))
-      .attr("y1", d => this.yScale(d.y)! + 1)
-      .attr("y2", d => this.yScale(d.y)! + 1)
+      .attr("x2", d => this.xScale(d.x)! + this.xScale.bandwidth() - (d.dividerY ? dividerSpace : 0))
+      .attr("y1", d => this.yScale(d.y)! + dividerSpace)
+      .attr("y2", d => this.yScale(d.y)! + dividerSpace)
       .attr("visibility", d => d.dividerX ? "visible" : "hidden")
       .style("stroke", "black")
       .style("stroke-width", 1);
@@ -395,7 +398,7 @@ export class VisMatrixComponent implements AfterViewInit, OnDestroy {
       }
     };
 
-    const scalingFactor = Math.min(1, 17 / nodes.length);
+    const scalingFactor = Math.min(1, 17 / nodes.length * this.scale);
 
     this.xAxis.selectAll("text")
       .data(nodes)
@@ -483,5 +486,33 @@ export class VisMatrixComponent implements AfterViewInit, OnDestroy {
       }
     }
     return output;
+  }
+
+  private setSize() {
+    const actualWidth = this.container.nativeElement.clientWidth;
+    const actualHeight = this.container.nativeElement.clientHeight;
+    const size = Math.min(actualWidth, actualHeight) * 0.5;
+    this.width = size;
+    this.height = size + this.legendHeight;
+    this.scale = size / 300;
+    this.svgRoot.attr("viewBox", `0 0 ${this.width + this.margin.left + this.margin.right} ${this.height + this.margin.top + this.margin.bottom}`);
+    this.xScale.range([0, this.width]);
+    this.yScale.range([this.height - this.legendHeight - this.margin.top, 0]);
+    this.xAxis.attr("transform", `translate(0, ${this.height - this.legendHeight - this.margin.top})`);
+    this.legend.attr("transform", `translate(0, ${this.height + this.margin.bottom - this.margin.top - this.legendHeight})`);
+    this.legendRect.attr("width", this.width + 1);
+    this.legScale.range([0, this.width])
+  }
+
+  public resize() {
+    if (this.debounceResize) {
+      return;
+    }
+    this.debounceResize = true;
+    setTimeout(() => {
+      this.debounceResize = false;
+    }, 1000);
+    this.setSize();
+    this.render(this.config.configuration.value.definition.graph, this.level);    
   }
 }

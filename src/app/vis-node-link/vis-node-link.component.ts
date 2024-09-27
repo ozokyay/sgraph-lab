@@ -1,4 +1,4 @@
-import { Component, ElementRef, ViewChild, AfterViewInit, OnDestroy, HostListener } from '@angular/core';
+import { Component, ElementRef, ViewChild, AfterViewInit, OnDestroy } from '@angular/core';
 import { ConfigurationService } from '../configuration.service';
 import { ForceDirected } from '../graphwagu/webgpu/force_directed';
 import { EdgeData, EdgeList, Node, NodeData } from '../graph';
@@ -299,7 +299,6 @@ export class VisNodeLinkComponent implements AfterViewInit, OnDestroy {
     })();
   }
 
-  @HostListener('window:resize')
   public resize(): void {
     this.width = this.container.nativeElement.clientWidth;
     this.height = this.container.nativeElement.clientHeight;
