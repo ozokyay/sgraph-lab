@@ -1,4 +1,4 @@
-import { Component, Input, ViewChild, HostBinding } from '@angular/core';
+import { Component, Input, ViewChild, HostBinding, AfterViewInit, ElementRef } from '@angular/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { VisMatrixComponent } from '../vis-matrix/vis-matrix.component';
@@ -6,6 +6,7 @@ import { VisNodeLink2Component } from '../vis-node-link-2/vis-node-link-2.compon
 import { VisNodeLinkComponent } from '../vis-node-link/vis-node-link.component';
 import { VisLevelComponent } from '../vis-level/vis-level.component';
 import { trigger, state, style, animate, transition } from '@angular/animations';
+import * as d3 from 'd3';
 
 @Component({
   selector: 'app-vis-container',
@@ -38,11 +39,16 @@ import { trigger, state, style, animate, transition } from '@angular/animations'
     ])
   ]
 })
-export class VisContainerComponent {
+export class VisContainerComponent implements AfterViewInit {
   public level = 1;
   public nl1 = true;
   public nl2 = true;
   public combineClusters = true;
+  public transform = { value: new d3.ZoomTransform(1, 0, 0) };
+
+  private zoom = d3.zoom();
+  private width = 0;
+  private height = 0;
 
   @Input()
   public visualization: "matrix" | "node-link" = "matrix";
@@ -55,6 +61,17 @@ export class VisContainerComponent {
 
   @ViewChild('nodeLink')
   private child3!: VisNodeLinkComponent;
+
+  @ViewChild('container')
+  private container!: ElementRef;
+  
+  ngAfterViewInit() {
+    this.zoom.filter((e: any) => (!e.ctrlKey || e.type === 'wheel') && !e.button && !e.shiftKey)
+      .on("zoom", e => { this.transform = { value: e.transform } });
+    d3.select(this.container.nativeElement)
+      .call(this.zoom)
+      .call(this.zoom.transform, d3.zoomIdentity.translate(this.width / 2, this.height / 2));
+  }
 
   public changeLevel(level: number) {
     const previous = this.level;
@@ -70,11 +87,6 @@ export class VisContainerComponent {
       //   this.nl2 = false;
       // }, 1000);
       this.combineClusters = false;
-
-
-      // 1. enable new vis, set new vis 0%
-      // 2. start animation, start fade
-      // 3. disable old vis
     } else if (previous == 0) {
       // this.nl2 = true;
       // setTimeout(() => {
@@ -84,12 +96,13 @@ export class VisContainerComponent {
     }
 
     // Must sync transform between vis over container
-    // Can use d3 for animation
   }
 
   public resize() {
     this.child1?.resize();
     this.child2?.resize();
     this.child3?.resize();
+    this.width = this.container.nativeElement.clientWidth;
+    this.height = this.container.nativeElement.clientHeight;
   }
 }

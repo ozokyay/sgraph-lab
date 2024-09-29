@@ -9,15 +9,15 @@
     <app-vis-level #visLevel style="align-self: right;" [allowNodeLevel]="visualization == 'node-link'" (levelChange)="changeLevel($event)"></app-vis-level>
 </div>
 <br>
-<div class="fit-height" (wheel)="visLevel.onChange($event)">
+<div #container class="fit-height" (wheel)="visLevel.onChange($event)">
     @if (visualization == "matrix") {
         <app-vis-matrix #matrix style="height: 100%;" [level]="level"></app-vis-matrix>
     } @else if (visualization == "node-link") {
         @if (nl1) {
-            <app-vis-node-link #nodeLink class="absolute" [@showHide]="combineClusters ? 'hidden' : 'shown'" [class.ignore-pointer]="combineClusters" [combineClusters]="combineClusters"></app-vis-node-link>
+            <app-vis-node-link #nodeLink class="absolute" [@showHide]="combineClusters ? 'hidden' : 'shown'" [class.ignore-pointer]="combineClusters" [combineClusters]="combineClusters" [transform]="transform"></app-vis-node-link>
         }
         @if (nl2) {
-            <app-vis-node-link-2 #nodeLink2 class="absolute"  [@showHide]="combineClusters ? 'shown' : 'hidden'" [class.ignore-pointer]="!combineClusters"></app-vis-node-link-2>
+            <app-vis-node-link-2 #nodeLink2 class="absolute"  [@showHide]="combineClusters ? 'shown' : 'hidden'" [class.ignore-pointer]="!combineClusters" [transform]="transform"></app-vis-node-link-2>
         }
     }
 </div>

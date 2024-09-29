@@ -1,4 +1,4 @@
-import { Component, ElementRef, ViewChild, AfterViewInit, OnDestroy, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, ElementRef, ViewChild, AfterViewInit, OnDestroy, Input, OnChanges, SimpleChanges, EventEmitter, Output } from '@angular/core';
 import { ConfigurationService } from '../configuration.service';
 import { ForceDirected } from '../graphwagu/webgpu/force_directed';
 import { EdgeData, EdgeList, Node, NodeData } from '../graph';
@@ -28,19 +28,21 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
   private rect!: DOMRect;
   private width: number = 0;
   private height: number = 0;
-  private transform = new d3.ZoomTransform(1, 0, 0);
-  private zoom = d3.zoom();
   private nodeDict: Map<Node, PIXI.Graphics> = new Map();
   private edgeGraphics!: PIXI.Graphics;
   private abort: AbortController = new AbortController();
-  private centroidLerp: number = 0;
-  private centroidLerpStart: number = 0;
+  private centroidLerp: number = 1;
+  private centroidLerpTargetTime: number = 0;
+  private centroidLerpTransitionTime: number = 500;
   private lastRenderTime: number = 0;
 
   private subscriptions: Subscription[] = [];
 
   @Input()
   public combineClusters = true;
+
+  @Input()
+  public transform = { value: new d3.ZoomTransform(1, 0, 0) };
 
   @ViewChild('container')
   private container!: ElementRef;
@@ -146,21 +148,15 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
       }
     }
 
-    // Zoom and pan
-    const zoom = (e: any) => {
-      this.transform = e.transform;
-      this.stage.scale = { x: e.transform.k, y: e.transform.k };
-      this.stage.pivot = { x: -e.transform.x / e.transform.k * devicePixelRatio, y: -e.transform.y / e.transform.k * devicePixelRatio };
-    }
-    zoom({ transform: this.transform });
+    this.zoom(this.transform.value);
 
-    let zooming = d3.select(this.app.canvas as any)
-      .call(this.zoom.on('zoom', zoom).filter((e: any) => (!e.ctrlKey || e.type === 'wheel') && !e.button && !e.shiftKey));
+    // let zooming = d3.select(this.app.canvas as any)
+    //   .call(this.zoom.on('zoom', zoom).filter((e: any) => (!e.ctrlKey || e.type === 'wheel') && !e.button && !e.shiftKey));
     
-    // Initial zoom
-    if (this.transform.x == 0 && this.transform.y == 0) {
-      zooming.call(this.zoom.transform, d3.zoomIdentity.translate(this.width / 2, this.height / 2))
-    }
+    // Initial zoom to center
+    // if (this.transform.x == 0 && this.transform.y == 0) {
+    //   zooming.call(this.zoom.transform, d3.zoomIdentity.translate(this.width / 2, this.height / 2));
+    // }
 
     // Apply graphics settings
     const settings = this.config.graphicsSettings.value;
@@ -251,19 +247,20 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
     }
   }
 
-  private centroidInterpolation(graph: EdgeList, start: number) {
-    if (this.centroidLerpStart == 0) {
-      this.centroidLerpStart = start + (this.combineClusters ? this.centroidLerp : 1 - this.centroidLerp) * 1000;
+  private centroidInterpolation(graph: EdgeList, timestamp: number) {
+    if (this.centroidLerpTargetTime == 0) {
+      // Current time ms + remaining (depending on direction) * transition ms
+      this.centroidLerpTargetTime = timestamp + (this.combineClusters ? this.centroidLerp : 1 - this.centroidLerp) * this.centroidLerpTransitionTime;
     }
-    const elapsed = Math.min(1000, start - this.centroidLerpStart); // milliseconds
+    const elapsed = Math.min(this.centroidLerpTransitionTime, timestamp - this.centroidLerpTargetTime); // milliseconds
     if (this.combineClusters) {
-      this.centroidLerp = elapsed / 1000;
+      this.centroidLerp = elapsed / this.centroidLerpTransitionTime;
     } else {
-      this.centroidLerp = 1 - elapsed / 1000;
+      this.centroidLerp = 1 - elapsed / this.centroidLerpTransitionTime;
     }
-    this.render(graph, this.abort.signal, start);
-    if (elapsed < 1000) {
-      requestAnimationFrame(s => this.centroidInterpolation(graph, s));
+    this.render(graph, this.abort.signal, timestamp);
+    if (elapsed < this.centroidLerpTransitionTime) {
+      requestAnimationFrame(t => this.centroidInterpolation(graph, t));
     }
   }
 
@@ -300,8 +297,13 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
     if (changes["combineClusters"] &&
       changes["combineClusters"].previousValue != this.combineClusters &&
       this.config.forceDirectedLayout.value.nodes.length > 0) {
-      this.centroidLerpStart = 0;
-      requestAnimationFrame(s => this.centroidInterpolation(this.config.forceDirectedLayout.value, s));
+      this.centroidLerpTargetTime = 0;
+      requestAnimationFrame(t => this.centroidInterpolation(this.config.forceDirectedLayout.value, t));
+    }
+    if (changes["transform"]) {
+      if (this.stage != undefined) {
+        this.zoom(this.transform.value);
+      }
     }
   }
 
@@ -312,5 +314,10 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
     this.app.canvas.style!.width = `${this.width}px`;
     this.app.canvas.style!.height = `${this.height}px`;
     this.rect = (this.app.canvas as any).getBoundingClientRect();
+  }
+
+  public zoom(transform: d3.ZoomTransform) {
+    this.stage.scale = { x: transform.k, y: transform.k };
+    this.stage.pivot = { x: -transform.x / transform.k * devicePixelRatio, y: -transform.y / transform.k * devicePixelRatio };
   }
 }

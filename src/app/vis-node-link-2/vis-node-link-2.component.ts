@@ -1,4 +1,4 @@
-import { Component, ElementRef, ViewChild, AfterViewInit, OnDestroy, Input } from '@angular/core';
+import { Component, ElementRef, ViewChild, AfterViewInit, OnDestroy, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { ConfigurationService } from '../configuration.service';
 import { Edge, EdgeData, EdgeList, Node, NodeData } from '../graph';
 import * as PIXI from 'pixi.js';
@@ -17,7 +17,7 @@ import { Subscription } from 'rxjs';
   templateUrl: './vis-node-link-2.component.html',
   styleUrl: './vis-node-link-2.component.css'
 })
-export class VisNodeLink2Component implements AfterViewInit, OnDestroy {
+export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestroy {
 
   private edgeScale = 500;
   private nodeRadius = 3;
@@ -29,8 +29,6 @@ export class VisNodeLink2Component implements AfterViewInit, OnDestroy {
   private rect!: DOMRect;
   private width: number = 0;
   private height: number = 0;
-  private transform = new d3.ZoomTransform(1, 0, 0);
-  private zoom = d3.zoom();
   private nodeDict: Map<Node, PIXI.Graphics> = new Map();
   private edgeGraphics!: PIXI.Graphics;
   private graph?: EdgeList = undefined;
@@ -40,6 +38,9 @@ export class VisNodeLink2Component implements AfterViewInit, OnDestroy {
   private circleSpacingLerp: number = 0;
   private circleSpacingLerpStart: number = 0;
   private lastRenderTime: number = 0;
+
+  @Input()
+  public transform = { value: new d3.ZoomTransform(1, 0, 0) };
 
   @Input()
   public level: number = 1;
@@ -258,21 +259,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnDestroy {
       }
     }
 
-    // Zoom and pan
-    const zoom = (e: any) => {
-      this.transform = e.transform;
-      this.stage.scale = { x: e.transform.k, y: e.transform.k };
-      this.stage.pivot = { x: -e.transform.x / e.transform.k * devicePixelRatio, y: -e.transform.y / e.transform.k * devicePixelRatio };
-    }
-    zoom({ transform: this.transform });
-
-    let zooming = d3.select(this.app.canvas as any)
-      .call(this.zoom.on('zoom', zoom).filter((e: any) => (!e.ctrlKey || e.type === 'wheel') && !e.button && !e.shiftKey));
-    
-    // Initial zoom
-    if (this.transform.x == 0 && this.transform.y == 0) {
-      zooming.call(this.zoom.transform, d3.zoomIdentity.translate(this.width / 2, this.height / 2))
-    }
+    this.zoom(this.transform.value);
 
     // Apply graphics settings
     const settings = this.config.graphicsSettings.value;
@@ -381,6 +368,14 @@ export class VisNodeLink2Component implements AfterViewInit, OnDestroy {
     })();
   }
 
+  public ngOnChanges(changes: SimpleChanges) {
+    if (changes["transform"]) {
+      if (this.stage != undefined) {
+        this.zoom(this.transform.value);
+      }
+    }
+  }
+
   public resize(): void {
     this.width = this.container.nativeElement.offsetWidth;
     this.height = this.container.nativeElement.offsetHeight;
@@ -388,5 +383,10 @@ export class VisNodeLink2Component implements AfterViewInit, OnDestroy {
     this.app.canvas.style!.width = `${this.width}px`;
     this.app.canvas.style!.height = `${this.height}px`;
     this.rect = (this.app.canvas as any).getBoundingClientRect();
+  }
+
+  public zoom(transform: d3.ZoomTransform) {
+    this.stage.scale = { x: transform.k, y: transform.k };
+    this.stage.pivot = { x: -transform.x / transform.k * devicePixelRatio, y: -transform.y / transform.k * devicePixelRatio };
   }
 }
