@@ -238,6 +238,9 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       this.edgeGraphics.lineTo(targetPos.x * this.edgeScale, targetPos.y * this.edgeScale);
       this.edgeGraphics.stroke({width: this.edgeWidthScale(data.edgeCount), color: "black", alpha: alpha });
     }
+
+    const upper = Math.ceil(this.level);
+    const lower = Math.floor(this.level);
     
     // Set node positions
     for (const node of graph.nodes) {
@@ -248,12 +251,19 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         y: pos.y * this.edgeScale
       };
 
-      
-      // Change fill/tint depending on selection
-      // Or re-create nodes in subject change subscription event
+      console.log(level);
 
-      // Kind of prefer tint here tbh (less calls other than render)
-      // Or just call createNodes(), easy
+      // Opacity
+      if (level == upper) {
+        gfx.alpha = this.level - lower; // TODO: must subtract 1 to ensure lower < upper
+      } else if (level == lower) {
+        gfx.alpha = upper - this.level;
+      } else {
+        gfx.alpha = 0;
+      }
+
+      // If ceil/floor (level), then lerp / 1-lerp
+      // Else, opacity 0
     }
   }
 
