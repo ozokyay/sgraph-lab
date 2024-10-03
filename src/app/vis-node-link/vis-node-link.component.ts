@@ -82,6 +82,7 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private createNodes(graph: EdgeList) {
     for (const gfx of this.nodeDict.values()) {
+      this.stage.removeChild(gfx);
       gfx.destroy();
     }
     this.nodeDict.clear();
@@ -258,7 +259,9 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
     } else {
       this.centroidLerp = 1 - elapsed / this.centroidLerpTransitionTime;
     }
-    this.render(graph, this.abort.signal, timestamp);
+    if (this.stage != undefined) {
+      this.render(graph, this.abort.signal, timestamp); 
+    }
     if (elapsed < this.centroidLerpTransitionTime) {
       requestAnimationFrame(t => this.centroidInterpolation(graph, t));
     }
@@ -277,7 +280,7 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
     this.app = new PIXI.Application();
     (async () => {
       await this.app.init({
-        preference: 'webgpu',
+        preference: 'webgl',
         background: 'white',
         antialias: true
       });
@@ -295,10 +298,13 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
 
   ngOnChanges(changes: SimpleChanges) {
     if (changes["combineClusters"] &&
-      changes["combineClusters"].previousValue != this.combineClusters &&
-      this.config.forceDirectedLayout.value.nodes.length > 0) {
-      this.centroidLerpTargetTime = 0;
-      requestAnimationFrame(t => this.centroidInterpolation(this.config.forceDirectedLayout.value, t));
+      changes["combineClusters"].previousValue != this.combineClusters) {
+        if (this.config.forceDirectedLayout.value.nodes.length > 0) {
+          this.centroidLerpTargetTime = 0;
+          requestAnimationFrame(t => this.centroidInterpolation(this.config.forceDirectedLayout.value, t));
+        } else {
+          this.centroidLerp = this.combineClusters ? 1 : 0;
+        }
     }
     if (changes["transform"]) {
       if (this.stage != undefined) {

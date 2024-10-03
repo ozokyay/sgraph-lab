@@ -66,6 +66,8 @@ export class VisContainerComponent implements AfterViewInit {
   private container!: ElementRef;
   
   ngAfterViewInit() {
+    this.width = this.container.nativeElement.clientWidth;
+    this.height = this.container.nativeElement.clientHeight;
     this.zoom.filter((e: any) => (!e.ctrlKey || e.type === 'wheel') && !e.button && !e.shiftKey)
       .on("zoom", e => { this.transform = { value: e.transform } });
     d3.select(this.container.nativeElement)
@@ -81,6 +83,8 @@ export class VisContainerComponent implements AfterViewInit {
       return;
     }
     
+    // Must apply level to nl1 after matrix
+
     if (level == 0) {
       // this.nl1 = true;
       // setTimeout(() => {
@@ -94,8 +98,6 @@ export class VisContainerComponent implements AfterViewInit {
       // }, 1000);
       this.combineClusters = true;
     }
-
-    // Must sync transform between vis over container
   }
 
   public resize() {

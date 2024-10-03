@@ -29,15 +29,19 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
   private rect!: DOMRect;
   private width: number = 0;
   private height: number = 0;
-  private nodeDict: Map<Node, PIXI.Graphics> = new Map();
+  private nodeDict: Map<Node, [PIXI.Graphics, number]> = new Map();
   private edgeGraphics!: PIXI.Graphics;
   private graph?: EdgeList = undefined;
   private abort: AbortController = new AbortController();
   private edgeWidthScale!: d3.ScaleLinear<number, number, never>;
   private circleSpacingNode?: Node = undefined;
   private circleSpacingLerp: number = 0;
-  private circleSpacingLerpStart: number = 0;
+  private circleSpacingLerpTarget: number = 0;
   private lastRenderTime: number = 0;
+
+  private currentLevel = 1;
+  private speed = 1 / 500;
+  private lastLevelTime = 0;
 
   @Input()
   public transform = { value: new d3.ZoomTransform(1, 0, 0) };
@@ -58,14 +62,6 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
 
   private init() {
     this.subscriptions.push(this.config.configuration.subscribe(config => {
-      // Even anything to do here? Only act on centroids?
-      // => Minimap needs centroids
-      // => Simple higher levels need centroids
-      // => Tree doesn't need centroids, but can wait for them
-      // => Circle packing doesn't need centroids, but also requires full nodes option
-      // => A) implement circle packing twice, layout per cluster?
-      // => B) circle packing only here
-
       // How to sync with cluster list (conflicting vis can be open -> highlight only one last clicked in vis)
 
       this.graph = this.prepare(new EdgeList(config.definition.graph));
@@ -97,11 +93,6 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     }));
     // A) Different kind of selected cluster
     // B) Different list mode as well for sync
-    //    - based on active tab
-    //    - no cluster creation/edit?
-    //    - Horizontal split?
-    //    - Predfined layout: Tabs or Combobox Vis select
-    //    - Free layout: Golden layout - maybe not compatible with angular
     //    - highlight in NL
     //    - stronger highlight in list?
     //    - Adv NL vs mat: understanding edits (smooth anim vs reorder)
@@ -111,62 +102,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       if (c != undefined && highlight) {
 
       }
-    }));
-    
-    // ngOnChanges(): level
-    
-      // Implementation
-      // - create nodes from centroids
-      // - maybe prefer old centroid computation: gives centroids for higher order clusters
-      // - 
-      // - no layout pass on level change
-
-      // Idea: need layout centroids, so always compute layout but change how nodes are rendered
-      // - Maybe don't add nodes to stage
-      // - Maybe extra SVG vis => send centroids to service or even compute layout there
-      //   - New vis needs something like edge strength
-      //   - New vis Might need more node encoding
-      //   - New vis does not have to scale (hopefully?)
-      //   - Ways to skip to minimap OR: morph into minimap for better overview
-      //   - BUT: No smooth transition to node display in this arrangement - is that a problem or not?
-
-      // Risk assessment:
-      // - Can do anything in SVG
-      // - Limits in raster: gradients?
-
-      // Advantages of raster:
-      // - only change nodes/render function
-      // - no extra d3/svg handling
-      // - maybe make more modular (starting positio, layout)
-
-      // Options
-      // A) Sync with matrix, aggregate lower levels into higher ones, but need one lower?
-      // B) Switch between nodes/clusters
-
-      // Convex hull when?
-
-      // Minimap
-      // - Specialized for 1:N
-      // - Non-overlapping
-
-      // Adaptive NL
-      // - Incorporates everything into one
-      // - Would be nice if not separate vis => can toggle nodes to clusters => how to draw? => any less confusing/benefit?
-
-      // 1. Normal NL
-      // 2. Aggregated levels
-      // 3. Tree
-      // 4. Minimap, ausblenden oder fade
-      // 5. Circle packing / Hierarchical convex hulls
-      // Idea: Animations to morph everything, even merging nodes to form clusters
-      // Implementation: Lerp layoutPos to centroid pos or centroid to centroid or centroid to layout / layout target pos (circ pack) (how? -> don't, almost no benefit)
-      // In one UI: Just fade between the canvases
-      // Solution for full circle packing layout: ignore inter-community edges
-      // Ignore general gravity
-      // Gravity for every wanted centroid position
-
-      // This could actually be it...
-    
+    }));    
   }
 
   private prepare(graph: EdgeList): EdgeList {
@@ -183,10 +119,13 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     // MUST differentiate between generated edges and connections (care more about the latter because of editing)
 
 
-    // Step 1: Node + edge scaling
-    // Step 2: Lerp to minimap
+    // Step 1: Node + edge scaling (OK)
+    // Step 2.1: Lerp to level
+    // Step 2.2: Lerp to minimap
     // Step 3: Minimap scaling
     // Step 4: Multilevel support
+
+    // Need all nodes and edges here, lerp position and alpha in render()
 
     graph.nodes = graph.nodes.filter(n => (n.data as Cluster).generator.name != "MG");
     graph.edges = graph.edges.filter(e => (e.source.data as Cluster).generator.name != "MG" && (e.target.data as Cluster).generator.name != "MG")
@@ -196,7 +135,8 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
   }
 
   private createNodes(graph: EdgeList) {
-    for (const gfx of this.nodeDict.values()) {
+    for (const [gfx, _] of this.nodeDict.values()) {
+      // this.stage.removeChild(gfx);
       gfx.destroy();
     }
     this.nodeDict.clear();
@@ -206,7 +146,11 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     const sizeExtent = d3.extent(sizes) as [number, number];
     const radiusScale = d3.scaleLinear().domain(sizeExtent).range(this.nodeRadiusRange);
 
-    for (const node of graph.nodes) {
+    const levels = Utility.getNodeDepths(this.config.configuration.value.definition.graph);
+
+    this.zoom(this.transform.value);
+
+    for (const [node, level] of levels) {
       const gfx = new PIXI.Graphics({ zIndex: 1 });
       const radius = radiusScale(measures.get(node.id)!.nodeCount);
       gfx.circle(0, 0, radius);
@@ -229,7 +173,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
 
 
       };
-      this.nodeDict.set(node, gfx);
+      this.nodeDict.set(node, [gfx, level]);
       this.stage.addChild(gfx);
     }
 
@@ -298,12 +242,13 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     // Set node positions
     for (const node of graph.nodes) {
       const pos = this.config.centroids.value.get(node.id)!;
-      let gfx = this.nodeDict.get(node)!;
+      let [gfx, level] = this.nodeDict.get(node)!;
       gfx.position = {
         x: pos.x * this.edgeScale,
         y: pos.y * this.edgeScale
       };
 
+      
       // Change fill/tint depending on selection
       // Or re-create nodes in subject change subscription event
 
@@ -321,11 +266,34 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     }
   }
 
-  private circleSpacingInterpolation(start: number) {
-    if (this.circleSpacingLerpStart == 0) {
-      this.circleSpacingLerpStart = start + (this.circleSpacingNode ? this.circleSpacingLerp : 1 - this.circleSpacingLerp) * 1000;
+  private levelInterpolation(time: number) {
+    const dir = Math.sign(this.level - this.currentLevel);
+    if (this.lastLevelTime == 0) {
+      this.lastLevelTime = time;
     }
-    const elapsed = Math.min(1000, start - this.circleSpacingLerpStart); // milliseconds
+    const delta = dir * (time - this.lastLevelTime) * this.speed;
+    this.lastLevelTime = time;
+    const newLevel = this.currentLevel + delta;
+    if (dir > 0)
+      this.currentLevel = Math.min(this.level, newLevel);
+    else if (dir < 0)
+      this.currentLevel = Math.max(this.level, newLevel);
+    if (this.graph != undefined) {
+      this.render(this.graph, this.abort.signal, time);
+    }
+    if (this.currentLevel != this.level) {
+      requestAnimationFrame(t => this.levelInterpolation(t));
+    }
+  }
+
+  private circleSpacingInterpolation(start: number) {
+
+    // Idea: interpolate between integers (levels)
+
+    if (this.circleSpacingLerpTarget == 0) {
+      this.circleSpacingLerpTarget = start + (this.circleSpacingNode ? this.circleSpacingLerp : 1 - this.circleSpacingLerp) * 1000;
+    }
+    const elapsed = Math.min(1000, start - this.circleSpacingLerpTarget); // milliseconds
     if (this.circleSpacingLerp) {
       this.circleSpacingLerp = elapsed / 1000;
     } else {
@@ -352,7 +320,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     this.app = new PIXI.Application();
     (async () => {
       await this.app.init({
-        preference: 'webgpu',
+        preference: 'webgl',
         background: 'white',
         antialias: true
       });
@@ -374,6 +342,34 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         this.zoom(this.transform.value);
       }
     }
+
+    if (changes["level"] && !changes["level"].isFirstChange()) {
+      if (this.level != 0) {
+        this.lastLevelTime = 0;
+        requestAnimationFrame(t => this.levelInterpolation(t));
+      }
+    }
+
+
+      // Convex hull when?
+
+      // Minimap
+      // - Specialized for 1:N
+      // - Non-overlapping
+
+      // Prolblem that minimal differences are too large -> min prop dist for radius scale range
+
+      // 1. Normal NL
+      // 2. Aggregated levels
+      // 3. Tree
+      // 4. Minimap, ausblenden oder fade
+      // 5. Circle packing / Hierarchical convex hulls
+      // Idea: Animations to morph everything, even merging nodes to form clusters
+      // Implementation: Lerp layoutPos to centroid pos or centroid to centroid or centroid to layout / layout target pos (circ pack) (how? -> don't, almost no benefit)
+      // In one UI: Just fade between the canvases
+      // Solution for full circle packing layout: ignore inter-community edges
+      // Ignore general gravity
+      // Gravity for every wanted centroid position
   }
 
   public resize(): void {

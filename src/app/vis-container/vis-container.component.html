@@ -17,7 +17,7 @@
             <app-vis-node-link #nodeLink class="absolute" [@showHide]="combineClusters ? 'hidden' : 'shown'" [class.ignore-pointer]="combineClusters" [combineClusters]="combineClusters" [transform]="transform"></app-vis-node-link>
         }
         @if (nl2) {
-            <app-vis-node-link-2 #nodeLink2 class="absolute"  [@showHide]="combineClusters ? 'shown' : 'hidden'" [class.ignore-pointer]="!combineClusters" [transform]="transform"></app-vis-node-link-2>
+            <app-vis-node-link-2 #nodeLink2 class="absolute"  [@showHide]="combineClusters ? 'shown' : 'hidden'" [class.ignore-pointer]="!combineClusters" [transform]="transform" [level]="level"></app-vis-node-link-2>
         }
     }
 </div>
