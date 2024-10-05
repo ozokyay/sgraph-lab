@@ -34,7 +34,8 @@ export class TabClusterListComponent {
   public hasChild = (_: number, node: Cluster) => node.children && node.children.length > 0;
 
   public clusters: Cluster[] = [];
-  public selectedCluster?: Cluster = undefined;
+  public selectedCluster?: Cluster = undefined; // This will become [] + [] (sources orange and targets blue), allow for selection (mouse)
+  public edit: boolean = true;
 
   constructor(private config: ConfigurationService) {
     Utility.config = config;
@@ -44,6 +45,9 @@ export class TabClusterListComponent {
       this.dataSource.data = this.clusters;
     });
     config.selectedCluster.subscribe(cluster => this.selectedCluster = cluster);
+    config.activeTab.subscribe(t => {
+      this.edit = t != 1;
+    });
   }
 
   public getColor(cluster: Cluster) {

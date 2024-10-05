@@ -32,6 +32,7 @@ export class ConfigurationService {
   public sample = new BehaviorSubject<EdgeList>({ nodes: [], edges: [] });
   public centroids = new BehaviorSubject<Map<number, Point>>(new Map());
   public forceDirectedLayout = new BehaviorSubject<EdgeList>({ nodes: [], edges: [] });
+  public activeTab = new BehaviorSubject<number>(0);
   public history = new BehaviorSubject<GraphConfiguration[]>([structuredClone(this.configuration.value)]);
 
   private abortMeasures: AbortController = new AbortController();

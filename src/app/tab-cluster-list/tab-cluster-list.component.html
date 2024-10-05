@@ -22,12 +22,12 @@
         <div class="li-bar" [class.spacer]="node.parent == -1" [style.background-color]="getColor(node)"></div>
         {{node.name}}
         @if (node.generator.name == "MG") {
-            <button mat-icon-button class="li-icon" title="Add child cluster" (click)="onAddCluster($event, node)">
+            <button mat-icon-button class="li-icon" title="Add child cluster" (click)="onAddCluster($event, node)" [disabled]="!edit">
                 <mat-icon>add</mat-icon>
             </button>
         }
         @if (!node.immutable) {
-            <button mat-icon-button class="li-icon-end" [class.li-icon]="node.generator.name != 'MG'" title="Delete cluster" (click)="onRemoveCluster($event, node)">
+            <button mat-icon-button class="li-icon-end" [class.li-icon]="node.generator.name != 'MG'" title="Delete cluster" (click)="onRemoveCluster($event, node)" [disabled]="!edit">
                 <mat-icon>delete</mat-icon>
             </button>
         }
@@ -43,12 +43,12 @@
             <div class="li-bar" [style.background-color]="getColor(node)"></div>
             {{node.name}}
             @if (node.generator.name == "MG") {
-                <button mat-icon-button class="li-icon" title="Add child cluster" (click)="onAddCluster($event, node)">
+                <button mat-icon-button class="li-icon" title="Add child cluster" (click)="onAddCluster($event, node)" [disabled]="!edit">
                     <mat-icon>add</mat-icon>
                 </button>
             }
             @if (!node.immutable) {
-                <button mat-icon-button class="li-icon-end" [class.li-icon]="node.generator.name != 'MG'" title="Delete cluster" (click)="onRemoveCluster($event, node)">
+                <button mat-icon-button class="li-icon-end" [class.li-icon]="node.generator.name != 'MG'" title="Delete cluster" (click)="onRemoveCluster($event, node)" [disabled]="!edit">
                     <mat-icon>delete</mat-icon>
                 </button>
             }
@@ -62,7 +62,7 @@
 </mat-tree>
 
 
-<button mat-fab type="button" class="fab" (click)="onAddCluster($event)">
+<button mat-fab type="button" class="fab" (click)="onAddCluster($event)" [disabled]="!edit">
     <mat-icon>add</mat-icon>
 </button>
 

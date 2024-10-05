@@ -509,4 +509,33 @@ export class Utility {
         y: t * (b.y - a.y) + a.y
        };
     }
+
+    public static scalarMultiplyP(t: number, p: Point): Point {
+      return {
+        x: t * p.x,
+        y: t* p.y
+      };
+    }
+
+    public static addP(a: Point, b: Point): Point {
+      return {
+        x: a.x + b.x,
+        y: a.y + b.y
+      };
+    }
+
+    public static subtractP(a: Point, b: Point): Point {
+      return {
+        x: a.x - b.x,
+        y: a.y - b.y
+      };
+    }
+
+    public static normalizeP(p: Point): Point {
+      const magnitude = Math.sqrt(p.x * p.x + p.y * p.y);
+      return {
+        x: p.x / magnitude,
+        y: p.y / magnitude
+      }
+    }
 }

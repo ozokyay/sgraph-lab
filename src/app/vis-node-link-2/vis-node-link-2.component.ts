@@ -9,6 +9,7 @@ import { Cluster } from '../cluster';
 import { Point } from '../point';
 import { ClusterConnection } from '../cluster-connection';
 import { Subscription } from 'rxjs';
+import { combineLatestInit } from 'rxjs/internal/observable/combineLatest';
 
 @Component({
   selector: 'app-vis-node-link-2',
@@ -31,6 +32,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
   private height: number = 0;
   private nodeDict: Map<Node, [PIXI.Graphics, number]> = new Map();
   private edgeGraphics!: PIXI.Graphics;
+  private radiusScale!: d3.ScaleLinear<number, number>;
   private graph?: EdgeList = undefined;
   private abort: AbortController = new AbortController();
   private edgeWidthScale!: d3.ScaleLinear<number, number, never>;
@@ -144,15 +146,15 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     const measures = this.config.measures.value.clusterMeasures;
     const sizes = [...measures.values()].map(m => m.nodeCount);
     const sizeExtent = d3.extent(sizes) as [number, number];
-    const radiusScale = d3.scaleLinear().domain(sizeExtent).range(this.nodeRadiusRange);
+    this.radiusScale = d3.scaleLinear().domain(sizeExtent).range(this.nodeRadiusRange);
 
     const levels = Utility.getNodeDepths(this.config.configuration.value.definition.graph);
 
     this.zoom(this.transform.value);
 
     for (const [node, level] of levels) {
-      const gfx = new PIXI.Graphics({ zIndex: 1 });
-      const radius = radiusScale(measures.get(node.id)!.nodeCount);
+      const gfx = new PIXI.Graphics();
+      const radius = this.radiusScale(measures.get(node.id)!.nodeCount);
       gfx.circle(0, 0, radius);
 
       // Alpha: This node has selected incident edges
@@ -161,7 +163,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       const alpha = 1;
 
       gfx.stroke({ width: 3, color: 'black', alpha: alpha });
-      gfx.fill({ color: this.getNodeColor(node, this.config.graphicsSettings.value.nodeColoring), alpha: alpha });
+      gfx.fill({ color: this.getNodeColor(node, true), alpha: alpha }); // Ignore graphics settings for readability
       gfx.interactive = true;
       gfx.onmouseenter = () => {
         gfx.tint = 0x9A9A9A;
@@ -208,62 +210,140 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     // Apply graphics settings
     const settings = this.config.graphicsSettings.value;
 
-    // Render edges
-    this.edgeGraphics?.clear();    
-    for (const edge of graph.edges) {
-      const data = edge.data as ClusterConnection;
-      const source = edge.source.data as Cluster;
-      const target = edge.target.data as Cluster;
-
-      if (data.edgeCount == 0) {
-        return;
-      }
-
-      const sourcePos = this.config.centroids.value.get(source.id)!;
-      const targetPos = this.config.centroids.value.get(target.id)!;
-
-      // Transparency of unselected if there is an active selection
-      // const alpha = !anySelection || selectedEdges.indexOf(edge) != -1 ? 1 : 0.2;
-      const alpha = 1;
-
-      const middle = {
-        x: (sourcePos.x + targetPos.x) / 2,
-        y: (sourcePos.y + targetPos.y) / 2
-      };
-      this.edgeGraphics.moveTo(sourcePos.x * this.edgeScale, sourcePos.y * this.edgeScale);
-      this.edgeGraphics.lineTo(middle.x * this.edgeScale, middle.y * this.edgeScale);
-      // this.getNodeColor(edge.source, settings.edgeColoring)
-      this.edgeGraphics.stroke({width: this.edgeWidthScale(data.edgeCount), color: "black", alpha: alpha });
-      this.edgeGraphics.moveTo(middle.x * this.edgeScale, middle.y * this.edgeScale);
-      this.edgeGraphics.lineTo(targetPos.x * this.edgeScale, targetPos.y * this.edgeScale);
-      this.edgeGraphics.stroke({width: this.edgeWidthScale(data.edgeCount), color: "black", alpha: alpha });
-    }
-
-    const upper = Math.ceil(this.level);
-    const lower = Math.floor(this.level);
+    const upper = Math.ceil(this.currentLevel);
+    const lower = Math.floor(this.currentLevel);
     
     // Set node positions
     for (const node of graph.nodes) {
+      const radius = this.radiusScale(this.config.configuration.value.instance.clusterMeasures.get(node.id)!.nodeCount);
+
+      // For overlap prevention:
+      // - Compare to all others O(n^2)
+      // - Move away
+      // - Cascade
+      // - Might loop
+
+      // Solution: Force simulation
+      // - But quite a lot of work, does not respect anything (edges, relative layout position)
+      // - Would need relative layout position as opposing springs -> hard to find correct balance
+
+      // -> Why not multilevel layout in the first place
+      // -> Lerp all the way
+      // -> Use tl positions as starting points instead of random
+      // -> Also in service, basically iterative ForceDirected()
+
       const pos = this.config.centroids.value.get(node.id)!;
       let [gfx, level] = this.nodeDict.get(node)!;
       gfx.position = {
         x: pos.x * this.edgeScale,
         y: pos.y * this.edgeScale
       };
+      gfx.zIndex = 1000 - level;
 
-      console.log(level);
-
-      // Opacity
-      if (level == upper) {
-        gfx.alpha = this.level - lower; // TODO: must subtract 1 to ensure lower < upper
-      } else if (level == lower) {
-        gfx.alpha = upper - this.level;
-      } else {
-        gfx.alpha = 0;
+      const cluster = node.data as Cluster;
+      if (level > 1) {
+        const parent = cluster.parent;
+        const parentPos = this.config.centroids.value.get(parent)!;
+        const scaledParentPos = {
+          x: parentPos.x * this.edgeScale,
+          y: parentPos.y * this.edgeScale
+        }
+        let lerp: number;
+        if (level == upper) {
+          lerp = this.currentLevel == upper ? 1 : this.currentLevel - lower;
+        } else if (level == lower) {
+          lerp = this.currentLevel == lower ? 1 : upper - this.currentLevel;
+        } else {
+          lerp = 0;
+        }
+        gfx.position = Utility.lerpP(scaledParentPos, gfx.position, lerp);
       }
 
-      // If ceil/floor (level), then lerp / 1-lerp
-      // Else, opacity 0
+      // Opacity
+      if (cluster.children.length > 0) {
+        if (level == upper) {
+          gfx.alpha = this.currentLevel == upper ? 1 : this.currentLevel - lower;
+        } else if (level == lower) {
+          gfx.alpha = this.currentLevel == lower ? 1 : upper - this.currentLevel;
+        } else {
+          gfx.alpha = 0;
+        }
+      }
+    }
+
+    // Render edges
+    this.edgeGraphics?.clear();
+    for (const edge of graph.edges) {
+      const data = edge.data as ClusterConnection;
+      const source = edge.source.data as Cluster;
+      const target = edge.target.data as Cluster;
+
+      const [sourceGraphics, sourceLevel] = this.nodeDict.get(edge.source)!;
+      const [targetGraphics, targetLevel] = this.nodeDict.get(edge.target)!;
+
+      if (data.edgeCount == 0 || Math.abs(sourceLevel - this.level) >= 1 || Math.abs(targetLevel - this.level) >= 1) {
+        return;
+      }
+
+      // Radius could be saved somewhere
+      const sourceRadius = this.radiusScale(this.config.configuration.value.instance.clusterMeasures.get(edge.source.id)!.nodeCount);
+      const targetRadius = this.radiusScale(this.config.configuration.value.instance.clusterMeasures.get(edge.target.id)!.nodeCount);
+
+      const sourcePos = Utility.addP(sourceGraphics.position, Utility.scalarMultiplyP(sourceRadius, Utility.normalizeP(Utility.subtractP(targetGraphics.position, sourceGraphics.position))));
+      const targetPos = Utility.addP(targetGraphics.position, Utility.scalarMultiplyP(targetRadius, Utility.normalizeP(Utility.subtractP(sourceGraphics.position, targetGraphics.position))));
+
+      // 1. OK auto tab switch on selection (deselect on switch back)
+      // 2. highlight edges on tab select
+      // 3. highlight community in list and disable controls on tab select
+      // 4. community select and center lerp on node click, deselect on other views
+      // 5. overlap handling
+      // 6. dashed lines
+      // 7. second cluster selection
+      // 8. cross-layer support (circle packing inside or outside, selection)
+      // 9. wildcard selection in matrix and nl2
+      // 10. better inf diff
+      // 11. tables
+      // 12. attributes
+      // 13. data recording
+      // 14. walkthrough
+      // 15. tasks
+      // 16. Labels in vis and hover for attributes
+
+      // Problem: How to show edges on lower levels?
+      // => Parents are not visible, so would need to show substitute edges
+      // => But don't because would be confusing
+
+      // Idea: Dashed lines for off-level effective connections
+
+      // Problem 2: Graphics settings? -> Ignore because of no benefit
+
+      // Problem 3: Overlap -> min distance maybe force directed or simple multi level variant (scaling spread will be hard, maybe just try it out? possible tuning params?)
+      // => think about force sim vs multi level
+
+      // Problem 4: Multiple maps can cause conflicting highlight in list -> deselect in all other instances
+
+      // Edge width better scale, node radius better scale (do not exaggerate miniscule differences, start medium)
+
+      // Next feature: Cluster selection & sync with list highlight -> depending on active tab (or even in active tab)
+      // Follow-up: Second cluster or edge selection
+
+      // Then: Attributes, Tables, Walkthrough
+
+      // Transparency of unselected if there is an active selection
+      // const alpha = !anySelection || selectedEdges.indexOf(edge) != -1 ? 1 : 0.2;
+      const alpha = Math.min(sourceGraphics.alpha, targetGraphics.alpha);
+
+      const middle = {
+        x: (sourcePos.x + targetPos.x) / 2,
+        y: (sourcePos.y + targetPos.y) / 2
+      };
+      this.edgeGraphics.moveTo(sourcePos.x, sourcePos.y);
+      this.edgeGraphics.lineTo(middle.x, middle.y);
+      // this.getNodeColor(edge.source, settings.edgeColoring)
+      this.edgeGraphics.stroke({ width: this.edgeWidthScale(data.edgeCount), color: "black", alpha: alpha });
+      this.edgeGraphics.moveTo(middle.x, middle.y);
+      this.edgeGraphics.lineTo(targetPos.x, targetPos.y);
+      this.edgeGraphics.stroke({ width: this.edgeWidthScale(data.edgeCount), color: "black", alpha: alpha });
     }
   }
 

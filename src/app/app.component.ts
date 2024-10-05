@@ -59,12 +59,19 @@ export class AppComponent implements OnInit {
   @ViewChild('containerSecondary')
   private containerSecondary!: VisContainerComponent;
   
-  constructor(public python: PythonService) {
-    
+  constructor(public python: PythonService, private config: ConfigurationService) {
+    config.selectedConnections.subscribe(connections => {
+      if (connections.length > 0) {
+        this.selectedTabIndex = 1;
+      }
+    });
   }
 
-  public onSelectedTabChange() {
-
+  public onSelectedTabChange(index: number) {
+    if (index != 1) {
+      this.config.selectedConnections.next([]); 
+    }
+    this.config.activeTab.next(index);
   }
 
   public async ngOnInit() {
