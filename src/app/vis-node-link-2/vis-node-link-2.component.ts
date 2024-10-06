@@ -36,7 +36,8 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
   private graph?: EdgeList = undefined;
   private abort: AbortController = new AbortController();
   private edgeWidthScale!: d3.ScaleLinear<number, number, never>;
-  private circleSpacingNode?: Node = undefined;
+  private selectedNode?: Node = undefined;
+  private circleSpacingCenter?: Node = undefined;
   private circleSpacingLerp: number = 0;
   private circleSpacingLerpTarget: number = 0;
   private lastRenderTime: number = 0;
@@ -64,14 +65,12 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
 
   private init() {
     this.subscriptions.push(this.config.configuration.subscribe(config => {
-      // How to sync with cluster list (conflicting vis can be open -> highlight only one last clicked in vis)
-
+      this.reset();
       this.graph = this.prepare(new EdgeList(config.definition.graph));
     }));
     this.subscriptions.push(this.config.centroids.subscribe(() => {
       if (this.graph != undefined && this.graph.nodes.length > 0) {
-        this.abort.abort();
-        this.abort = new AbortController();
+        this.reset();
         // Initial layout or render if no own layout
         this.render(this.graph, this.abort.signal); 
       }
@@ -102,9 +101,22 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       // Change circleSpacing atom sim stuff
       const highlight = false;
       if (c != undefined && highlight) {
-
+        // This is for allowing node selection from list
       }
-    }));    
+    }));
+    this.subscriptions.push(this.config.activeTab.subscribe(t => {
+      if (t != 1) {
+        this.selectedNode = undefined;
+      }
+    }));
+  }
+
+  private reset() {
+    this.abort.abort();
+    this.abort = new AbortController();
+    this.circleSpacingLerp = 0;
+    this.selectedNode = undefined;
+    this.circleSpacingCenter = undefined;
   }
 
   private prepare(graph: EdgeList): EdgeList {
@@ -173,7 +185,36 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       }
       gfx.onclick = () => {
 
+        // Tab to connections
+        // TODO: wildcard connection 1:N on first select
 
+        if (this.selectedNode == undefined) {
+          this.selectedNode = node;
+          this.circleSpacingCenter = node;
+        } else {
+          this.selectedNode = undefined;
+        }
+
+        this.circleSpacingLerpTarget = 0;
+        requestAnimationFrame(t => this.circleSpacingInterpolation(t, this.abort.signal));
+
+
+        // Arrange others around this
+        // - set selected clusters != undefined
+        // - start lerp to circular, translate stage to put selection in view center, fade irrelevant edges, show potential (dashed) edges
+        // - stroke orange (symbolize outgoing)
+
+        // To fit with matrix (never no connections selected): Starting connections wildcard?
+        // Right-click on other = center that one
+
+        // Scaling:
+        // - problem with shells: inaccurate additional variable (perceived distance)
+        // - just scale up radius
+        // - keep siblings close together? -> determined by underlying layout, easy
+
+        // Graphics setting to disable circular layout
+
+        console.log(node.data);
       };
       this.nodeDict.set(node, [gfx, level]);
       this.stage.addChild(gfx);
@@ -216,6 +257,21 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     // Set node positions
     for (const node of graph.nodes) {
       const radius = this.radiusScale(this.config.configuration.value.instance.clusterMeasures.get(node.id)!.nodeCount);
+      const cluster = node.data as Cluster;
+      const [gfx, level] = this.nodeDict.get(node)!;
+      gfx.zIndex = 1000 - level;
+      gfx.position = this.calculateBasePos(node, level, upper, lower);
+
+      // Opacity
+      if (cluster.children.length > 0) {
+        if (level == upper) {
+          gfx.alpha = this.currentLevel == upper ? 1 : this.currentLevel - lower;
+        } else if (level == lower) {
+          gfx.alpha = this.currentLevel == lower ? 1 : upper - this.currentLevel;
+        } else {
+          gfx.alpha = 0;
+        }
+      }
 
       // For overlap prevention:
       // - Compare to all others O(n^2)
@@ -232,42 +288,13 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       // -> Use tl positions as starting points instead of random
       // -> Also in service, basically iterative ForceDirected()
 
-      const pos = this.config.centroids.value.get(node.id)!;
-      let [gfx, level] = this.nodeDict.get(node)!;
-      gfx.position = {
-        x: pos.x * this.edgeScale,
-        y: pos.y * this.edgeScale
-      };
-      gfx.zIndex = 1000 - level;
 
-      const cluster = node.data as Cluster;
-      if (level > 1) {
-        const parent = cluster.parent;
-        const parentPos = this.config.centroids.value.get(parent)!;
-        const scaledParentPos = {
-          x: parentPos.x * this.edgeScale,
-          y: parentPos.y * this.edgeScale
-        }
-        let lerp: number;
-        if (level == upper) {
-          lerp = this.currentLevel == upper ? 1 : this.currentLevel - lower;
-        } else if (level == lower) {
-          lerp = this.currentLevel == lower ? 1 : upper - this.currentLevel;
-        } else {
-          lerp = 0;
-        }
-        gfx.position = Utility.lerpP(scaledParentPos, gfx.position, lerp);
-      }
 
-      // Opacity
-      if (cluster.children.length > 0) {
-        if (level == upper) {
-          gfx.alpha = this.currentLevel == upper ? 1 : this.currentLevel - lower;
-        } else if (level == lower) {
-          gfx.alpha = this.currentLevel == lower ? 1 : upper - this.currentLevel;
-        } else {
-          gfx.alpha = 0;
-        }
+      // Circle layout
+      if (this.circleSpacingCenter != undefined) {
+        const [_, level] = this.nodeDict.get(this.circleSpacingCenter)!;
+        const center = this.calculateBasePos(this.circleSpacingCenter, level, upper, lower);
+        gfx.position = Utility.lerpP(gfx.position, center, this.circleSpacingLerp);
       }
     }
 
@@ -295,7 +322,10 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       // 1. OK auto tab switch on selection (deselect on switch back)
       // 2. OK highlight edges on tab select
       // 3. OK highlight community in list and disable controls on tab select
-      // 4. community select and center lerp on node click, deselect on other views, highlight cluster on hover
+      // 4. community select and center lerp on node click, deselect on other views, highlight cluster on hover (matrix + nl2 + nl1), select from cluster list because why not (which minimap of multiple? center)
+      // 4.0 encode stuff in edges
+      // 4.1 Scaling (nuclear model)
+      // 4.2 multi level (circle packing, pinning)
       // 5. overlap handling
       // 6. dashed lines
       // 7. second cluster selection
@@ -370,6 +400,35 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     }
   }
 
+  private calculateBasePos(node: Node, level: number, upper: number, lower: number) {
+    const pos = this.config.centroids.value.get(node.id)!;
+    let result: Point = {
+      x: pos.x * this.edgeScale,
+      y: pos.y * this.edgeScale
+    };
+
+    const cluster = node.data as Cluster;
+    if (level > 1) {
+      const parent = cluster.parent;
+      const parentPos = this.config.centroids.value.get(parent)!;
+      const scaledParentPos = {
+        x: parentPos.x * this.edgeScale,
+        y: parentPos.y * this.edgeScale
+      }
+      let lerp: number;
+      if (level == upper) {
+        lerp = this.currentLevel == upper ? 1 : this.currentLevel - lower;
+      } else if (level == lower) {
+        lerp = this.currentLevel == lower ? 1 : upper - this.currentLevel;
+      } else {
+        lerp = 0;
+      }
+      result = Utility.lerpP(scaledParentPos, result, lerp);
+    }
+
+    return result;
+  }
+
   private getNodeColor(node: Node, communityColor: boolean = true): number | string {
     if (communityColor) {
       const cluster = node.data as Cluster;
@@ -399,15 +458,15 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     }
   }
 
-  private circleSpacingInterpolation(start: number) {
-
-    // Idea: interpolate between integers (levels)
-
-    if (this.circleSpacingLerpTarget == 0) {
-      this.circleSpacingLerpTarget = start + (this.circleSpacingNode ? this.circleSpacingLerp : 1 - this.circleSpacingLerp) * 1000;
+  private circleSpacingInterpolation(start: number, abort: AbortSignal) {
+    if (abort.aborted) {
+      return;
     }
-    const elapsed = Math.min(1000, start - this.circleSpacingLerpTarget); // milliseconds
-    if (this.circleSpacingLerp) {
+    if (this.circleSpacingLerpTarget == 0) {
+      this.circleSpacingLerpTarget = start + (this.selectedNode ? 1 - this.circleSpacingLerp : this.circleSpacingLerp) * 1000;
+    }
+    const elapsed = Math.min(1000, 1000 - (this.circleSpacingLerpTarget - start)); // milliseconds
+    if (this.selectedNode) {
       this.circleSpacingLerp = elapsed / 1000;
     } else {
       this.circleSpacingLerp = 1 - elapsed / 1000;
@@ -416,7 +475,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       this.render(this.graph, this.abort.signal, start);
     }
     if (elapsed < 1000) {
-      requestAnimationFrame(s => this.circleSpacingInterpolation(s));
+      requestAnimationFrame(s => this.circleSpacingInterpolation(s, abort));
     }
   }
 
