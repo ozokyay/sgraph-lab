@@ -293,9 +293,9 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       const targetPos = Utility.addP(targetGraphics.position, Utility.scalarMultiplyP(targetRadius, Utility.normalizeP(Utility.subtractP(sourceGraphics.position, targetGraphics.position))));
 
       // 1. OK auto tab switch on selection (deselect on switch back)
-      // 2. highlight edges on tab select
-      // 3. highlight community in list and disable controls on tab select
-      // 4. community select and center lerp on node click, deselect on other views
+      // 2. OK highlight edges on tab select
+      // 3. OK highlight community in list and disable controls on tab select
+      // 4. community select and center lerp on node click, deselect on other views, highlight cluster on hover
       // 5. overlap handling
       // 6. dashed lines
       // 7. second cluster selection
@@ -321,6 +321,29 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       // => think about force sim vs multi level
 
       // Problem 4: Multiple maps can cause conflicting highlight in list -> deselect in all other instances
+
+      // The question is: Can different visualizations by synchronized?
+      // - Matrix and minimap: no
+      // - Matrix and normal nl: yes
+      // - Cluster list and minimap: yes
+      // - Cluster list and matrix: no
+
+      // Ways to handle:
+      // a) deselect on interaction with other (confusing, unintuitive, not helpful)
+      // b) show but don't provide interaction (easy to implement)
+      // c) provide clunky alternative interaction (better for study to compare)
+      // d) no interaction in list, display only
+
+      // List can only do 1:N
+      // Priority: synchronize matrix and nl/minimap
+
+      // -> N:M and different directions
+      // -> select first and second node OR select actual edge
+      // -> both can have problems with overlap, can ignore for now
+
+      // Idea: Cluster list click can do 1:N
+      // Idea: Cluster list highlights selected connections with some highlight color (ignore directions because cannot show all from matrix)
+      // Idea: Selecting in one vis deselects in all others, implemented as focus bool
 
       // Edge width better scale, node radius better scale (do not exaggerate miniscule differences, start medium)
 

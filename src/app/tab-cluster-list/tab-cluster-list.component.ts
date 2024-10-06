@@ -2,7 +2,6 @@ import { Component } from '@angular/core';
 import { ConfigurationService } from '../configuration.service';
 import { DegreesDefault, Series } from '../series';
 import { Cluster } from '../cluster';
-import * as d3 from 'd3';
 import { MatButtonModule } from '@angular/material/button';
 import { MatListModule } from '@angular/material/list';
 import { NestedTreeControl } from '@angular/cdk/tree';
@@ -34,8 +33,9 @@ export class TabClusterListComponent {
   public hasChild = (_: number, node: Cluster) => node.children && node.children.length > 0;
 
   public clusters: Cluster[] = [];
-  public selectedCluster?: Cluster = undefined; // This will become [] + [] (sources orange and targets blue), allow for selection (mouse)
+  public selectedCluster?: Cluster = undefined;
   public edit: boolean = true;
+  public highlight = new Map<Cluster, boolean>();
 
   constructor(private config: ConfigurationService) {
     Utility.config = config;
@@ -43,10 +43,23 @@ export class TabClusterListComponent {
       this.clusters = configuration.definition.graph.getNodes().map(n => n.data as Cluster).filter(c => c.parent == -1); // Only root level nodes
       this.dataSource.data = [];
       this.dataSource.data = this.clusters;
+      this.highlight.clear();
+      for (const c of this.clusters) {
+        this.highlight.set(c, false); // Selected connections will always be clear when adding
+      }
     });
     config.selectedCluster.subscribe(cluster => this.selectedCluster = cluster);
     config.activeTab.subscribe(t => {
       this.edit = t != 1;
+    });
+    config.selectedConnections.subscribe(connections => {
+      for (const c of this.highlight.keys()) {
+        this.highlight.set(c, false);
+      }
+      for (const c of connections) {
+        this.highlight.set(c.source.data as Cluster, true);
+        this.highlight.set(c.target.data as Cluster, true);
+      }
     });
   }
 
@@ -56,18 +69,6 @@ export class TabClusterListComponent {
 
   public onAddCluster(event: MouseEvent, parent?: Cluster) {
     event.stopPropagation();
-
-    // Use colors like ids, but reorder to quickly find next
-    // const colors = [...this.clusters.map(c => c.color)]
-    // colors.sort();
-    // let col: number = 0;
-    // for (const c of colors) {
-    //   if (c == col) {
-    //     col++;
-    //   } else {
-    //     break;
-    //   }
-    // }
 
     let id = 0;
     if (this.clusters.length > 0) {
@@ -152,6 +153,10 @@ export class TabClusterListComponent {
 
   public onSelectCluster(cluster: Cluster) {
     this.config.selectedCluster.next(cluster);
+  }
+
+  public onHoverCluster(cluster?: Cluster) {
+    this.config.hoveredCluster.next(cluster);
   }
 
   private numberToLetters(value: number): string {
