@@ -536,6 +536,14 @@ export class Utility {
       return {
         x: p.x / magnitude,
         y: p.y / magnitude
-      }
+      };
+    }
+
+    public static scalarP(a: Point, b: Point): number {
+      return a.x * b.x + a.y * b.y;
+    }
+
+    public static mod(a: number, b: number): number {
+      return ((a % b) + b) % b;
     }
 }

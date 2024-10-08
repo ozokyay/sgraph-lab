@@ -8,7 +8,7 @@ import Rand from 'rand-seed';
 import { Cluster } from '../cluster';
 import { Point } from '../point';
 import { ClusterConnection } from '../cluster-connection';
-import { Subscription } from 'rxjs';
+import { max, Subscription } from 'rxjs';
 import { combineLatestInit } from 'rxjs/internal/observable/combineLatest';
 
 @Component({
@@ -186,7 +186,8 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       gfx.onclick = () => {
 
         // Tab to connections
-        // TODO: wildcard connection 1:N on first select
+        // TODO: wildcard connection 1:N on first select (not intuitive to start with, so different var in service to store which view has focus (or undefined))
+        // TODO: Also allow selection without circular?
 
         if (this.selectedNode == undefined) {
           this.selectedNode = node;
@@ -213,8 +214,6 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         // - keep siblings close together? -> determined by underlying layout, easy
 
         // Graphics setting to disable circular layout
-
-        console.log(node.data);
       };
       this.nodeDict.set(node, [gfx, level]);
       this.stage.addChild(gfx);
@@ -254,9 +253,12 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     const upper = Math.ceil(this.currentLevel);
     const lower = Math.floor(this.currentLevel);
     
-    // Set node positions
+    // Level positions
+    // Calculate COM
+    let centerOfMass: Point = { x: 0, y: 0 };
+    let comCount = 0;
+    let centerPos: Point = { x: 0, y: 0 };
     for (const node of graph.nodes) {
-      const radius = this.radiusScale(this.config.configuration.value.instance.clusterMeasures.get(node.id)!.nodeCount);
       const cluster = node.data as Cluster;
       const [gfx, level] = this.nodeDict.get(node)!;
       gfx.zIndex = 1000 - level;
@@ -273,28 +275,84 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         }
       }
 
-      // For overlap prevention:
-      // - Compare to all others O(n^2)
-      // - Move away
-      // - Cascade
-      // - Might loop
 
-      // Solution: Force simulation
-      // - But quite a lot of work, does not respect anything (edges, relative layout position)
-      // - Would need relative layout position as opposing springs -> hard to find correct balance
-
+      // Overlap prevention
       // -> Why not multilevel layout in the first place
       // -> Lerp all the way
       // -> Use tl positions as starting points instead of random
       // -> Also in service, basically iterative ForceDirected()
 
+      if (level == this.level || cluster.children.length == 0) {
+        if (node != this.circleSpacingCenter) {
+          centerOfMass = Utility.addP(centerOfMass, gfx.position);
+          comCount++;
+        } else {
+          centerPos = gfx.position;
+        }
+      }
+    }
+    centerOfMass = Utility.scalarMultiplyP(1 / comCount, centerOfMass);
+    centerOfMass = Utility.subtractP(centerOfMass, centerPos);
+    // centerOfMass = Utility.normalizeP(centerOfMass);
+    const comAngle = Math.atan2(centerOfMass.y, centerOfMass.x) + Math.PI;
+    const angles: [PIXI.Graphics, number][] = [];
+    let startAngle = comAngle;
 
+    if (graph.nodes.length > 1 && this.circleSpacingCenter != undefined) {
+      for (const node of graph.nodes) {
+        if (node == this.circleSpacingCenter) {
+          continue;
+        }
+  
+        const [gfx, level] = this.nodeDict.get(node)!;
+        if (level != this.level && (node.data as Cluster).children.length > 0) {
+          continue;
+        }
+        // const scalarProduct = Utility.scalarP(Utility.normalizeP(gfx.position), centerOfMass);
+        const angle = Math.atan2(gfx.position.y - centerPos.y, gfx.position.x - centerPos.x) + Math.PI;
+        angles.push([gfx, angle]);
+      }
+      angles.sort((a, b) => a[1] - b[1]);
+    }
+    if (angles.length > 1 && this.circleSpacingCenter != undefined) {
+      const rightIndex = angles.findIndex(v => v[1] >= comAngle);
+      
+      // const left = angles[Utility.mod(leftIndex, angles.length)];
+      // const right = angles[Utility.mod(leftIndex + 1, angles.length)];
+      // const middle = Utility.scalarMultiplyP(0.5, Utility.addP(left[0].position, right[0].position));
+      // startAngle = Math.atan2(middle.y - centerPos.y, middle.x - centerPos.x) + Math.PI;
+      
+      // Circle lerp
+      for (let i = 0; i < angles.length; i++) { // angles
+        const [gfx, angle] = angles[i];
+        // const radius = this.radiusScale(this.config.configuration.value.instance.clusterMeasures.get(node.id)!.nodeCount);
+        // const [gfx, level] = this.nodeDict.get(node)!;
 
-      // Circle layout
-      if (this.circleSpacingCenter != undefined) {
-        const [_, level] = this.nodeDict.get(this.circleSpacingCenter)!;
-        const center = this.calculateBasePos(this.circleSpacingCenter, level, upper, lower);
-        gfx.position = Utility.lerpP(gfx.position, center, this.circleSpacingLerp);
+        const minRadius = 1000; // increase until no overlap at max spread
+
+        const step = 2 * Math.PI / angles.length;
+        let maxAngle = startAngle + 0.5 * step + (i - rightIndex) * step;
+        maxAngle = Utility.mod(maxAngle, 2 * Math.PI);
+
+        // default positions
+        let circlePos = this.circlePosition(angle - Math.PI, minRadius);
+        circlePos = Utility.addP(centerPos, circlePos);
+
+        // max positions
+        let maxCirclePos = this.circlePosition(maxAngle - Math.PI, minRadius);
+        maxCirclePos = Utility.addP(centerPos, maxCirclePos);
+
+        // 1. OK calc center of mass of angles from base pos of others
+        // 2. OK Calculate default positions on circle: vectors or angles
+        // 3. OK Calculate max space positions on circle (sort by angles rel to center (offset), find two closest to com (angle dist, scalar product), spread)
+        // 4. OK Sort by angles, assign to slots clockwise
+        // 4. Test min overlap free t
+        // 5. lerp (on angles for prettier anim?)
+
+        // Calculate sum of diameters to approximate required circumference, add spacing, calculate radius
+        // Kinda hard, arc from angle from atan(r/R)
+
+        gfx.position = Utility.lerpP(gfx.position, maxCirclePos, this.circleSpacingLerp);
       }
     }
 
@@ -322,7 +380,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       // 1. OK auto tab switch on selection (deselect on switch back)
       // 2. OK highlight edges on tab select
       // 3. OK highlight community in list and disable controls on tab select
-      // 4. community select and center lerp on node click, deselect on other views, highlight cluster on hover (matrix + nl2 + nl1), select from cluster list because why not (which minimap of multiple? center)
+      // 4. community select and center lerp on node click, deselect on other views, highlight cluster on hover, zIndex (matrix + nl2 + nl1), select from cluster list because why not (which minimap of multiple? center)
       // 4.0 encode stuff in edges
       // 4.1 Scaling (nuclear model)
       // 4.2 multi level (circle packing, pinning)
@@ -429,6 +487,13 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     return result;
   }
 
+  private circlePosition(angle: number, radius: number): Point {
+    return {
+      x: Math.cos(angle) * radius,
+      y: Math.sin(angle) * radius
+    };
+  }
+
   private getNodeColor(node: Node, communityColor: boolean = true): number | string {
     if (communityColor) {
       const cluster = node.data as Cluster;
@@ -519,6 +584,8 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       if (this.level != 0) {
         this.lastLevelTime = 0;
         requestAnimationFrame(t => this.levelInterpolation(t));
+      } else {
+        this.reset();
       }
     }
 
