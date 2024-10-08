@@ -166,7 +166,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
 
     for (const [node, level] of levels) {
       const gfx = new PIXI.Graphics();
-      const radius = this.radiusScale(measures.get(node.id)!.nodeCount);
+      const radius = this.config.graphicsSettings.value.nodeRadius ? this.radiusScale(measures.get(node.id)!.nodeCount) : (this.nodeRadiusRange[0] + this.nodeRadiusRange[1]) / 2;
       gfx.circle(0, 0, radius);
 
       // Alpha: This node has selected incident edges
@@ -282,7 +282,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       // -> Use tl positions as starting points instead of random
       // -> Also in service, basically iterative ForceDirected()
 
-      if (level == this.level || cluster.children.length == 0) {
+      if (level == this.level || (level <= this.level && cluster.children.length == 0)) {
         if (node != this.circleSpacingCenter) {
           centerOfMass = Utility.addP(centerOfMass, gfx.position);
           comCount++;
@@ -305,7 +305,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         }
   
         const [gfx, level] = this.nodeDict.get(node)!;
-        if (level != this.level && (node.data as Cluster).children.length > 0) {
+        if (level != this.level && (node.data as Cluster).children.length > 0 || level > this.level) {
           continue;
         }
         const gfxVec = Utility.subtractP(gfx.position, centerPos);
@@ -323,7 +323,6 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       // const middle = Utility.scalarMultiplyP(0.5, Utility.addP(left[0].position, right[0].position));
       // startAngle = Math.atan2(middle.y - centerPos.y, middle.x - centerPos.x) + Math.PI;
 
-      console.log("ANGLES");
       // Circle lerp
       for (let i = 0; i < angles.length; i++) { // angles
         const [gfx, angle] = angles[i];
@@ -331,11 +330,10 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         // const [gfx, level] = this.nodeDict.get(node)!;
 
         const minRadius = 1000; // increase until no overlap at max spread
-        const spread = 0.5;
+        const spread = 1;
 
         const step = 2 * Math.PI / angles.length * spread;
         let maxAngle = startAngle + 0.5 * step + (i - middle) * step;
-        console.log(`i ${i - middle} : s ${startAngle} : as ${angle + startAngle} : a ${angle} : m ${maxAngle - startAngle}`);
         maxAngle = Utility.mod(maxAngle, 2 * Math.PI);
 
         // default positions
@@ -350,9 +348,18 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         // 2. OK Calculate default positions on circle: vectors or angles
         // 3. OK Calculate max space positions on circle (sort by angles rel to center (offset), find two closest to com (angle dist, scalar product), spread)
         // 4. OK Sort by angles, assign to slots clockwise
-        // 4. Test min overlap free t up to 1
+        // 5. WORSE THAN FD Test min overlap free t up to 1
 
         gfx.position = Utility.lerpP(gfx.position, maxCirclePos, this.circleSpacingLerp);
+      }
+    }
+
+    for (const node of graph.nodes) {
+      const cluster = node.data as Cluster;
+      const [gfx, level] = this.nodeDict.get(node)!;
+      if (level > this.level && this.currentLevel == this.level && cluster.parent != -1) {
+        const [pgfx, plevel] = this.nodeDict.get(this.config.configuration.value.definition.graph.nodeDictionary.get(cluster.parent)!)!
+        gfx.position = pgfx.position;
       }
     }
 
@@ -581,11 +588,10 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     }
 
     if (changes["level"] && !changes["level"].isFirstChange()) {
+      this.reset();
       if (this.level != 0) {
         this.lastLevelTime = 0;
         requestAnimationFrame(t => this.levelInterpolation(t));
-      } else {
-        this.reset();
       }
     }
 
