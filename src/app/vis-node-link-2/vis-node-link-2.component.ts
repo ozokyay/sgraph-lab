@@ -294,7 +294,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     centerOfMass = Utility.scalarMultiplyP(1 / comCount, centerOfMass);
     centerOfMass = Utility.subtractP(centerOfMass, centerPos);
     // centerOfMass = Utility.normalizeP(centerOfMass);
-    const comAngle = Math.atan2(centerOfMass.y, centerOfMass.x) + Math.PI;
+    const comAngle = Math.atan2(centerOfMass.y, centerOfMass.x); // This is used to start placing around
     const angles: [PIXI.Graphics, number][] = [];
     let startAngle = comAngle;
 
@@ -308,20 +308,22 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         if (level != this.level && (node.data as Cluster).children.length > 0) {
           continue;
         }
-        // const scalarProduct = Utility.scalarP(Utility.normalizeP(gfx.position), centerOfMass);
-        const angle = Math.atan2(gfx.position.y - centerPos.y, gfx.position.x - centerPos.x) + Math.PI;
+        const gfxVec = Utility.subtractP(gfx.position, centerPos);
+        const angle = -Math.atan2(gfxVec.x * centerOfMass.y - gfxVec.y * centerOfMass.x, gfxVec.x * centerOfMass.x + gfxVec.y * centerOfMass.y); // This is the angle to the com
         angles.push([gfx, angle]);
       }
       angles.sort((a, b) => a[1] - b[1]);
     }
     if (angles.length > 1 && this.circleSpacingCenter != undefined) {
-      const rightIndex = angles.findIndex(v => v[1] >= comAngle);
+      // const rightIndex = angles.findIndex(v => v[1] >= comAngle);
+      const middle = angles.findIndex(v => v[1] >= 0);
       
       // const left = angles[Utility.mod(leftIndex, angles.length)];
       // const right = angles[Utility.mod(leftIndex + 1, angles.length)];
       // const middle = Utility.scalarMultiplyP(0.5, Utility.addP(left[0].position, right[0].position));
       // startAngle = Math.atan2(middle.y - centerPos.y, middle.x - centerPos.x) + Math.PI;
-      
+
+      console.log("ANGLES");
       // Circle lerp
       for (let i = 0; i < angles.length; i++) { // angles
         const [gfx, angle] = angles[i];
@@ -329,28 +331,26 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         // const [gfx, level] = this.nodeDict.get(node)!;
 
         const minRadius = 1000; // increase until no overlap at max spread
+        const spread = 0.5;
 
-        const step = 2 * Math.PI / angles.length;
-        let maxAngle = startAngle + 0.5 * step + (i - rightIndex) * step;
+        const step = 2 * Math.PI / angles.length * spread;
+        let maxAngle = startAngle + 0.5 * step + (i - middle) * step;
+        console.log(`i ${i - middle} : s ${startAngle} : as ${angle + startAngle} : a ${angle} : m ${maxAngle - startAngle}`);
         maxAngle = Utility.mod(maxAngle, 2 * Math.PI);
 
         // default positions
-        let circlePos = this.circlePosition(angle - Math.PI, minRadius);
+        let circlePos = this.circlePosition(startAngle + angle, minRadius);
         circlePos = Utility.addP(centerPos, circlePos);
 
         // max positions
-        let maxCirclePos = this.circlePosition(maxAngle - Math.PI, minRadius);
+        let maxCirclePos = this.circlePosition(maxAngle, minRadius);
         maxCirclePos = Utility.addP(centerPos, maxCirclePos);
 
         // 1. OK calc center of mass of angles from base pos of others
         // 2. OK Calculate default positions on circle: vectors or angles
         // 3. OK Calculate max space positions on circle (sort by angles rel to center (offset), find two closest to com (angle dist, scalar product), spread)
         // 4. OK Sort by angles, assign to slots clockwise
-        // 4. Test min overlap free t
-        // 5. lerp (on angles for prettier anim?)
-
-        // Calculate sum of diameters to approximate required circumference, add spacing, calculate radius
-        // Kinda hard, arc from angle from atan(r/R)
+        // 4. Test min overlap free t up to 1
 
         gfx.position = Utility.lerpP(gfx.position, maxCirclePos, this.circleSpacingLerp);
       }
