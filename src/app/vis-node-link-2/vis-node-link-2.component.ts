@@ -167,14 +167,19 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     for (const [node, level] of levels) {
       const gfx = new PIXI.Graphics();
       const radius = this.config.graphicsSettings.value.nodeRadius ? this.radiusScale(measures.get(node.id)!.nodeCount) : (this.nodeRadiusRange[0] + this.nodeRadiusRange[1]) / 2;
-      gfx.circle(0, 0, radius);
 
       // Alpha: This node has selected incident edges
       // const anySelection = this.config.selectedConnections.value.length > 0;
       // const alpha = !anySelection || selectedEdges.find(e => e.source == node || e.target == node) ? 1 : 0.2;
       const alpha = 1;
 
-      gfx.stroke({ width: 3, color: 'black', alpha: alpha });
+      gfx.clear();
+      gfx.circle(0, 0, radius);
+      if (node == this.selectedNode) {
+        gfx.stroke({ width: 20, color: 'darkorange', alpha: alpha });
+      } else {
+        gfx.stroke({ width: 3, color: 'black', alpha: alpha });
+      }
       gfx.fill({ color: this.getNodeColor(node, true), alpha: alpha }); // Ignore graphics settings for readability
       gfx.interactive = true;
       gfx.onmouseenter = () => {
@@ -188,6 +193,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         // Tab to connections
         // TODO: wildcard connection 1:N on first select (not intuitive to start with, so different var in service to store which view has focus (or undefined))
         // TODO: Also allow selection without circular?
+        // TODO: Pin selection while layer scrolling -> much better overview than circle packing, circle packing maybe as gfx setting
 
         if (this.selectedNode == undefined) {
           this.selectedNode = node;
@@ -195,25 +201,21 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         } else {
           this.selectedNode = undefined;
         }
+        this.createNodes(graph);
+        this.render(graph, this.abort.signal);
 
         this.circleSpacingLerpTarget = 0;
         requestAnimationFrame(t => this.circleSpacingInterpolation(t, this.abort.signal));
 
 
-        // Arrange others around this
-        // - set selected clusters != undefined
-        // - start lerp to circular, translate stage to put selection in view center, fade irrelevant edges, show potential (dashed) edges
+        // - OK Arrange others around this
+        // - set selected clusters != undefined (want to trigger tab switch, list mode)
+        // - fade irrelevant edges, show potential (dashed) edges
         // - stroke orange (symbolize outgoing)
 
         // To fit with matrix (never no connections selected): Starting connections wildcard?
-        // Right-click on other = center that one
-
-        // Scaling:
-        // - problem with shells: inaccurate additional variable (perceived distance)
-        // - just scale up radius
-        // - keep siblings close together? -> determined by underlying layout, easy
-
-        // Graphics setting to disable circular layout
+        // Right-click on other = center that one instead?
+        // Graphics setting to disable circular layout, select on normal nl
       };
       this.nodeDict.set(node, [gfx, level]);
       this.stage.addChild(gfx);
