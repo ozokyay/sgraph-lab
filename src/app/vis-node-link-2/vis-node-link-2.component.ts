@@ -36,8 +36,8 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
   private graph?: EdgeList = undefined;
   private abort: AbortController = new AbortController();
   private abortRender: AbortController = new AbortController();
+  private abortLevel: AbortController = new AbortController();
   private edgeWidthScale!: d3.ScaleLinear<number, number, never>;
-  private selectedNode?: Node = undefined;
   private circleLayoutCenter?: Node = undefined;
   private circleLayoutLerp: number = 0;
   private circleSpacingLerpTarget: number = 0;
@@ -46,6 +46,8 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
   private currentLevel = 1;
   private speed = 1 / 500;
   private lastLevelTime = 0;
+
+  public circularLayout = false;
 
   @Input()
   public transform = { value: new d3.ZoomTransform(1, 0, 0) };
@@ -66,7 +68,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
 
   private init() {
     this.subscriptions.push(this.config.configuration.subscribe(config => {
-      if (this.selectedNode != undefined && !config.definition.graph.nodes.has(this.selectedNode)) {
+      if (this.circleLayoutCenter != undefined && !config.definition.graph.nodes.has(this.circleLayoutCenter)) {
         this.reset();
       }
       this.graph = this.prepare(new EdgeList(config.definition.graph));
@@ -96,37 +98,33 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         this.render(this.graph, this.abortRender.signal);
       }
     }));
-    // A) Different kind of selected cluster
-    // B) Different list mode as well for sync
-    //    - highlight in NL
-    //    - stronger highlight in list?
-    //    - Adv NL vs mat: understanding edits (smooth anim vs reorder)
-    this.subscriptions.push(this.config.selectedCluster.subscribe(c => {
-      // Change circleSpacing atom sim stuff
-      const highlight = false;
-      if (c != undefined && highlight) {
-        // This is for allowing node selection from list
-      }
-    }));
     this.subscriptions.push(this.config.activeTab.subscribe(t => {
       // if (t != 1) {
       //   this.reset();
       // }
     }));
     this.subscriptions.push(this.config.selectedCluster.subscribe(c => {
-      // TODO: Prioritize center
-      if (this.config.activeTab.value == 1 && c != undefined && this.graph != undefined) {
-        const node = this.config.configuration.value.definition.graph.nodeDictionary.get(c.id)!;
-        this.selectCluster(node, this.graph);
+      if (this.graph != undefined) {
+        this.createNodes(this.graph);
+        this.render(this.graph, this.abortRender.signal);
+
+        if (c != undefined && this.circularLayout) {
+          const node = this.config.configuration.value.definition.graph.nodeDictionary.get(c.id)!;
+          const [_, level] = this.nodeDict.get(node)!
+          if (level == this.level) {
+            this.centerCluster(node);
+          }
+        } else {
+          this.reset();
+        }
       }
     }));
   }
 
   private reset() {
-    this.abort.abort();
+    this.abort.abort(); // Actually useless
     this.abort = new AbortController();
     this.circleLayoutLerp = 0;
-    this.selectedNode = undefined;
     this.circleLayoutCenter = undefined;
   }
 
@@ -180,7 +178,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
 
       gfx.clear();
       gfx.circle(0, 0, radius);
-      if (node == this.selectedNode) {
+      if (this.config.selectedCluster.value != undefined && node.id == this.config.selectedCluster.value.id && level <= this.level) {
         gfx.stroke({ width: 40, color: 'orange', alpha: alpha });
       } else {
         gfx.stroke({ width: 3, color: 'black', alpha: alpha });
@@ -194,25 +192,39 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         gfx.tint = 0xFFFFFF;
       }
       gfx.onclick = () => {
+        // Select cluster
+        this.config.selectedCluster.next(node.data as Cluster);
+      };
+      gfx.onrightclick = () => {
         // Select: How to choose blue vs orange? Left-right click, modifier to center? Only allow to select two? Allow to select many? Drag-to-select?
         // Selection modality: Highlight edges? (from matrix)?
 
         // TODO
+        // - Always render selected edge
         // - 1:N (double click?)
-        // - Highlight
-        // - Selction without center
-        // - Tab switch on center select, highlight center in list
+        // - Highlight selected edges
+        // - Highlight selected cluster (list/nl1/nl2)
+        // - Selection from nl by click
+        // - Selection without center
+        // - Button to switch center mode
         // - matrix/nl clear button (in tab?)
         // - keep on config change (must be same nodes anyway)
+        // - Lerp transform to center center
+
+        // TODO: What about edges in wrong direction by matrix?
 
         // Select cluster for edit
-
-        if (this.selectedNode == undefined) {
+        const selectedCluster = this.config.selectedCluster.value;
+        if (selectedCluster == undefined) {
+          return;
+        }
+        const selectedNode = this.config.configuration.value.definition.graph.nodeDictionary.get(selectedCluster.id)!;
+        if (selectedNode == node) {
           return;
         }
 
         // Deselect
-        const selectedEdge = this.config.selectedConnections.value.find(e => e.source == this.selectedNode && e.target == node || e.source == this.selectedNode && e.target == node);
+        const selectedEdge = this.config.selectedConnections.value.find(e => e.source == selectedNode && e.target == node || e.source == node && e.target == selectedNode);
         if (selectedEdge != undefined) {
           this.config.selectedConnections.value.splice(this.config.selectedConnections.value.indexOf(selectedEdge), 1);
           this.config.selectedConnections.next(this.config.selectedConnections.value);
@@ -220,32 +232,28 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         }
 
         // Select
-        if (this.selectedNode != undefined && node != this.selectedNode) {
+        if (node != selectedNode) {
           // Check graph
-          const edges = this.config.configuration.value.definition.graph.nodes.get(this.selectedNode)!;
+          const edges = this.config.configuration.value.definition.graph.nodes.get(selectedNode)!;
           const entry = edges.find(([e, v]) => v.id == node.id); // This could be handled by service or tab-cluster-list
           let edge = entry != undefined ? entry[0] : undefined;
 
           // Check selected
           if (edge == undefined) {
-            edge = this.config.selectedConnections.value.find(e => e.source == this.selectedNode && e.target == node || e.source == this.selectedNode && e.target == node);
+            edge = this.config.selectedConnections.value.find(e => e.source == selectedNode && e.target == node || e.source == selectedNode && e.target == node);
           }
 
           // Create
           if (edge == undefined) {
-            edge = { source: this.selectedNode, target: node, data: structuredClone(EmptyConnection) };
+            edge = { source: selectedNode, target: node, data: structuredClone(EmptyConnection) };
           }
           
-          if (this.selectedNode != edge.source) {
+          if (selectedNode != edge.source) {
             [edge.source, edge.target] = [edge.target, edge.source];
           }
           this.config.selectedConnections.value.push(edge);
           this.config.selectedConnections.next(this.config.selectedConnections.value);
         }
-      };
-      gfx.onrightclick = () => {
-        // Select and center
-        this.selectCluster(node, graph);
       };
       this.nodeDict.set(node, [gfx, level]);
       this.stage.addChild(gfx);
@@ -284,7 +292,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
 
     const upper = Math.ceil(this.currentLevel);
     const lower = Math.floor(this.currentLevel);
-    
+
     // Level positions
     for (const node of graph.nodes) {
       const cluster = node.data as Cluster;
@@ -511,6 +519,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       this.edgeGraphics.stroke({ width: this.edgeWidthScale(data.edgeCount), color: "black", alpha: alpha });
     }
 
+    // Potential edges circular layout
     if (this.circleLayoutCenter != undefined) {
       const [centerGfx, _] = this.nodeDict.get(this.circleLayoutCenter)!;
       for (const node of graph.nodes) {
@@ -524,6 +533,17 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         this.dashedLine(this.edgeGraphics, centerGfx.position, gfx.position, 24, 12);
         this.edgeGraphics.stroke({ width: 4, color: "black", alpha: this.circleLayoutLerp });
       }
+    }
+
+    // Potential edges or highlight edge selection
+    for (const edge of this.config.selectedConnections.value) {
+      const [sourceGfx, sourceLevel] = this.nodeDict.get(edge.source)!;
+      const [targetGfx, targetLevel] = this.nodeDict.get(edge.target)!;
+      if (sourceLevel != this.level || targetLevel != this.level) {
+        continue;
+      }
+      this.dashedLine(this.edgeGraphics, sourceGfx.position, targetGfx.position, 24, 12);
+      this.edgeGraphics.stroke({ width: 4, color: "black" });
     }
   }
 
@@ -572,7 +592,10 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     }
   }
 
-  private levelInterpolation(time: number) {
+  private levelInterpolation(time: number, abort: AbortSignal) {
+    if (abort.aborted) {
+      return;
+    }
     const dir = Math.sign(this.level - this.currentLevel);
     if (this.lastLevelTime == 0) {
       this.lastLevelTime = time;
@@ -588,7 +611,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       this.render(this.graph, this.abortRender.signal, time);
     }
     if (this.currentLevel != this.level) {
-      requestAnimationFrame(t => this.levelInterpolation(t));
+      requestAnimationFrame(t => this.levelInterpolation(t, abort));
     }
   }
 
@@ -597,10 +620,10 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       return;
     }
     if (this.circleSpacingLerpTarget == 0) {
-      this.circleSpacingLerpTarget = start + (this.selectedNode ? 1 - this.circleLayoutLerp : this.circleLayoutLerp) * 1000;
+      this.circleSpacingLerpTarget = start + (this.circularLayout ? 1 - this.circleLayoutLerp : this.circleLayoutLerp) * 1000;
     }
     const elapsed = Math.min(1000, 1000 - (this.circleSpacingLerpTarget - start)); // milliseconds
-    if (this.selectedNode) {
+    if (this.circularLayout) {
       this.circleLayoutLerp = elapsed / 1000;
     } else {
       this.circleLayoutLerp = 1 - elapsed / 1000;
@@ -613,38 +636,17 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     }
   }
 
-  private selectCluster(node: Node, graph: EdgeList) {
-    // Tab to connections
-    // TODO: wildcard connection 1:N on first select (not intuitive to start with, so different var in service to store which view has focus (or undefined))
-    // TODO: Also allow selection without circular?
-    // TODO: Pin selection while layer scrolling -> much better overview than circle packing, circle packing maybe as gfx setting
-
-    if (this.selectedNode == undefined) {
-      this.selectedNode = node;
-      this.circleLayoutCenter = node;
-    } else {
-      this.selectedNode = undefined;
-    }
-    this.createNodes(graph);
-    this.render(graph, this.abortRender.signal);
-
+  private centerCluster(node: Node) {
+    this.circleLayoutCenter = node;
     this.circleSpacingLerpTarget = 0;
     requestAnimationFrame(t => this.circleLayoutInterpolation(t, this.abort.signal));
-
-
-    // - OK Arrange others around this
-    // - set selected clusters != undefined (want to trigger tab switch, list mode)
-    // - fade IRRELEVANT edges, show potential (dashed) edges
-    // - highlight selected from matrix like normal nl?
-
-    // To fit with matrix (never no connections selected): Starting connections wildcard?
-    // Right-click on other = center that one instead?
-    // Graphics setting to disable circular layout, select on normal nl
   }
 
   public ngOnDestroy() {
     this.app.destroy();
     this.abort.abort();
+    this.abortRender.abort();
+    this.abortLevel.abort();
     for (const sub of this.subscriptions) {
       sub.unsubscribe();
     }
@@ -683,9 +685,15 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
 
     if (changes["level"] && !changes["level"].isFirstChange()) {
       this.reset();
+      if (this.graph != undefined) {
+        this.createNodes(this.graph);
+        this.render(this.graph, this.abortRender.signal);
+      }
       if (this.level != 0) {
+        this.abortLevel.abort();
+        this.abortLevel = new AbortController();
         this.lastLevelTime = 0;
-        requestAnimationFrame(t => this.levelInterpolation(t));
+        requestAnimationFrame(t => this.levelInterpolation(t, this.abortLevel.signal));
       }
     }
 
@@ -725,6 +733,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     this.stage.pivot = { x: -transform.x / transform.k * devicePixelRatio, y: -transform.y / transform.k * devicePixelRatio };
   }
 
+  // Could allow color sections as argument
   private dashedLine(gfx: PIXI.Graphics, start: Point, target: Point, dash = 16, gap = 8) {
     const origin = start;
     const distance = Math.sqrt((start.x - target.x) ** 2 + (start.y - target.y) ** 2);

@@ -49,9 +49,9 @@ export class TabClusterListComponent {
       }
     });
     config.selectedCluster.subscribe(cluster => this.selectedCluster = cluster);
-    config.activeTab.subscribe(t => {
-      this.edit = t != 1;
-    });
+    // config.activeTab.subscribe(t => {
+    //   this.edit = t != 1;
+    // });
     config.selectedConnections.subscribe(connections => {
       for (const c of this.highlight.keys()) {
         this.highlight.set(c, false);
