@@ -257,6 +257,8 @@ export class VisMatrixComponent implements AfterViewInit, OnChanges, OnDestroy {
         // -> arrow
         // -> gradient
         // -> inlayed border
+
+        // Alpha according to scale?
         if (d.cx == d.edge!.source) {
           return "orange";
         } else {

@@ -7,7 +7,7 @@ import { Utility } from '../utility';
 import Rand from 'rand-seed';
 import { Cluster } from '../cluster';
 import { Point } from '../point';
-import { ClusterConnection } from '../cluster-connection';
+import { ClusterConnection, EmptyConnection } from '../cluster-connection';
 import { max, Subscription } from 'rxjs';
 import { combineLatestInit } from 'rxjs/internal/observable/combineLatest';
 
@@ -35,10 +35,11 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
   private radiusScale!: d3.ScaleLinear<number, number>;
   private graph?: EdgeList = undefined;
   private abort: AbortController = new AbortController();
+  private abortRender: AbortController = new AbortController();
   private edgeWidthScale!: d3.ScaleLinear<number, number, never>;
   private selectedNode?: Node = undefined;
-  private circleSpacingCenter?: Node = undefined;
-  private circleSpacingLerp: number = 0;
+  private circleLayoutCenter?: Node = undefined;
+  private circleLayoutLerp: number = 0;
   private circleSpacingLerpTarget: number = 0;
   private lastRenderTime: number = 0;
 
@@ -65,20 +66,23 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
 
   private init() {
     this.subscriptions.push(this.config.configuration.subscribe(config => {
-      this.reset();
+      if (this.selectedNode != undefined && !config.definition.graph.nodes.has(this.selectedNode)) {
+        this.reset();
+      }
       this.graph = this.prepare(new EdgeList(config.definition.graph));
     }));
     this.subscriptions.push(this.config.centroids.subscribe(() => {
       if (this.graph != undefined && this.graph.nodes.length > 0) {
-        this.reset();
+        this.abortRender.abort();
+        this.abortRender = new AbortController();
         // Initial layout or render if no own layout
-        this.render(this.graph, this.abort.signal); 
+        this.render(this.graph, this.abortRender.signal); 
       }
     }));
     this.subscriptions.push(this.config.selectedConnections.subscribe(async () => {
       if (this.config.configuration.value.instance.graph.nodes.length > 0 && this.graph != undefined) {
         this.createNodes(this.graph);
-        this.render(this.graph, this.abort.signal);
+        this.render(this.graph, this.abortRender.signal);
       }
     }));
     this.subscriptions.push(this.config.layoutSettings.subscribe(async () => {
@@ -89,7 +93,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     this.subscriptions.push(this.config.graphicsSettings.subscribe(() => {
       if (this.config.configuration.value.instance.graph.nodes.length > 0 && this.graph != undefined) {
         this.createNodes(this.graph);
-        this.render(this.graph, this.abort.signal);
+        this.render(this.graph, this.abortRender.signal);
       }
     }));
     // A) Different kind of selected cluster
@@ -105,8 +109,15 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       }
     }));
     this.subscriptions.push(this.config.activeTab.subscribe(t => {
-      if (t != 1) {
-        this.selectedNode = undefined;
+      // if (t != 1) {
+      //   this.reset();
+      // }
+    }));
+    this.subscriptions.push(this.config.selectedCluster.subscribe(c => {
+      // TODO: Prioritize center
+      if (this.config.activeTab.value == 1 && c != undefined && this.graph != undefined) {
+        const node = this.config.configuration.value.definition.graph.nodeDictionary.get(c.id)!;
+        this.selectCluster(node, this.graph);
       }
     }));
   }
@@ -114,9 +125,9 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
   private reset() {
     this.abort.abort();
     this.abort = new AbortController();
-    this.circleSpacingLerp = 0;
+    this.circleLayoutLerp = 0;
     this.selectedNode = undefined;
-    this.circleSpacingCenter = undefined;
+    this.circleLayoutCenter = undefined;
   }
 
   private prepare(graph: EdgeList): EdgeList {
@@ -126,16 +137,14 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     // How about allowing top-down (but not bottom-up)?
 
     // TODO: Also 
-
-    // When clicking on node: Lerp into minimap
     // Can also start from 
     // Specialized in 1:N editing and READING (common after adding new cluster)
     // MUST differentiate between generated edges and connections (care more about the latter because of editing)
 
 
     // Step 1: Node + edge scaling (OK)
-    // Step 2.1: Lerp to level
-    // Step 2.2: Lerp to minimap
+    // Step 2.1: Lerp to level (OK)
+    // Step 2.2: Lerp to minimap (OK)
     // Step 3: Minimap scaling
     // Step 4: Multilevel support
 
@@ -167,16 +176,12 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     for (const [node, level] of levels) {
       const gfx = new PIXI.Graphics();
       const radius = this.config.graphicsSettings.value.nodeRadius ? this.radiusScale(measures.get(node.id)!.nodeCount) : (this.nodeRadiusRange[0] + this.nodeRadiusRange[1]) / 2;
-
-      // Alpha: This node has selected incident edges
-      // const anySelection = this.config.selectedConnections.value.length > 0;
-      // const alpha = !anySelection || selectedEdges.find(e => e.source == node || e.target == node) ? 1 : 0.2;
       const alpha = 1;
 
       gfx.clear();
       gfx.circle(0, 0, radius);
       if (node == this.selectedNode) {
-        gfx.stroke({ width: 20, color: 'darkorange', alpha: alpha });
+        gfx.stroke({ width: 40, color: 'orange', alpha: alpha });
       } else {
         gfx.stroke({ width: 3, color: 'black', alpha: alpha });
       }
@@ -189,33 +194,58 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         gfx.tint = 0xFFFFFF;
       }
       gfx.onclick = () => {
+        // Select: How to choose blue vs orange? Left-right click, modifier to center? Only allow to select two? Allow to select many? Drag-to-select?
+        // Selection modality: Highlight edges? (from matrix)?
 
-        // Tab to connections
-        // TODO: wildcard connection 1:N on first select (not intuitive to start with, so different var in service to store which view has focus (or undefined))
-        // TODO: Also allow selection without circular?
-        // TODO: Pin selection while layer scrolling -> much better overview than circle packing, circle packing maybe as gfx setting
+        // TODO
+        // - 1:N (double click?)
+        // - Highlight
+        // - Selction without center
+        // - Tab switch on center select, highlight center in list
+        // - matrix/nl clear button (in tab?)
+        // - keep on config change (must be same nodes anyway)
+
+        // Select cluster for edit
 
         if (this.selectedNode == undefined) {
-          this.selectedNode = node;
-          this.circleSpacingCenter = node;
-        } else {
-          this.selectedNode = undefined;
+          return;
         }
-        this.createNodes(graph);
-        this.render(graph, this.abort.signal);
 
-        this.circleSpacingLerpTarget = 0;
-        requestAnimationFrame(t => this.circleSpacingInterpolation(t, this.abort.signal));
+        // Deselect
+        const selectedEdge = this.config.selectedConnections.value.find(e => e.source == this.selectedNode && e.target == node || e.source == this.selectedNode && e.target == node);
+        if (selectedEdge != undefined) {
+          this.config.selectedConnections.value.splice(this.config.selectedConnections.value.indexOf(selectedEdge), 1);
+          this.config.selectedConnections.next(this.config.selectedConnections.value);
+          return;
+        }
 
+        // Select
+        if (this.selectedNode != undefined && node != this.selectedNode) {
+          // Check graph
+          const edges = this.config.configuration.value.definition.graph.nodes.get(this.selectedNode)!;
+          const entry = edges.find(([e, v]) => v.id == node.id); // This could be handled by service or tab-cluster-list
+          let edge = entry != undefined ? entry[0] : undefined;
 
-        // - OK Arrange others around this
-        // - set selected clusters != undefined (want to trigger tab switch, list mode)
-        // - fade irrelevant edges, show potential (dashed) edges
-        // - stroke orange (symbolize outgoing)
+          // Check selected
+          if (edge == undefined) {
+            edge = this.config.selectedConnections.value.find(e => e.source == this.selectedNode && e.target == node || e.source == this.selectedNode && e.target == node);
+          }
 
-        // To fit with matrix (never no connections selected): Starting connections wildcard?
-        // Right-click on other = center that one instead?
-        // Graphics setting to disable circular layout, select on normal nl
+          // Create
+          if (edge == undefined) {
+            edge = { source: this.selectedNode, target: node, data: structuredClone(EmptyConnection) };
+          }
+          
+          if (this.selectedNode != edge.source) {
+            [edge.source, edge.target] = [edge.target, edge.source];
+          }
+          this.config.selectedConnections.value.push(edge);
+          this.config.selectedConnections.next(this.config.selectedConnections.value);
+        }
+      };
+      gfx.onrightclick = () => {
+        // Select and center
+        this.selectCluster(node, graph);
       };
       this.nodeDict.set(node, [gfx, level]);
       this.stage.addChild(gfx);
@@ -278,16 +308,18 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       // -> Lerp all the way
       // -> Use tl positions as starting points instead of random
       // -> Also in service, basically iterative ForceDirected()
+
+      // -> Easier: Force sim on current level without edges until overlap free
     }
 
     // Circular
-    if (this.circleSpacingCenter != undefined) {
-      let centerPos = this.nodeDict.get(this.circleSpacingCenter)![0].position;
+    if (this.circleLayoutCenter != undefined) {
+      let centerPos = this.nodeDict.get(this.circleLayoutCenter)![0].position;
       const anglesList: [PIXI.Graphics, number, number][] = [];
 
       if (graph.nodes.length > 1) {
         for (const node of graph.nodes) {
-          if (node == this.circleSpacingCenter) {
+          if (node == this.circleLayoutCenter) {
             continue;
           }
     
@@ -355,12 +387,10 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       } while (moved && it < 100);
       // console.log("it" + it);
 
-      if (anglesList.length > 1) {
-        // Circle lerp
-        for (const [gfx, angle, _] of anglesList) {
-          const circlePos = Utility.addP(centerPos, this.circlePosition(angle - Math.PI, 1000))
-          gfx.position = Utility.lerpP(gfx.position, circlePos, this.circleSpacingLerp);
-        }
+      // Circle lerp
+      for (const [gfx, angle, _] of anglesList) {
+        const circlePos = Utility.addP(centerPos, this.circlePosition(angle - Math.PI, 1000))
+        gfx.position = Utility.lerpP(gfx.position, circlePos, this.circleLayoutLerp);
       }
     }
 
@@ -388,8 +418,9 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       }
 
       // Radius could be saved somewhere
-      const sourceRadius = this.radiusScale(this.config.configuration.value.instance.clusterMeasures.get(edge.source.id)!.nodeCount);
-      const targetRadius = this.radiusScale(this.config.configuration.value.instance.clusterMeasures.get(edge.target.id)!.nodeCount);
+      const midRadius = (this.nodeRadiusRange[0] + this.nodeRadiusRange[1]) / 2;
+      const sourceRadius = this.config.graphicsSettings.value.nodeRadius ? this.radiusScale(this.config.configuration.value.instance.clusterMeasures.get(edge.source.id)!.nodeCount) : midRadius;
+      const targetRadius = this.config.graphicsSettings.value.nodeRadius ? this.radiusScale(this.config.configuration.value.instance.clusterMeasures.get(edge.target.id)!.nodeCount) : midRadius;
 
       const sourcePos = Utility.addP(sourceGraphics.position, Utility.scalarMultiplyP(sourceRadius, Utility.normalizeP(Utility.subtractP(targetGraphics.position, sourceGraphics.position))));
       const targetPos = Utility.addP(targetGraphics.position, Utility.scalarMultiplyP(targetRadius, Utility.normalizeP(Utility.subtractP(sourceGraphics.position, targetGraphics.position))));
@@ -404,7 +435,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       // 5. overlap handling
       // 6. dashed lines
       // 7. second cluster selection
-      // 8. cross-layer support (circle packing inside or outside, selection)
+      // 8. labels
       // 9. wildcard selection in matrix and nl2
       // 10. better inf diff
       // 11. tables
@@ -458,8 +489,14 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       // Then: Attributes, Tables, Walkthrough
 
       // Transparency of unselected if there is an active selection
-      // const alpha = !anySelection || selectedEdges.indexOf(edge) != -1 ? 1 : 0.2;
-      const alpha = Math.min(sourceGraphics.alpha, targetGraphics.alpha);
+      
+      // Keep selected, fade out unselected from active selection
+      let alpha;
+      if (source == this.circleLayoutCenter?.data || target == this.circleLayoutCenter?.data) {
+        alpha = 1;
+      } else {
+        alpha = Utility.lerp(Math.min(sourceGraphics.alpha, targetGraphics.alpha), 0, this.circleLayoutLerp);
+      }
 
       const middle = {
         x: (sourcePos.x + targetPos.x) / 2,
@@ -472,6 +509,21 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       this.edgeGraphics.moveTo(middle.x, middle.y);
       this.edgeGraphics.lineTo(targetPos.x, targetPos.y);
       this.edgeGraphics.stroke({ width: this.edgeWidthScale(data.edgeCount), color: "black", alpha: alpha });
+    }
+
+    if (this.circleLayoutCenter != undefined) {
+      const [centerGfx, _] = this.nodeDict.get(this.circleLayoutCenter)!;
+      for (const node of graph.nodes) {
+        if (node == this.circleLayoutCenter) {
+          continue;
+        }
+        const [gfx, level] = this.nodeDict.get(node)!;
+        if (level != this.level) {
+          continue;
+        }
+        this.dashedLine(this.edgeGraphics, centerGfx.position, gfx.position, 24, 12);
+        this.edgeGraphics.stroke({ width: 4, color: "black", alpha: this.circleLayoutLerp });
+      }
     }
   }
 
@@ -533,32 +585,61 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     else if (dir < 0)
       this.currentLevel = Math.max(this.level, newLevel);
     if (this.graph != undefined) {
-      this.render(this.graph, this.abort.signal, time);
+      this.render(this.graph, this.abortRender.signal, time);
     }
     if (this.currentLevel != this.level) {
       requestAnimationFrame(t => this.levelInterpolation(t));
     }
   }
 
-  private circleSpacingInterpolation(start: number, abort: AbortSignal) {
+  private circleLayoutInterpolation(start: number, abort: AbortSignal) {
     if (abort.aborted) {
       return;
     }
     if (this.circleSpacingLerpTarget == 0) {
-      this.circleSpacingLerpTarget = start + (this.selectedNode ? 1 - this.circleSpacingLerp : this.circleSpacingLerp) * 1000;
+      this.circleSpacingLerpTarget = start + (this.selectedNode ? 1 - this.circleLayoutLerp : this.circleLayoutLerp) * 1000;
     }
     const elapsed = Math.min(1000, 1000 - (this.circleSpacingLerpTarget - start)); // milliseconds
     if (this.selectedNode) {
-      this.circleSpacingLerp = elapsed / 1000;
+      this.circleLayoutLerp = elapsed / 1000;
     } else {
-      this.circleSpacingLerp = 1 - elapsed / 1000;
+      this.circleLayoutLerp = 1 - elapsed / 1000;
     }
     if (this.graph != undefined) {
-      this.render(this.graph, this.abort.signal, start);
+      this.render(this.graph, this.abortRender.signal, start);
     }
     if (elapsed < 1000) {
-      requestAnimationFrame(s => this.circleSpacingInterpolation(s, abort));
+      requestAnimationFrame(s => this.circleLayoutInterpolation(s, abort));
     }
+  }
+
+  private selectCluster(node: Node, graph: EdgeList) {
+    // Tab to connections
+    // TODO: wildcard connection 1:N on first select (not intuitive to start with, so different var in service to store which view has focus (or undefined))
+    // TODO: Also allow selection without circular?
+    // TODO: Pin selection while layer scrolling -> much better overview than circle packing, circle packing maybe as gfx setting
+
+    if (this.selectedNode == undefined) {
+      this.selectedNode = node;
+      this.circleLayoutCenter = node;
+    } else {
+      this.selectedNode = undefined;
+    }
+    this.createNodes(graph);
+    this.render(graph, this.abortRender.signal);
+
+    this.circleSpacingLerpTarget = 0;
+    requestAnimationFrame(t => this.circleLayoutInterpolation(t, this.abort.signal));
+
+
+    // - OK Arrange others around this
+    // - set selected clusters != undefined (want to trigger tab switch, list mode)
+    // - fade IRRELEVANT edges, show potential (dashed) edges
+    // - highlight selected from matrix like normal nl?
+
+    // To fit with matrix (never no connections selected): Starting connections wildcard?
+    // Right-click on other = center that one instead?
+    // Graphics setting to disable circular layout, select on normal nl
   }
 
   public ngOnDestroy() {
@@ -578,6 +659,9 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         background: 'white',
         antialias: true
       });
+      this.app.canvas.oncontextmenu = e => {
+        e.preventDefault();
+      }
       this.container.nativeElement.appendChild(this.app.canvas);
       this.stage = new PIXI.Container({
         isRenderGroup: true
@@ -639,5 +723,18 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
   public zoom(transform: d3.ZoomTransform) {
     this.stage.scale = { x: transform.k, y: transform.k };
     this.stage.pivot = { x: -transform.x / transform.k * devicePixelRatio, y: -transform.y / transform.k * devicePixelRatio };
+  }
+
+  private dashedLine(gfx: PIXI.Graphics, start: Point, target: Point, dash = 16, gap = 8) {
+    const origin = start;
+    const distance = Math.sqrt((start.x - target.x) ** 2 + (start.y - target.y) ** 2);
+  
+    for (let t = 0; t < distance; t += dash + gap) {
+      gfx.moveTo(start.x, start.y);
+      start = Utility.lerpP(origin, target, (t + dash) / distance);
+      gfx.lineTo(start.x, start.y);
+      start = Utility.lerpP(origin, target, (t + dash + gap) / distance);
+      gfx.moveTo(start.x, start.y);
+    }
   }
 }

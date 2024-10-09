@@ -284,6 +284,9 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
         background: 'white',
         antialias: true
       });
+      this.app.canvas.oncontextmenu = e => {
+        e.preventDefault();
+      }
       this.container.nativeElement.appendChild(this.app.canvas);
       this.stage = new PIXI.Container({
         isRenderGroup: true

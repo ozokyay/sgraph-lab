@@ -53,6 +53,9 @@ export class VisContainerComponent implements AfterViewInit {
   @Input()
   public visualization: "matrix" | "node-link" = "matrix";
 
+  @Input()
+  public initialZoom = 1;
+
   @ViewChild('matrix')
   private child1!: VisMatrixComponent;
 
@@ -72,7 +75,7 @@ export class VisContainerComponent implements AfterViewInit {
       .on("zoom", e => { this.transform = { value: e.transform } });
     d3.select(this.container.nativeElement)
       .call(this.zoom)
-      .call(this.zoom.transform, d3.zoomIdentity.translate(this.width / 2, this.height / 2));
+      .call(this.zoom.transform, d3.zoomIdentity.translate(this.width / 2, this.height / 2).scale(this.initialZoom));
   }
 
   public changeLevel(level: number) {
