@@ -42,6 +42,15 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
   public combineClusters = true;
 
   @Input()
+  public nodeColor = true;
+
+  @Input()
+  public edgeColor = true;
+
+  @Input()
+  public nodeSize = false;
+
+  @Input()
   public transform = { value: new d3.ZoomTransform(1, 0, 0) };
 
   @ViewChild('container')
@@ -61,12 +70,6 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
       this.render(graph, this.abort.signal);
     }));
     this.subscriptions.push(this.config.selectedConnections.subscribe(() => {
-      if (this.config.forceDirectedLayout.value.nodes.length > 0) {
-        this.createNodes(this.config.forceDirectedLayout.value);
-        this.render(this.config.forceDirectedLayout.value, this.abort.signal);
-      }
-    }));
-    this.subscriptions.push(this.config.graphicsSettings.subscribe(s => {
       if (this.config.forceDirectedLayout.value.nodes.length > 0) {
         this.createNodes(this.config.forceDirectedLayout.value);
         this.render(this.config.forceDirectedLayout.value, this.abort.signal);
@@ -98,7 +101,7 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
     for (const node of graph.nodes) {
       const gfx = new PIXI.Graphics({ zIndex: 1 });
       let radius = this.nodeRadius;
-      if (this.config.graphicsSettings.value.nodeRadius) {
+      if (this.nodeSize) {
         radius = radiusScale(degrees.get(node)!);
       }
       gfx.circle(0, 0, radius);
@@ -109,7 +112,7 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
       const alpha = !anySelection || selectedEdges.find(e => e.source == node || e.target == node) ? 1 : 0.2;
 
       gfx.stroke({ width: 3, color: 'black', alpha: alpha });
-      gfx.fill({ color: this.getNodeColor(node, this.config.graphicsSettings.value.nodeColoring), alpha: alpha });
+      gfx.fill({ color: this.getNodeColor(node, this.nodeColor), alpha: alpha });
       gfx.interactive = true;
       gfx.onmouseenter = () => {
         gfx.tint = 0x9A9A9A;
@@ -159,9 +162,6 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
     //   zooming.call(this.zoom.transform, d3.zoomIdentity.translate(this.width / 2, this.height / 2));
     // }
 
-    // Apply graphics settings
-    const settings = this.config.graphicsSettings.value;
-
 
     // Join with selectedConnections to determine alpha/highlight value
     const anySelection = this.config.selectedConnections.value.length > 0;
@@ -210,10 +210,10 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
       };
       this.edgeGraphics.moveTo(source.renderPosition.x * this.edgeScale, source.renderPosition.y * this.edgeScale);
       this.edgeGraphics.lineTo(middle.x * this.edgeScale, middle.y * this.edgeScale);
-      this.edgeGraphics.stroke({width: 1, color: this.getNodeColor(edge.source, settings.edgeColoring), alpha: alpha });
+      this.edgeGraphics.stroke({width: 1, color: this.getNodeColor(edge.source, this.edgeColor), alpha: alpha });
       this.edgeGraphics.moveTo(middle.x * this.edgeScale, middle.y * this.edgeScale);
       this.edgeGraphics.lineTo(target.renderPosition.x * this.edgeScale, target.renderPosition.y * this.edgeScale);
-      this.edgeGraphics.stroke({width: 1, color: this.getNodeColor(edge.target, settings.edgeColoring), alpha: alpha });
+      this.edgeGraphics.stroke({width: 1, color: this.getNodeColor(edge.target, this.edgeColor), alpha: alpha });
     }
 
     // Render convex hull
@@ -312,6 +312,12 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
     if (changes["transform"]) {
       if (this.stage != undefined) {
         this.zoom(this.transform.value);
+      }
+    }
+    if (changes["nodeColor"] || changes["edgeColor"] || changes["nodeSize"]) {
+      if (this.config.forceDirectedLayout.value.nodes.length > 0) {
+        this.createNodes(this.config.forceDirectedLayout.value);
+        this.render(this.config.forceDirectedLayout.value, this.abort.signal);
       }
     }
   }

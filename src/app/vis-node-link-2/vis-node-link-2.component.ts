@@ -38,6 +38,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
   private abortRender: AbortController = new AbortController();
   private abortLevel: AbortController = new AbortController();
   private edgeWidthScale!: d3.ScaleLinear<number, number, never>;
+  private circleLayoutActive = false;
   private circleLayoutCenter?: Node = undefined;
   private circleLayoutLerp: number = 0;
   private circleSpacingLerpTarget: number = 0;
@@ -47,13 +48,23 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
   private speed = 1 / 500;
   private lastLevelTime = 0;
 
-  public circularLayout = false;
-
   @Input()
   public transform = { value: new d3.ZoomTransform(1, 0, 0) };
 
   @Input()
   public level: number = 1;
+
+  @Input()
+  public circularLayout = false;
+  
+  @Input()
+  public nodeColor = true;
+
+  @Input()
+  public edgeColor = true;
+
+  @Input()
+  public nodeSize = false;
 
   @ViewChild('container')
   private container!: ElementRef;
@@ -92,12 +103,6 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         // Only for manual maybe
       }
     }));
-    this.subscriptions.push(this.config.graphicsSettings.subscribe(() => {
-      if (this.config.configuration.value.instance.graph.nodes.length > 0 && this.graph != undefined) {
-        this.createNodes(this.graph);
-        this.render(this.graph, this.abortRender.signal);
-      }
-    }));
     this.subscriptions.push(this.config.activeTab.subscribe(t => {
       // if (t != 1) {
       //   this.reset();
@@ -105,18 +110,25 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     }));
     this.subscriptions.push(this.config.selectedCluster.subscribe(c => {
       if (this.graph != undefined) {
-        this.createNodes(this.graph);
-        this.render(this.graph, this.abortRender.signal);
-
-        if (c != undefined && this.circularLayout) {
-          const node = this.config.configuration.value.definition.graph.nodeDictionary.get(c.id)!;
-          const [_, level] = this.nodeDict.get(node)!
-          if (level == this.level) {
-            this.centerCluster(node);
+        if (this.circularLayout) {
+          if (c != undefined) {
+            const node = this.config.configuration.value.definition.graph.nodeDictionary.get(c.id)!;
+            const [_, level] = this.nodeDict.get(node)!
+            if (level == this.level) {
+              this.circleLayoutLerp = 0;
+              this.centerCluster(node);
+            } else {
+              this.centerCluster(undefined);
+            }
+          } else {
+            this.centerCluster(undefined);
           }
         } else {
           this.reset();
         }
+
+        this.createNodes(this.graph);
+        this.render(this.graph, this.abortRender.signal);
       }
     }));
   }
@@ -173,13 +185,13 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
 
     for (const [node, level] of levels) {
       const gfx = new PIXI.Graphics();
-      const radius = this.config.graphicsSettings.value.nodeRadius ? this.radiusScale(measures.get(node.id)!.nodeCount) : (this.nodeRadiusRange[0] + this.nodeRadiusRange[1]) / 2;
+      const radius = this.nodeSize ? this.radiusScale(measures.get(node.id)!.nodeCount) : (this.nodeRadiusRange[0] + this.nodeRadiusRange[1]) / 2;
       const alpha = 1;
 
       gfx.clear();
       gfx.circle(0, 0, radius);
       if (this.config.selectedCluster.value != undefined && node.id == this.config.selectedCluster.value.id && level <= this.level) {
-        gfx.stroke({ width: 40, color: 'orange', alpha: alpha });
+        gfx.stroke({ width: 40, color: 0x222222, alpha: alpha });
       } else {
         gfx.stroke({ width: 3, color: 'black', alpha: alpha });
       }
@@ -193,7 +205,12 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       }
       gfx.onclick = () => {
         // Select cluster
-        this.config.selectedCluster.next(node.data as Cluster);
+        const cluster = node.data as Cluster;
+        if (this.config.selectedCluster.value == cluster) {
+          this.config.selectedCluster.next(undefined);
+        } else {
+          this.config.selectedCluster.next(cluster);
+        }
       };
       gfx.onrightclick = () => {
         // Select: How to choose blue vs orange? Left-right click, modifier to center? Only allow to select two? Allow to select many? Drag-to-select?
@@ -204,14 +221,13 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         // - 1:N (double click?)
         // - Highlight selected edges
         // - Highlight selected cluster (list/nl1/nl2)
-        // - Selection from nl by click
-        // - Selection without center
-        // - Button to switch center mode
         // - matrix/nl clear button (in tab?)
-        // - keep on config change (must be same nodes anyway)
         // - Lerp transform to center center
-
-        // TODO: What about edges in wrong direction by matrix?
+        // - Edge directedness, don't highlight selection in orange because canbe wrong from matrix
+        // - Potential edges from lower layer to upper leaf missing, circular not running for leaves on their level
+        // - Right click on list (optional)
+        // - Edge directenedess (orange/blue ends)
+        // - Maybe don't draw dashed for all in circle (clutter)
 
         // Select cluster for edit
         const selectedCluster = this.config.selectedCluster.value;
@@ -286,9 +302,6 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     }
 
     this.zoom(this.transform.value);
-
-    // Apply graphics settings
-    const settings = this.config.graphicsSettings.value;
 
     const upper = Math.ceil(this.currentLevel);
     const lower = Math.floor(this.currentLevel);
@@ -427,8 +440,8 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
 
       // Radius could be saved somewhere
       const midRadius = (this.nodeRadiusRange[0] + this.nodeRadiusRange[1]) / 2;
-      const sourceRadius = this.config.graphicsSettings.value.nodeRadius ? this.radiusScale(this.config.configuration.value.instance.clusterMeasures.get(edge.source.id)!.nodeCount) : midRadius;
-      const targetRadius = this.config.graphicsSettings.value.nodeRadius ? this.radiusScale(this.config.configuration.value.instance.clusterMeasures.get(edge.target.id)!.nodeCount) : midRadius;
+      const sourceRadius = this.nodeSize ? this.radiusScale(this.config.configuration.value.instance.clusterMeasures.get(edge.source.id)!.nodeCount) : midRadius;
+      const targetRadius = this.nodeSize ? this.radiusScale(this.config.configuration.value.instance.clusterMeasures.get(edge.target.id)!.nodeCount) : midRadius;
 
       const sourcePos = Utility.addP(sourceGraphics.position, Utility.scalarMultiplyP(sourceRadius, Utility.normalizeP(Utility.subtractP(targetGraphics.position, sourceGraphics.position))));
       const targetPos = Utility.addP(targetGraphics.position, Utility.scalarMultiplyP(targetRadius, Utility.normalizeP(Utility.subtractP(sourceGraphics.position, targetGraphics.position))));
@@ -436,16 +449,16 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       // 1. OK auto tab switch on selection (deselect on switch back)
       // 2. OK highlight edges on tab select
       // 3. OK highlight community in list and disable controls on tab select
-      // 4. community select and center lerp on node click, deselect on other views, highlight cluster on hover, zIndex (matrix + nl2 + nl1), select from cluster list because why not (which minimap of multiple? center)
+      // 4. deselect on click again, highlight cluster on hover, zIndex (matrix + nl2 + nl1)
       // 4.0 encode stuff in edges
       // 4.1 Scaling (nuclear model)
       // 4.2 multi level (circle packing, pinning)
       // 5. overlap handling
       // 6. dashed lines
-      // 7. second cluster selection
+      // 7. keybinds
       // 8. labels
       // 9. wildcard selection in matrix and nl2
-      // 10. better inf diff
+      // 10. better inf diff, better connections tab, better tabs
       // 11. tables
       // 12. attributes
       // 13. data recording
@@ -620,10 +633,10 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       return;
     }
     if (this.circleSpacingLerpTarget == 0) {
-      this.circleSpacingLerpTarget = start + (this.circularLayout ? 1 - this.circleLayoutLerp : this.circleLayoutLerp) * 1000;
+      this.circleSpacingLerpTarget = start + (this.circularLayout && this.circleLayoutActive ? 1 - this.circleLayoutLerp : this.circleLayoutLerp) * 1000;
     }
     const elapsed = Math.min(1000, 1000 - (this.circleSpacingLerpTarget - start)); // milliseconds
-    if (this.circularLayout) {
+    if (this.circularLayout && this.circleLayoutActive) {
       this.circleLayoutLerp = elapsed / 1000;
     } else {
       this.circleLayoutLerp = 1 - elapsed / 1000;
@@ -636,8 +649,11 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     }
   }
 
-  private centerCluster(node: Node) {
-    this.circleLayoutCenter = node;
+  private centerCluster(node?: Node) {
+    if (node != undefined) {
+      this.circleLayoutCenter = node;
+    }
+    this.circleLayoutActive = node != undefined;
     this.circleSpacingLerpTarget = 0;
     requestAnimationFrame(t => this.circleLayoutInterpolation(t, this.abort.signal));
   }
@@ -694,15 +710,36 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         this.abortLevel = new AbortController();
         this.lastLevelTime = 0;
         requestAnimationFrame(t => this.levelInterpolation(t, this.abortLevel.signal));
+
+        // CL
+        const cluster = this.config.selectedCluster.value;
+        if (cluster != undefined) {
+          const node = this.config.configuration.value.definition.graph.nodeDictionary.get(cluster.id)!;
+          const [n, l] = this.nodeDict.get(node)!;
+          if (l == this.level) {
+            this.centerCluster(node);
+          }
+        }
       }
     }
 
+    if (changes["circularLayout"] && !changes["circularLayout"].isFirstChange()) {
+      // CL
+      const cluster = this.config.selectedCluster.value;
+      if (cluster != undefined) {
+        const node = this.config.configuration.value.definition.graph.nodeDictionary.get(cluster.id)!;
+        this.centerCluster(node);
+      }
+    }
+
+    if (changes["nodeColor"] || changes["edgeColor"] || changes["nodeSize"]) {
+      if (this.config.configuration.value.instance.graph.nodes.length > 0 && this.graph != undefined) {
+        this.createNodes(this.graph);
+        this.render(this.graph, this.abortRender.signal);
+      }
+    }
 
       // Convex hull when?
-
-      // Minimap
-      // - Specialized for 1:N
-      // - Non-overlapping
 
       // Prolblem that minimal differences are too large -> min prop dist for radius scale range
 
@@ -713,10 +750,6 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       // 5. Circle packing / Hierarchical convex hulls
       // Idea: Animations to morph everything, even merging nodes to form clusters
       // Implementation: Lerp layoutPos to centroid pos or centroid to centroid or centroid to layout / layout target pos (circ pack) (how? -> don't, almost no benefit)
-      // In one UI: Just fade between the canvases
-      // Solution for full circle packing layout: ignore inter-community edges
-      // Ignore general gravity
-      // Gravity for every wanted centroid position
   }
 
   public resize(): void {

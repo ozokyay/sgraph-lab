@@ -6,7 +6,7 @@
     <as-split-area size="20">
       <as-split unit="percent" direction="vertical" restrictMove="true" (dragStart)="dragging[1] = true" (dragStop)="dragging[1] = false">
         <as-split-area size="50">
-          <div class="padded flex-parent" style="height: calc(100% - 20px);">
+          <div class="flex-parent" style="height: calc(100% - 20px);">
             <app-vis-container #containerSecondary class="flex-parent" style="flex: 1;" [initialZoom]="0.5"/>
           </div>
         </as-split-area>
@@ -37,12 +37,12 @@
             <app-tab-statistics />
           </div>
         </mat-tab>
-        <mat-tab label="Diagram Settings">
+        <mat-tab label="Layout Settings">
           <div class="padded">
             <app-tab-nl-settings />
           </div>
         </mat-tab>
-        <mat-tab label="Diffusion Models">
+        <mat-tab label="Diffusion Simulation">
           <div class="padded">
             <app-tab-information-diffusion />
           </div>

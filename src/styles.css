@@ -10,3 +10,8 @@ body {
 .padded {
     margin: 10px;
 }
+
+.center-text {
+    display: block;
+    text-align: center;
+}

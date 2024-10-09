@@ -27,6 +27,8 @@ import { Utility } from '../utility';
   styleUrl: './tab-cluster-list.component.css'
 })
 export class TabClusterListComponent {
+  public edit: boolean = true;
+  public deselect: boolean = true;
 
   public treeControl = new NestedTreeControl<Cluster>(c => Utility.getChildren(c));
   public dataSource = new MatTreeNestedDataSource<Cluster>();
@@ -34,7 +36,6 @@ export class TabClusterListComponent {
 
   public clusters: Cluster[] = [];
   public selectedCluster?: Cluster = undefined;
-  public edit: boolean = true;
   public highlight = new Map<Cluster, boolean>();
 
   constructor(private config: ConfigurationService) {
@@ -152,6 +153,10 @@ export class TabClusterListComponent {
   }
 
   public onSelectCluster(cluster: Cluster) {
+    if (this.config.selectedCluster.value == cluster && this.deselect) {
+      this.config.selectedCluster.next(undefined);
+      return;
+    }
     this.config.selectedCluster.next(cluster);
   }
 

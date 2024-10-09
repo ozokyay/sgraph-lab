@@ -29,7 +29,6 @@ export class ConfigurationService {
   public selectedConnections = new BehaviorSubject<Edge[]>([]);
   public selectedDiffusionSeeds = new BehaviorSubject<Set<Node>>(new Set());
   public layoutSettings = new BehaviorSubject<LayoutSettings>(DefaultLayout);
-  public graphicsSettings = new BehaviorSubject<GraphicsSettings>(DefaultGraphics);
   public sample = new BehaviorSubject<EdgeList>({ nodes: [], edges: [] });
   public centroids = new BehaviorSubject<Map<number, Point>>(new Map());
   public forceDirectedLayout = new BehaviorSubject<EdgeList>({ nodes: [], edges: [] });
