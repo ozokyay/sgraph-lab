@@ -204,7 +204,6 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       };
       gfx.onrightclick = () => {
         // TODO
-        // - Setting edge to 0 removes the dashed version
         // - Highlight selected edges (gray/alpha others, purple, orange/blue enough?), highlight in nl control via button toggle
         // - Highlight selected cluster (list/nl1)
         // - Edge directenedess (orange/blue ends) - prefer arrow so color is not encoded twice?
@@ -494,7 +493,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       // 4.1 Scaling (min radius or radius setting in layout options)
       // 4.2 multi level (circle packing, pinning)
       // 5. overlap handling
-      // 6. dashed lines
+      // 6. dashed lines (effective edges, maybe prefer grey)
       // 7. keybinds
       // 8. labels, legends
       // 9. OK wildcard selection in matrix and nl2
@@ -753,6 +752,10 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
           }
         }
       }
+    }
+
+    if (changes["level"] && changes["level"].isFirstChange()) {
+      this.currentLevel = this.level;
     }
 
     if (changes["circularLayout"] && !changes["circularLayout"].isFirstChange()) {

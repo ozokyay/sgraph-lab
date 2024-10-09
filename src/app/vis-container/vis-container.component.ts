@@ -98,7 +98,7 @@ export class VisContainerComponent implements AfterViewInit {
       //   this.nl2 = false;
       // }, 1000);
       this.combineClusters = false;
-    } else if (previous == 0) {
+    } else {
       // this.nl2 = true;
       // setTimeout(() => {
       //   this.nl1 = false;

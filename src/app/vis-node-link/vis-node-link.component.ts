@@ -314,7 +314,9 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
         this.zoom(this.transform.value);
       }
     }
-    if (changes["nodeColor"] || changes["edgeColor"] || changes["nodeSize"]) {
+    if ((changes["nodeColor"] || changes["edgeColor"] || changes["nodeSize"]) &&
+      !changes["nodeColor"].isFirstChange() && !changes["edgeColor"].isFirstChange() && !changes["nodeSize"].isFirstChange()
+    ) {
       if (this.config.forceDirectedLayout.value.nodes.length > 0) {
         this.createNodes(this.config.forceDirectedLayout.value);
         this.render(this.config.forceDirectedLayout.value, this.abort.signal);
