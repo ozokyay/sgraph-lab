@@ -20,9 +20,9 @@
             <app-vis-node-link-2 #nodeLink2 class="absolute"  [@showHide]="combineClusters ? 'shown' : 'hidden'" [class.ignore-pointer]="!combineClusters" [transform]="transform" [level]="level" [circularLayout]="toggleCircular.checked" [nodeColor]="toggleNodeColor.checked" [edgeColor]="toggleEdgeColor.checked" [nodeSize]="toggleNodeSize.checked"></app-vis-node-link-2>
         }
         <mat-button-toggle-group multiple hideMultipleSelectionIndicator class="button-toggles">
-            <mat-button-toggle #toggleCircular matTooltip="Circular layout"><img src="assets/circular.png" width="32px" height="32px"></mat-button-toggle>
-            <mat-button-toggle #toggleNodeColor matTooltip="Node coloring" checked><img src="assets/color_nodes.png" width="32px" height="32px"></mat-button-toggle>
-            <mat-button-toggle #toggleEdgeColor matTooltip="Edge coloring" checked><img src="assets/color_edges.png" width="32px" height="32px"></mat-button-toggle>
+            <mat-button-toggle #toggleCircular [matTooltip]="level != 0 ? 'Circular layout' : 'Circular layout (only on higher levels)'"><img src="assets/circular.png" width="32px" height="32px"></mat-button-toggle>
+            <mat-button-toggle #toggleNodeColor [matTooltip]="level == 0 ? 'Node coloring' : 'Node coloring (only on lowest level)'" checked><img src="assets/color_nodes.png" width="32px" height="32px"></mat-button-toggle>
+            <mat-button-toggle #toggleEdgeColor [matTooltip]="level == 0 ? 'Edge coloring' : 'Edge coloring (only on lowest level)'" checked><img src="assets/color_edges.png" width="32px" height="32px"></mat-button-toggle>
             <mat-button-toggle #toggleNodeSize matTooltip="Scale nodes with degree / cluster size"><img src="assets/node_radius.png" width="32px" height="32px"></mat-button-toggle>
             <mat-button-toggle matTooltip="Show effective edges from other levels"><img src="assets/dashed_edge.png" width="32px" height="32px"></mat-button-toggle>
             <mat-button-toggle matTooltip="Highight selected edges"><img src="assets/highlight_edge.png" width="32px" height="32px"></mat-button-toggle>

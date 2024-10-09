@@ -113,8 +113,9 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         if (this.circularLayout) {
           if (c != undefined) {
             const node = this.config.configuration.value.definition.graph.nodeDictionary.get(c.id)!;
+            const cluster = node.data as Cluster;
             const [_, level] = this.nodeDict.get(node)!
-            if (level == this.level) {
+            if (level == this.level || (cluster.children.length == 0 && level < this.level)) {
               this.circleLayoutLerp = 0;
               this.centerCluster(node);
             } else {
@@ -141,17 +142,6 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
   }
 
   private prepare(graph: EdgeList): EdgeList {
-    // Add other levels somewhere else (max dist from others)?
-    // Or minimap + circle packing??
-    // Or just be limited not working across levels
-    // How about allowing top-down (but not bottom-up)?
-
-    // TODO: Also 
-    // Can also start from 
-    // Specialized in 1:N editing and READING (common after adding new cluster)
-    // MUST differentiate between generated edges and connections (care more about the latter because of editing)
-
-
     // Step 1: Node + edge scaling (OK)
     // Step 2.1: Lerp to level (OK)
     // Step 2.2: Lerp to minimap (OK)
@@ -195,7 +185,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       } else {
         gfx.stroke({ width: 3, color: 'black', alpha: alpha });
       }
-      gfx.fill({ color: this.getNodeColor(node, true), alpha: alpha }); // Ignore graphics settings for readability
+      gfx.fill({ color: this.getNodeColor(node, true), alpha: alpha }); // No color makes no sense
       gfx.interactive = true;
       gfx.onmouseenter = () => {
         gfx.tint = 0x9A9A9A;
@@ -213,63 +203,15 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         }
       };
       gfx.onrightclick = () => {
-        // Select: How to choose blue vs orange? Left-right click, modifier to center? Only allow to select two? Allow to select many? Drag-to-select?
-        // Selection modality: Highlight edges? (from matrix)?
-
         // TODO
-        // - Always render selected edge
-        // - 1:N (double click?)
-        // - Highlight selected edges
-        // - Highlight selected cluster (list/nl1/nl2)
-        // - matrix/nl clear button (in tab?)
-        // - Lerp transform to center center
-        // - Edge directedness, don't highlight selection in orange because canbe wrong from matrix
-        // - Potential edges from lower layer to upper leaf missing, circular not running for leaves on their level
-        // - Right click on list (optional)
-        // - Edge directenedess (orange/blue ends)
-        // - Maybe don't draw dashed for all in circle (clutter)
+        // - Highlight selected edges (gray/alpha others, purple, orange/blue enough?), highlight in nl control via button toggle
+        // - Highlight selected cluster (list/nl1)
+        // - Edge directenedess (orange/blue ends) - prefer arrow so color is not encoded twice?
+        // - Toggle edge direction by holding shift?
+        // - Edge encoding: Wedge option button (data: ratio from connection)
+        // - Average aggregated degree distribution in cluster tab, fix last point bug
 
-        // Select cluster for edit
-        const selectedCluster = this.config.selectedCluster.value;
-        if (selectedCluster == undefined) {
-          return;
-        }
-        const selectedNode = this.config.configuration.value.definition.graph.nodeDictionary.get(selectedCluster.id)!;
-        if (selectedNode == node) {
-          return;
-        }
-
-        // Deselect
-        const selectedEdge = this.config.selectedConnections.value.find(e => e.source == selectedNode && e.target == node || e.source == node && e.target == selectedNode);
-        if (selectedEdge != undefined) {
-          this.config.selectedConnections.value.splice(this.config.selectedConnections.value.indexOf(selectedEdge), 1);
-          this.config.selectedConnections.next(this.config.selectedConnections.value);
-          return;
-        }
-
-        // Select
-        if (node != selectedNode) {
-          // Check graph
-          const edges = this.config.configuration.value.definition.graph.nodes.get(selectedNode)!;
-          const entry = edges.find(([e, v]) => v.id == node.id); // This could be handled by service or tab-cluster-list
-          let edge = entry != undefined ? entry[0] : undefined;
-
-          // Check selected
-          if (edge == undefined) {
-            edge = this.config.selectedConnections.value.find(e => e.source == selectedNode && e.target == node || e.source == selectedNode && e.target == node);
-          }
-
-          // Create
-          if (edge == undefined) {
-            edge = { source: selectedNode, target: node, data: structuredClone(EmptyConnection) };
-          }
-          
-          if (selectedNode != edge.source) {
-            [edge.source, edge.target] = [edge.target, edge.source];
-          }
-          this.config.selectedConnections.value.push(edge);
-          this.config.selectedConnections.next(this.config.selectedConnections.value);
-        }
+        this.selectEdges(node);
       };
       this.nodeDict.set(node, [gfx, level]);
       this.stage.addChild(gfx);
@@ -277,6 +219,103 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
 
     const extent = d3.extent(graph.edges.map(e => (e.data as ClusterConnection).edgeCount)) as [number, number];
     this.edgeWidthScale = d3.scaleLinear().domain(extent).range(this.edgeWidthRange);
+  }
+
+  private selectEdges(node: Node) {
+    // Select cluster for edit
+    const selectedCluster = this.config.selectedCluster.value;
+    if (selectedCluster == undefined || this.graph == undefined) {
+      return;
+    }
+    const selectedNode = this.config.configuration.value.definition.graph.nodeDictionary.get(selectedCluster.id)!;
+    // Cannot do spooky selection from invisible level
+    const [_, level] = this.nodeDict.get(selectedNode)!;
+    if (level != this.level && (selectedCluster.children.length > 0 || level > this.level)) {
+      return;
+    }
+
+    if (selectedNode == node) {
+      // 1:N
+      // Get respective edges
+      const selection = (this.config.selectedConnections.value
+        .map((e, i) => [e, i]) as [Edge, number][])
+        .filter(([e, i]) => e.source == selectedNode || e.target == selectedNode);
+
+      // Same behavior as 1:1 but broadcast to 1:N
+
+      // Deselect
+      if (selection.length > 0) {
+        for (const [e, i] of selection.reverse()) {
+          this.config.selectedConnections.value.splice(i, 1);
+        }
+      } else {
+        // Add missing
+        // Search through all real edges
+        const edges = this.config.configuration.value.definition.graph.nodes.get(selectedNode)!;
+        for (const other of this.config.configuration.value.definition.graph.getNodes()) {
+          const [_, level] = this.nodeDict.get(other)!;
+          if (other == selectedNode || (level != this.level && ((other.data as Cluster).children.length > 0 || level > this.level))) {
+            continue;
+          }
+
+          const entry = edges.find(([e, v]) => v.id == other.id); // This could be handled by service or tab-cluster-list
+          let edge = entry != undefined ? entry[0] : undefined;
+    
+          // Check selected
+          if (edge == undefined) {
+            edge = this.config.selectedConnections.value.find(e => e.source == selectedNode && e.target == other || e.source == selectedNode && e.target == other);
+          }
+    
+          // Create
+          if (edge == undefined) {
+            edge = { source: selectedNode, target: other, data: structuredClone(EmptyConnection) };
+          }
+
+          if ((edge.source == selectedNode || edge.target == selectedNode) && selection.find(([e, i]) => e == edge) == undefined) {
+            if (selectedNode != edge.source) {
+              [edge.source, edge.target] = [edge.target, edge.source];
+            }
+            this.config.selectedConnections.value.push(edge);
+          }
+        }
+      }
+      this.config.selectedConnections.next(this.config.selectedConnections.value);
+      return;
+    }
+
+    // 1:1
+
+    // Deselect
+    const selectedEdge = this.config.selectedConnections.value.find(e => e.source == selectedNode && e.target == node || e.source == node && e.target == selectedNode);
+    if (selectedEdge != undefined) {
+      this.config.selectedConnections.value.splice(this.config.selectedConnections.value.indexOf(selectedEdge), 1);
+      this.config.selectedConnections.next(this.config.selectedConnections.value);
+      return;
+    }
+
+    // Select
+    if (node != selectedNode) {
+      // Check graph
+      const edges = this.config.configuration.value.definition.graph.nodes.get(selectedNode)!;
+      const entry = edges.find(([e, v]) => v.id == node.id); // This could be handled by service or tab-cluster-list
+      let edge = entry != undefined ? entry[0] : undefined;
+
+      // Check selected
+      if (edge == undefined) {
+        edge = this.config.selectedConnections.value.find(e => e.source == selectedNode && e.target == node || e.source == selectedNode && e.target == node);
+      }
+
+      // Create
+      if (edge == undefined) {
+        edge = { source: selectedNode, target: node, data: structuredClone(EmptyConnection) };
+      }
+
+      if (selectedNode != edge.source) {
+        [edge.source, edge.target] = [edge.target, edge.source];
+      }
+      this.config.selectedConnections.value.push(edge);
+      this.config.selectedConnections.next(this.config.selectedConnections.value);
+    }
   }
 
   private render(graph: EdgeList, signal: AbortSignal, timestamp?: number) {
@@ -449,22 +488,22 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       // 1. OK auto tab switch on selection (deselect on switch back)
       // 2. OK highlight edges on tab select
       // 3. OK highlight community in list and disable controls on tab select
-      // 4. deselect on click again, highlight cluster on hover, zIndex (matrix + nl2 + nl1)
+      // 4. highlight cluster on hover, zIndex (matrix + nl2 + nl1)
       // 4.0 encode stuff in edges
-      // 4.1 Scaling (nuclear model)
+      // 4.1 Scaling (min radius or radius setting in layout options)
       // 4.2 multi level (circle packing, pinning)
       // 5. overlap handling
       // 6. dashed lines
       // 7. keybinds
-      // 8. labels
+      // 8. labels, legends
       // 9. wildcard selection in matrix and nl2
-      // 10. better inf diff, better connections tab, better tabs
+      // 10. better inf diff, better connections tab, better tabs, help tab
       // 11. tables
       // 12. attributes
       // 13. data recording
-      // 14. walkthrough
+      // 14. walkthrough (from help tab)
       // 15. tasks
-      // 16. Labels in vis and hover for attributes
+      // 16. Labels in vis and hover for attributes, cluster color select (5 buttons), warning editing hidden edges
 
       // Problem: How to show edges on lower levels?
       // => Parents are not visible, so would need to show substitute edges
@@ -491,21 +530,11 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       // c) provide clunky alternative interaction (better for study to compare)
       // d) no interaction in list, display only
 
-      // List can only do 1:N
-      // Priority: synchronize matrix and nl/minimap
-
       // -> N:M and different directions
       // -> select first and second node OR select actual edge
       // -> both can have problems with overlap, can ignore for now
 
-      // Idea: Cluster list click can do 1:N
-      // Idea: Cluster list highlights selected connections with some highlight color (ignore directions because cannot show all from matrix)
-      // Idea: Selecting in one vis deselects in all others, implemented as focus bool
-
       // Edge width better scale, node radius better scale (do not exaggerate miniscule differences, start medium)
-
-      // Next feature: Cluster selection & sync with list highlight -> depending on active tab (or even in active tab)
-      // Follow-up: Second cluster or edge selection
 
       // Then: Attributes, Tables, Walkthrough
 
@@ -533,30 +562,32 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     }
 
     // Potential edges circular layout
-    if (this.circleLayoutCenter != undefined) {
-      const [centerGfx, _] = this.nodeDict.get(this.circleLayoutCenter)!;
-      for (const node of graph.nodes) {
-        if (node == this.circleLayoutCenter) {
-          continue;
-        }
-        const [gfx, level] = this.nodeDict.get(node)!;
-        if (level != this.level) {
-          continue;
-        }
-        this.dashedLine(this.edgeGraphics, centerGfx.position, gfx.position, 24, 12);
-        this.edgeGraphics.stroke({ width: 4, color: "black", alpha: this.circleLayoutLerp });
-      }
-    }
+    // if (this.circleLayoutCenter != undefined) {
+    //   const [centerGfx, _] = this.nodeDict.get(this.circleLayoutCenter)!;
+    //   for (const node of graph.nodes) {
+    //     if (node == this.circleLayoutCenter) {
+    //       continue;
+    //     }
+    //     const [gfx, level] = this.nodeDict.get(node)!;
+    //     if (level != this.level) { // This
+    //       continue;
+    //     }
+    //     this.dashedLine(this.edgeGraphics, centerGfx.position, gfx.position, 24, 12);
+    //     this.edgeGraphics.stroke({ width: 4, color: "black", alpha: this.circleLayoutLerp });
+    //   }
+    // }
 
     // Potential edges or highlight edge selection
     for (const edge of this.config.selectedConnections.value) {
       const [sourceGfx, sourceLevel] = this.nodeDict.get(edge.source)!;
       const [targetGfx, targetLevel] = this.nodeDict.get(edge.target)!;
-      if (sourceLevel != this.level || targetLevel != this.level) {
+      const sourceWrong = sourceLevel != this.level && ((edge.source.data as Cluster).children.length > 0 || sourceLevel > this.level);
+      const targetWrong = targetLevel != this.level && ((edge.target.data as Cluster).children.length > 0 || targetLevel > this.level);
+      if (sourceWrong || targetWrong) {
         continue;
       }
       this.dashedLine(this.edgeGraphics, sourceGfx.position, targetGfx.position, 24, 12);
-      this.edgeGraphics.stroke({ width: 4, color: "black" });
+      this.edgeGraphics.stroke({ width: 4, color: "black", alpha: Math.min(sourceGfx.alpha, targetGfx.alpha) });
     }
   }
 

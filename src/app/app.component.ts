@@ -65,12 +65,17 @@ export class AppComponent implements OnInit {
         this.selectedTabIndex = 1;
       }
     });
+    this.config.activeTab.subscribe(t => {
+      if (this.selectedTabIndex != t) {
+        this.selectedTabIndex = t;
+      }
+    });
   }
 
   public onSelectedTabChange(index: number) {
-    if (index != 1) {
-      this.config.selectedConnections.next([]); 
-    }
+    // if (index != 1) {
+    //   this.config.selectedConnections.next([]); // Really?
+    // }
     this.config.activeTab.next(index);
   }
 

@@ -264,4 +264,9 @@ export class TabConnectionsComponent {
     }
     this.degreeDistributionTarget = distribution;
   }
+
+  public onClear() {
+    this.config.selectedConnections.next([]);
+    this.config.activeTab.next(0);
+  }
 }

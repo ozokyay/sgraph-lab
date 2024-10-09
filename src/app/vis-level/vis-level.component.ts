@@ -59,7 +59,7 @@ export class VisLevelComponent implements OnChanges {
   private update() {
     this.levelText = this.level == 0 ? "R" : this.level.toString();
     this.levelChange.emit(this.level);
-    this.config.selectedConnections.next([]);
+    // this.config.selectedConnections.next([]);
   }
 
   public onChange(event: WheelEvent) {

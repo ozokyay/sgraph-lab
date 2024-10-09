@@ -1,9 +1,10 @@
 @if (connections && connections.length > 0) {
     @if (connections.length == 1 || multiEditing) {
-        <h4>Edge Count</h4>
+        <button mat-button (click)="onClear()">Clear selection</button>
+        <br>
         <span>
             <mat-form-field>
-                <mat-label>Edges</mat-label>
+                <mat-label>Edge count</mat-label>
                 <input type="number" matInput [(ngModel)]="edgeCount" min="0" [max]="maxEdgeCount" oninput="this.value = Math.floor(this.value);" (change)="onChange()">
             </mat-form-field>
         </span>
@@ -55,9 +56,11 @@
             <app-vis-line-chart yLabel="Node frequency" [(series)]="degreeDistributionTarget" [series2]="actualDistributionTarget" [allowAxisScaling]="false" (seriesChange)="onChange()"></app-vis-line-chart>
         }
     } @else {
-        <p>The selected connections are inconsistent. You can reset them for multi-editing.</p>
-        <button mat-button (click)="onReset()">Reset</button>
+        <p class="center-text">The selected connections are inconsistent. You can reset them for multi-editing.</p>
+        <button mat-button (click)="onReset()" class="center-margin" style="display: block;">Reset</button>
     }
 } @else {
     <p class="center-text">Select cluster connections to edit</p>
 }
+
+<!-- Two-column layout could work nicely -->

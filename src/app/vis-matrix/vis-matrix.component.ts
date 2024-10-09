@@ -176,21 +176,6 @@ export class VisMatrixComponent implements AfterViewInit, OnChanges, OnDestroy {
     let nodes = graph.getNodes().filter(v => (v.data as Cluster).parent == -1);
     nodes = this.bfs(nodes.map(v => [v, 0]), level, levels);
 
-    // Two selection schemes:
-    // - full matrix with switch button
-    // - no option, use groups for 1:N -> What if a new group does not fit into the current hierarchy?
-    // - Redundancy with groups??
-
-    // - Color Scheme orange/blue (can be orange/white optionally)
-    // - Toggle when clicking
-    // - Avg parent?? (must be solved)
-
-    // Further scenarios (no usecase)
-    // - Multiple edges
-    // - Cluster generators generate children
-
-    // Subdivision does not make too much sense because it is hard to place labels on inner cells (quite important!)
-
     // Matrix cells
     const data: MatrixCell[] = [];
     for (let y = 0; y < nodes.length; y++) {
@@ -302,11 +287,14 @@ export class VisMatrixComponent implements AfterViewInit, OnChanges, OnDestroy {
             .map((e, i) => [e, i]) as [Edge, number][])
             .filter(([e, i]) => e.source == d.cx || e.target == d.cx);
 
+          // Get selected connections on current level
+          const levelSelection = selection.filter(([e, i]) => nodes.indexOf(e.source) != -1 && nodes.indexOf(e.target) != -1);
+
           // Same behavior as 1:1 but broadcast to 1:N
 
           // Also want missing - single pass?
-          if (selection.length == nodes.length - 1) {
-            for (const [e, i] of selection.reverse()) {
+          if (levelSelection.length == nodes.length - 1) {
+            for (const [e, i] of levelSelection.reverse()) {
               this.config.selectedConnections.value.splice(i, 1);
             }
           } else {
