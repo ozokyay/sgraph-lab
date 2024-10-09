@@ -14,6 +14,14 @@
     right: 0;
 }
 
+.button-toggles {
+    margin-left: 10px;
+}
+
+mat-button-toggle {
+    background-color: white;
+}
+
 .ignore-pointer {
     pointer-events: none;
 }

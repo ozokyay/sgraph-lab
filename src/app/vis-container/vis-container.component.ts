@@ -1,6 +1,8 @@
 import { Component, Input, ViewChild, HostBinding, AfterViewInit, ElementRef } from '@angular/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { VisMatrixComponent } from '../vis-matrix/vis-matrix.component';
 import { VisNodeLink2Component } from '../vis-node-link-2/vis-node-link-2.component';
 import { VisNodeLinkComponent } from '../vis-node-link/vis-node-link.component';
@@ -17,7 +19,9 @@ import * as d3 from 'd3';
     VisMatrixComponent,
     VisNodeLinkComponent,
     VisNodeLink2Component,
-    VisLevelComponent
+    VisLevelComponent,
+    MatButtonToggleModule,
+    MatTooltipModule
   ],
   templateUrl: './vis-container.component.html',
   styleUrl: './vis-container.component.css',
