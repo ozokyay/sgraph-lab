@@ -204,6 +204,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       };
       gfx.onrightclick = () => {
         // TODO
+        // - Setting edge to 0 removes the dashed version
         // - Highlight selected edges (gray/alpha others, purple, orange/blue enough?), highlight in nl control via button toggle
         // - Highlight selected cluster (list/nl1)
         // - Edge directenedess (orange/blue ends) - prefer arrow so color is not encoded twice?
@@ -474,7 +475,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       const [targetGraphics, targetLevel] = this.nodeDict.get(edge.target)!;
 
       if (data.edgeCount == 0 || Math.abs(sourceLevel - this.level) >= 1 || Math.abs(targetLevel - this.level) >= 1) {
-        return;
+        break;
       }
 
       // Radius could be saved somewhere
@@ -496,7 +497,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       // 6. dashed lines
       // 7. keybinds
       // 8. labels, legends
-      // 9. wildcard selection in matrix and nl2
+      // 9. OK wildcard selection in matrix and nl2
       // 10. better inf diff, better connections tab, better tabs, help tab
       // 11. tables
       // 12. attributes
