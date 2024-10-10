@@ -161,7 +161,7 @@ export class ConfigurationService {
     // Clear hierarchy
     for (const node of configuration.definition.graph.nodes.keys()) {
       const cluster = node.data as Cluster;
-      if (cluster.children.length == 0) {
+      if (cluster.children.length == 0 && cluster.generator.name != "MG") {
         continue;
       }
       configuration.instance.clusters.set(cluster.id, { nodes: [], edges: [] });

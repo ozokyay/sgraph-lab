@@ -149,11 +149,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     // Step 4: Multilevel support
 
     // Need all nodes and edges here, lerp position and alpha in render()
-
-    graph.nodes = graph.nodes.filter(n => (n.data as Cluster).generator.name != "MG");
-    graph.edges = graph.edges.filter(e => (e.source.data as Cluster).generator.name != "MG" && (e.target.data as Cluster).generator.name != "MG")
     this.createNodes(graph);
-
     return graph;
   }
 
@@ -353,15 +349,19 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       gfx.position = this.calculateBasePos(node, level, upper, lower);
 
       // Opacity
-      if (cluster.children.length > 0) {
+      if (cluster.children.length > 0 || level > this.level) {
         if (level == upper) {
           gfx.alpha = this.currentLevel == upper ? 1 : this.currentLevel - lower;
         } else if (level == lower) {
           gfx.alpha = this.currentLevel == lower ? 1 : upper - this.currentLevel;
+        } else if (this.level == 0 && cluster.children.length == 0) {
+          gfx.alpha = 1;
         } else {
           gfx.alpha = 0;
         }
       }
+
+      gfx.interactive = gfx.alpha > 0;
 
       // Overlap prevention
       // -> Why not multilevel layout in the first place
@@ -454,14 +454,14 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       }
     }
 
-    for (const node of graph.nodes) {
-      const cluster = node.data as Cluster;
-      const [gfx, level] = this.nodeDict.get(node)!;
-      if (level > this.level && this.currentLevel == this.level && cluster.parent != -1) {
-        const [pgfx, plevel] = this.nodeDict.get(this.config.configuration.value.definition.graph.nodeDictionary.get(cluster.parent)!)!
-        gfx.position = pgfx.position;
-      }
-    }
+    // for (const node of graph.nodes) {
+    //   const cluster = node.data as Cluster;
+    //   const [gfx, level] = this.nodeDict.get(node)!;
+    //   if (level > this.level && this.currentLevel == this.level && cluster.parent != -1) {
+    //     const [pgfx, plevel] = this.nodeDict.get(this.config.configuration.value.definition.graph.nodeDictionary.get(cluster.parent)!)!
+    //     gfx.position = pgfx.position;
+    //   }
+    // }
 
     // Render edges
     this.edgeGraphics?.clear();
@@ -473,7 +473,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       const [sourceGraphics, sourceLevel] = this.nodeDict.get(edge.source)!;
       const [targetGraphics, targetLevel] = this.nodeDict.get(edge.target)!;
 
-      if (data.edgeCount == 0 || Math.abs(sourceLevel - this.level) >= 1 || Math.abs(targetLevel - this.level) >= 1) {
+      if (data.edgeCount == 0) {
         break;
       }
 
@@ -541,12 +541,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       // Transparency of unselected if there is an active selection
       
       // Keep selected, fade out unselected from active selection
-      let alpha;
-      if (source == this.circleLayoutCenter?.data || target == this.circleLayoutCenter?.data) {
-        alpha = 1;
-      } else {
-        alpha = Utility.lerp(Math.min(sourceGraphics.alpha, targetGraphics.alpha), 0, this.circleLayoutLerp);
-      }
+      let alpha = Utility.lerp(Math.min(sourceGraphics.alpha, targetGraphics.alpha), 0, this.circleLayoutLerp);
 
       const middle = {
         x: (sourcePos.x + targetPos.x) / 2,
@@ -581,13 +576,14 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     for (const edge of this.config.selectedConnections.value) {
       const [sourceGfx, sourceLevel] = this.nodeDict.get(edge.source)!;
       const [targetGfx, targetLevel] = this.nodeDict.get(edge.target)!;
-      const sourceWrong = sourceLevel != this.level && ((edge.source.data as Cluster).children.length > 0 || sourceLevel > this.level);
-      const targetWrong = targetLevel != this.level && ((edge.target.data as Cluster).children.length > 0 || targetLevel > this.level);
-      if (sourceWrong || targetWrong) {
-        continue;
-      }
+
+      // This is not readable
+      const black = { width: 4, color: "black", alpha: Math.min(sourceGfx.alpha, targetGfx.alpha) };
+      // const orange = { width: 4, color: "orange", alpha: Math.min(sourceGfx.alpha, targetGfx.alpha) };
+      // const blue = { width: 4, color: "blue", alpha: Math.min(sourceGfx.alpha, targetGfx.alpha) };
+      // const sections: [number, PIXI.StrokeInput][] = [[0.5, orange], [1.0, blue]];
       this.dashedLine(this.edgeGraphics, sourceGfx.position, targetGfx.position, 24, 12);
-      this.edgeGraphics.stroke({ width: 4, color: "black", alpha: Math.min(sourceGfx.alpha, targetGfx.alpha) });
+      this.edgeGraphics.stroke(black);
     }
   }
 
@@ -802,9 +798,10 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
   }
 
   // Could allow color sections as argument
-  private dashedLine(gfx: PIXI.Graphics, start: Point, target: Point, dash = 16, gap = 8) {
+  private dashedLine(gfx: PIXI.Graphics, start: Point, target: Point, dash = 16, gap = 8, colors: [number, PIXI.StrokeInput][] = []) {
     const origin = start;
     const distance = Math.sqrt((start.x - target.x) ** 2 + (start.y - target.y) ** 2);
+    let c = 0;
   
     for (let t = 0; t < distance; t += dash + gap) {
       gfx.moveTo(start.x, start.y);
@@ -812,6 +809,15 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       gfx.lineTo(start.x, start.y);
       start = Utility.lerpP(origin, target, (t + dash + gap) / distance);
       gfx.moveTo(start.x, start.y);
+
+      if (colors.length > c) {
+        const [s, stroke] = colors[c]
+        const next = (t + dash + gap) / distance;
+        if (next >= s || next >= 1) {
+          gfx.stroke(stroke);
+          c++;
+        }
+      }
     }
   }
 }
