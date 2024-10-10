@@ -200,12 +200,15 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       };
       gfx.onrightclick = () => {
         // TODO
-        // - Highlight selected edges (gray/alpha others, purple, orange/blue enough?), highlight in nl control via button toggle
+        // - Highlight selected edges (gray/alpha others, purple, orange/blue enough?)
         // - Highlight selected cluster (list/nl1)
-        // - Edge directenedess (orange/blue ends) - prefer arrow so color is not encoded twice?
+        // - Kreis gefüllt/ungefüllt Taktik
         // - Toggle edge direction by holding shift?
+
         // - Edge encoding: Wedge option button (data: ratio from connection)
         // - Average aggregated degree distribution in cluster tab, fix last point bug
+        // - Overlap prevention in create nodes
+        // - Pinning: Always show selected, bring through different layers (only with overlap prevention)
 
         this.selectEdges(node);
       };
@@ -354,7 +357,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
           gfx.alpha = this.currentLevel == upper ? 1 : this.currentLevel - lower;
         } else if (level == lower) {
           gfx.alpha = this.currentLevel == lower ? 1 : upper - this.currentLevel;
-        } else if (this.level == 0 && cluster.children.length == 0) {
+        } else if (this.level == 0 && cluster.children.length == 0) { // keep selected visible: || cluster == this.config.selectedCluster.value
           gfx.alpha = 1;
         } else {
           gfx.alpha = 0;
@@ -541,7 +544,10 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       // Transparency of unselected if there is an active selection
       
       // Keep selected, fade out unselected from active selection
-      let alpha = Utility.lerp(Math.min(sourceGraphics.alpha, targetGraphics.alpha), 0, this.circleLayoutLerp);
+      let alpha = Math.min(sourceGraphics.alpha, targetGraphics.alpha);
+      if (source != this.circleLayoutCenter?.data && target != this.circleLayoutCenter?.data) {
+        alpha = Utility.lerp(alpha, 0, this.circleLayoutLerp);
+      }
 
       const middle = {
         x: (sourcePos.x + targetPos.x) / 2,

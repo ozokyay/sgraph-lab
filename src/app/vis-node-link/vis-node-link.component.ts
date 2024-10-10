@@ -51,6 +51,9 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
   public nodeSize = false;
 
   @Input()
+  public edgeHighlight = false;
+
+  @Input()
   public transform = { value: new d3.ZoomTransform(1, 0, 0) };
 
   @ViewChild('container')
@@ -109,7 +112,7 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
       // Alpha: This node has selected incident edges
       // This does not only depend on cluster id, but must be from the correct edge bundle which makes things inefficient
       const anySelection = this.config.selectedConnections.value.length > 0;
-      const alpha = !anySelection || selectedEdges.find(e => e.source == node || e.target == node) ? 1 : 0.2;
+      const alpha = !this.edgeHighlight || !anySelection || selectedEdges.find(e => e.source == node || e.target == node) ? 1 : 0.2;
 
       gfx.stroke({ width: 3, color: 'black', alpha: alpha });
       gfx.fill({ color: this.getNodeColor(node, this.nodeColor), alpha: alpha });
@@ -202,7 +205,7 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
       const target = edge.target.data as NodeData;
 
       // Transparency of unselected if there is an active selection
-      const alpha = !anySelection || selectedEdges.indexOf(edge) != -1 ? 1 : 0.2;
+      const alpha = !this.edgeHighlight || !anySelection || selectedEdges.indexOf(edge) != -1 ? 1 : 0.2;
 
       const middle = {
         x: (source.renderPosition.x + target.renderPosition.x) / 2,
@@ -314,10 +317,9 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
         this.zoom(this.transform.value);
       }
     }
-    if ((changes["nodeColor"] || changes["edgeColor"] || changes["nodeSize"]) &&
-      !changes["nodeColor"].isFirstChange() && !changes["edgeColor"].isFirstChange() && !changes["nodeSize"].isFirstChange()
-    ) {
-      if (this.config.forceDirectedLayout.value.nodes.length > 0) {
+    if ((changes["nodeColor"] || changes["edgeColor"] || changes["nodeSize"] || changes["edgeHighlight"])) {
+      if (this.stage != undefined && this.config.forceDirectedLayout.value.nodes.length > 0) {
+        console.log("moin");
         this.createNodes(this.config.forceDirectedLayout.value);
         this.render(this.config.forceDirectedLayout.value, this.abort.signal);
       }

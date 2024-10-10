@@ -48,6 +48,7 @@ export class VisContainerComponent implements AfterViewInit {
   public nl1 = true;
   public nl2 = true;
   public combineClusters = true;
+  public combineClustersImmediate = true;
   public transform = { value: new d3.ZoomTransform(1, 0, 0) };
 
   private zoom = d3.zoom();
@@ -93,17 +94,23 @@ export class VisContainerComponent implements AfterViewInit {
     // Must apply level to nl1 after matrix
 
     if (level == 0) {
-      // this.nl1 = true;
-      // setTimeout(() => {
-      //   this.nl2 = false;
-      // }, 1000);
-      this.combineClusters = false;
+      this.nl1 = true;
+      setTimeout(() => {
+        this.nl2 = false;
+      }, 1000);
+      setTimeout(() => {
+        this.combineClusters = false;
+      }, 100);
+      this.combineClustersImmediate = false;
     } else {
-      // this.nl2 = true;
-      // setTimeout(() => {
-      //   this.nl1 = false;
-      // }, 1000);
-      this.combineClusters = true;
+      this.nl2 = true;
+      setTimeout(() => {
+        this.nl1 = false;
+      }, 1000);
+      setTimeout(() => {
+        this.combineClusters = true;
+      }, 100);
+      this.combineClustersImmediate = true;
     }
   }
 
