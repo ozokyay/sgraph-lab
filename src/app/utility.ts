@@ -87,22 +87,56 @@ export class Utility {
 
     public static addDistributions(d1: Series, d2: Series): Series {
       const data: Point[] = [];
-      // Assuming there are no gaps
-      for (let i = 0; i < Math.min(d1.data.length, d2.data.length); i++) {
-        data.push({
-          x: d1.data[i].x,
-          y: d1.data[i].y + d2.data[i].y
-        });
-      }
-      if (d1.data.length < d2.data.length) {
-        data.push(...this.deepCopyPoints(d2.data.slice(d1.data.length, d2.data.length)));
-      } else if (d1.data.length > d2.data.length) {
-        data.push(...this.deepCopyPoints(d1.data.slice(d2.data.length, d1.data.length)));
+      let i1 = 0; // indices
+      let i2 = 0;
+      while (i1 < d1.data.length || i2 < d2.data.length) {
+        const p1 = d1.data[i1];
+        const p2 = d2.data[i2];
+        if (p2 == undefined || p1 != undefined && p1.x < p2.x) {
+          data.push({
+            x: p1.x,
+            y: p1.y
+          });
+          i1++;
+        } else if (p1 == undefined || p2.x < p1.x) {
+          data.push({
+            x: p2.x,
+            y: p2.y
+          });
+          i2++;
+          console.log(`p2.x < p1.x ${i1} ${i2} x = ${p2.x} y = ${p2.y * 2}`);
+        } else {
+          data.push({
+            x: p1.x,
+            y: p1.y + p2.y
+          });
+          i1++;
+          i2++;
+        }
       }
       return {
         data: data,
         xExtent: [Math.min(d1.xExtent[0], d2.xExtent[0]), Math.max(d1.xExtent[1], d2.xExtent[1])],
         yExtent: [Math.min(d1.yExtent[0], d2.yExtent[0]), Math.max(d1.yExtent[1], d2.yExtent[1])]
+      };
+    }
+
+    public static averageDistributions(distributions: Series[]): Series {
+      const xDict = new Map<number, [number, number]>();
+      for (const d of distributions) {
+        for (const p of d.data) {
+          const [value, count] = xDict.get(p.x) ?? [0, 0];
+          xDict.set(p.x, [value + p.y, count + 1]);
+        }
+      }
+      const data = [...xDict.entries()].map(([x, [value, count]]) => { return { x: x, y: value / count }; });
+      const xExtent = [Math.min(...distributions.map(d => d.xExtent[0])), Math.max(...distributions.map(d => d.xExtent[1]))];
+      const ys = data.map(p => p.y);
+      const yExtent = [Math.min(...ys), Math.max(...ys)]
+      return {
+        data: data,
+        xExtent: xExtent,
+        yExtent: yExtent
       };
     }
 

@@ -200,13 +200,13 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       };
       gfx.onrightclick = () => {
         // TODO
-        // - Highlight selected edges (gray/alpha others, purple, orange/blue enough?)
+        // - Highlight selected edges (gray/alpha others, gray self, purple, yellow, circles enough?)
         // - Highlight selected cluster (list/nl1)
         // - Kreis gefüllt/ungefüllt Taktik
         // - Toggle edge direction by holding shift?
 
         // - Edge encoding: Wedge option button (data: ratio from connection)
-        // - Average aggregated degree distribution in cluster tab, fix last point bug
+        // - Fix last point bug
         // - Overlap prevention in create nodes
         // - Pinning: Always show selected, bring through different layers (only with overlap prevention)
 

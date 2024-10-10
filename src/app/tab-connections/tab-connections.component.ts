@@ -66,16 +66,12 @@ export class TabConnectionsComponent {
     // TODO: Want to show after drawing instead??
 
     // Effective range, scale to 1 to reflect that scale doesn't matter
-    let distribution = structuredClone(EmptySeries);
-    distribution.xExtent = [1, 1];
-    for (const edge of this.connections) {
-      const dist = this.config.configuration.value.instance.clusterMeasures.get(side == "source" ? edge.source.id : edge.target.id)!.degreeDistribution;
-      distribution = Utility.addDistributions(distribution, dist);
-    }
-    const max = distribution.data.reduce((a, b) => Math.max(a, b.y), 0);
-    Utility.multiplyPointValues(distribution.data, 1 / max);
-    distribution.yExtent = [0, 1];
-    return distribution;
+    const distributions = this.connections.map(e => this.config.configuration.value.instance.clusterMeasures.get(side == "source" ? e.source.id : e.target.id)!.degreeDistribution);
+    const avg = Utility.averageDistributions(distributions);
+    const max = avg.data.reduce((a, b) => Math.max(a, b.y), 0);
+    Utility.multiplyPointValues(avg.data, 1 / max);
+    avg.yExtent = [0, 1];
+    return avg;
   }
 
   private render() {

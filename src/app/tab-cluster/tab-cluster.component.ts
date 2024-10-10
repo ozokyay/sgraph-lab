@@ -29,6 +29,7 @@ import { Utility } from '../utility';
 export class TabClusterComponent {
 
   public clusterMeasures?: GraphMeasures;
+  public measuredDistribution?: Series;
   public cluster?: Cluster = undefined;
   public generator?: any = undefined; // To erase type for html
 
@@ -37,11 +38,13 @@ export class TabClusterComponent {
     config.measures.subscribe(measures => {
       if (this.cluster != undefined) {
         this.clusterMeasures = measures.clusterMeasures.get(this.cluster!.id)
+        this.measuredDistribution = this.computeMeasuredDistribution();
       }
     });
     config.configuration.subscribe(config => {
       if (this.cluster != undefined) {
         this.clusterMeasures = config.instance.clusterMeasures.get(this.cluster!.id)
+        this.measuredDistribution = this.computeMeasuredDistribution();
       }
     });
     config.selectedCluster.subscribe(cluster => {
@@ -49,8 +52,17 @@ export class TabClusterComponent {
       if (this.cluster != undefined) {
         this.generator = this.cluster.generator;
         this.clusterMeasures = config.measures.value.clusterMeasures.get(this.cluster.id);
+        this.measuredDistribution = this.computeMeasuredDistribution();
       }
     });
+  }
+
+  private computeMeasuredDistribution(): Series | undefined {
+    if (this.cluster != undefined && this.cluster.children.length > 0 && this.cluster.generator.name != "MG") {
+      return Utility.averageDistributions(this.cluster.children.map(c => this.config.measures.value.clusterMeasures.get(c)!.degreeDistribution));
+    } else {
+      return this.clusterMeasures?.degreeDistribution;
+    }
   }
 
   public onChangeGenerator(generator: string) {

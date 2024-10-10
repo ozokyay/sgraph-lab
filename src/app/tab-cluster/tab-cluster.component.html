@@ -20,12 +20,12 @@
     </mat-form-field>
   }
   @if (cluster.generator.name == "CL") {
-  <app-vis-line-chart [series]="generator.degreeDistribution" [series2]="clusterMeasures?.degreeDistribution" (seriesChange)="onChange()" [editMode]="!cluster.immutable" [allowAxisScaling]="!cluster.immutable" [allowLogToggles]="!cluster.immutable"></app-vis-line-chart>
+  <app-vis-line-chart [series]="generator.degreeDistribution" [series2]="measuredDistribution" (seriesChange)="onChange()" [editMode]="!cluster.immutable" [allowAxisScaling]="!cluster.immutable" [allowLogToggles]="!cluster.immutable"></app-vis-line-chart>
     <mat-slide-toggle [(ngModel)]="generator.extractGiantComponent" (change)="onChange()" [disabled]="cluster.immutable">
       Keep only largest connected component
     </mat-slide-toggle>
   } @else if (cluster.generator.name == "CM") {
-    <app-vis-line-chart [series]="generator.degreeDistribution" [series2]="clusterMeasures?.degreeDistribution" (seriesChange)="onChange()" [editMode]="!cluster.immutable" [allowAxisScaling]="!cluster.immutable" [allowLogToggles]="!cluster.immutable"></app-vis-line-chart>
+    <app-vis-line-chart [series]="generator.degreeDistribution" [series2]="measuredDistribution" (seriesChange)="onChange()" [editMode]="!cluster.immutable" [allowAxisScaling]="!cluster.immutable" [allowLogToggles]="!cluster.immutable"></app-vis-line-chart>
     <mat-slide-toggle [(ngModel)]="generator.extractGiantComponent" (change)="onChange()" [disabled]="cluster.immutable">
       Keep only largest connected component
     </mat-slide-toggle>
