@@ -54,6 +54,7 @@ export class VisContainerComponent implements AfterViewInit {
   private zoom = d3.zoom();
   private width = 0;
   private height = 0;
+  private timeout = -1;
 
   @Input()
   public visualization: "matrix" | "node-link" = "matrix";
@@ -95,21 +96,23 @@ export class VisContainerComponent implements AfterViewInit {
 
     if (level == 0) {
       this.nl1 = true;
-      setTimeout(() => {
+      clearTimeout(this.timeout);
+      this.timeout = setTimeout(() => {
         this.nl2 = false;
       }, 1000);
       setTimeout(() => {
         this.combineClusters = false;
-      }, 100);
+      }, 150);
       this.combineClustersImmediate = false;
     } else {
       this.nl2 = true;
-      setTimeout(() => {
+      clearTimeout(this.timeout);
+      this.timeout = setTimeout(() => {
         this.nl1 = false;
       }, 1000);
       setTimeout(() => {
         this.combineClusters = true;
-      }, 100);
+      }, 150);
       this.combineClustersImmediate = true;
     }
   }

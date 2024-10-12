@@ -308,7 +308,7 @@ export class VisLineChartComponent implements AfterViewInit, OnChanges {
         .curve(d3.curveLinear)
         .x(d => this.xScale(d.x))
         .y(d => this.yScale(d.y));
-      let dataLine2: any = this.line2.datum(this.series2.data);
+      let dataLine2: any = this.line2.datum(this.series2.data.filter(p => p.x <= this.series.xExtent[1]));
       if (useTransition) {
         dataLine2 = dataLine2.transition();
       }

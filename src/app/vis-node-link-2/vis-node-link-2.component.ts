@@ -9,7 +9,6 @@ import { Cluster } from '../cluster';
 import { Point } from '../point';
 import { ClusterConnection, EmptyConnection } from '../cluster-connection';
 import { max, Subscription } from 'rxjs';
-import { combineLatestInit } from 'rxjs/internal/observable/combineLatest';
 
 @Component({
   selector: 'app-vis-node-link-2',
@@ -202,13 +201,12 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         // TODO
         // - Highlight selected edges (gray/alpha others, gray self, purple, yellow, circles enough?)
         // - Highlight selected cluster (list/nl1)
-        // - Kreis gefüllt/ungefüllt Taktik
+        // - Kreis gefüllt/ungefüllt Taktik ODER highlight farbe/nichts, entsprechend farbiges quadrat an kante
         // - Toggle edge direction by holding shift?
 
         // - Edge encoding: Wedge option button (data: ratio from connection)
-        // - Fix last point bug
-        // - Overlap prevention in create nodes
-        // - Pinning: Always show selected, bring through different layers (only with overlap prevention)
+        // - Pinning: Always show selected, bring through different layers (not too hard but only with overlap prevention)
+        // - Logo: Loading screen, help, favicon
 
         this.selectEdges(node);
       };
@@ -495,7 +493,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       // 4.0 encode stuff in edges
       // 4.1 Scaling (min radius or radius setting in layout options)
       // 4.2 multi level (circle packing, pinning)
-      // 5. overlap handling
+      // 5. OK overlap handling
       // 6. dashed lines (effective edges, maybe prefer grey)
       // 7. keybinds
       // 8. labels, legends
@@ -600,8 +598,8 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       y: pos.y * this.edgeScale
     };
 
-    const cluster = node.data as Cluster;
     if (level > 1) {
+      const cluster = node.data as Cluster;
       const parent = cluster.parent;
       const parentPos = this.config.centroids.value.get(parent)!;
       const scaledParentPos = {
@@ -613,9 +611,14 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         lerp = this.currentLevel == upper ? 1 : this.currentLevel - lower;
       } else if (level == lower) {
         lerp = this.currentLevel == lower ? 1 : upper - this.currentLevel;
-      } else {
+      }  else {
         lerp = 0;
       }
+
+      // else if (level <= this.level && cluster.children.length == 0) {
+      //   lerp = 1;
+      // }
+
       result = Utility.lerpP(scaledParentPos, result, lerp);
     }
 

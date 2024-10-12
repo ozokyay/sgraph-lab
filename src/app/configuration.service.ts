@@ -534,6 +534,7 @@ export class ConfigurationService {
     new Uint32Array(targetEdgeDataBuffer.getMappedRange()).set(targetEdges);
     targetEdgeDataBuffer.unmap();
 
+    this.centroids.value.clear();
     const frame = (positions: number[], timestamp: number) => {
       // Assemble node data
       for (let i = 0; i < 4 * nodeLength; i = i + 4) {
@@ -544,7 +545,6 @@ export class ConfigurationService {
       }
 
       // Update centroids
-      this.centroids.value.clear();
       for (const [id, cluster] of this.configuration.value.instance.clusters) {
         let c: Point = { x: 0, y: 0 };
         let i = 0;
@@ -556,11 +556,11 @@ export class ConfigurationService {
             i++;
           }
         }
-        c.x /= i;
-        c.y /= i;
         if (i > 0) {
-          this.centroids.value.set(id, c);
+          c.x /= i;
+          c.y /= i;
         }
+        this.centroids.value.set(id, c);
       }
       this.centroids.next(this.centroids.value);
 
@@ -574,6 +574,58 @@ export class ConfigurationService {
       0.5, 0.05 + Math.log(1 + layoutSettings.gravity / 100), layoutSettings.iterations, layoutSettings.gravity,
       sourceEdgeDataBuffer, targetEdgeDataBuffer, frame, signal
     );
+
+
+    // Overlap prevention step
+    const minDist = 0.5;
+    const strength = 0.02;
+    const levels = Utility.getNodeDepths(this.configuration.value.definition.graph);
+    const levelMap = new Map<number, number>();
+    for (const [node, level] of levels) {
+      const cluster = node.data as Cluster;
+      levelMap.set(node.id, cluster.children.length > 0 ? level : -level);
+    }
+
+    const antiOverlap = (iterations: number) => {
+      if (signal.aborted) {
+        return;
+      }
+
+      const centroids = [...this.centroids.value];
+      const forces: Point[] = Array(centroids.length);
+
+      let change = false;
+      for (let i = 0; i < centroids.length; i++) {;
+        const level1 = levelMap.get(centroids[i][0])!;
+        // Repell
+        let force: Point = { x: 0, y: 0 };
+        for (let j = 0; j < centroids.length; j++) {
+          const level2 = levelMap.get(centroids[j][0])!;
+          if (i == j || level1 != level2 && level1 > 0 && level2 > 0) {
+            continue;
+          }
+          const dir = Utility.subtractP(centroids[i][1], centroids[j][1]);
+          const dist = Utility.magintudeP(dir);
+          if (dist < minDist) {
+            const f = Utility.scalarMultiplyP(strength, Utility.normalizeP(dir));
+            force = Utility.addP(force, f);
+            change = true;
+          }
+        }
+        forces[i] = force;
+      }
+      // Apply forces
+      for (let i = 0; i < this.centroids.value.size; i++) {
+        this.centroids.value.set(centroids[i][0], Utility.addP(centroids[i][1], forces[i]));
+      }
+      this.centroids.next(this.centroids.value);
+      if (iterations > 0 && change) {
+        requestAnimationFrame(() => antiOverlap(iterations - 1));
+      }
+    };
+
+    // 100 iterations sufficient to reach min distance in most cases
+    antiOverlap(100);
 
     // Layout finished
   }

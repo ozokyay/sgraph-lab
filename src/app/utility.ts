@@ -566,6 +566,12 @@ export class Utility {
     }
 
     public static normalizeP(p: Point): Point {
+      if (p.x == 0 && p.y == 0) {
+        return {
+          x: 0,
+          y: 0
+        };
+      }
       const magnitude = Math.sqrt(p.x * p.x + p.y * p.y);
       return {
         x: p.x / magnitude,
@@ -575,6 +581,14 @@ export class Utility {
 
     public static scalarP(a: Point, b: Point): number {
       return a.x * b.x + a.y * b.y;
+    }
+
+    public static distP(a: Point, b: Point): number {
+      return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
+    }
+
+    public static magintudeP(p: Point): number {
+      return Math.sqrt(p.x ** 2 + p.y ** 2);
     }
 
     public static mod(a: number, b: number): number {
