@@ -598,7 +598,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       y: pos.y * this.edgeScale
     };
 
-    if (level > 1) {
+    if (level > 1 && this.level > 0) {
       const cluster = node.data as Cluster;
       const parent = cluster.parent;
       const parentPos = this.config.centroids.value.get(parent)!;
@@ -606,18 +606,8 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         x: parentPos.x * this.edgeScale,
         y: parentPos.y * this.edgeScale
       }
-      let lerp: number;
-      if (level == upper) {
-        lerp = this.currentLevel == upper ? 1 : this.currentLevel - lower;
-      } else if (level == lower) {
-        lerp = this.currentLevel == lower ? 1 : upper - this.currentLevel;
-      }  else {
-        lerp = 0;
-      }
-
-      // else if (level <= this.level && cluster.children.length == 0) {
-      //   lerp = 1;
-      // }
+      let lerp = this.currentLevel - level + 1;
+      lerp = Math.min(1, Math.max(0, lerp));
 
       result = Utility.lerpP(scaledParentPos, result, lerp);
     }
