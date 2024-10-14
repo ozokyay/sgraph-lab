@@ -199,13 +199,11 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
           this.config.selectedCluster.next(cluster);
         }
       };
-      gfx.onrightclick = () => {
+      gfx.onrightclick = (e: MouseEvent) => {
         // TODO
-        // - Highlight selected edges (single sel/glyph gives false sense of assymetry -> need something on both -> filled or empty circle seems good, esp on yellow)
+        // - Yellow circles make sense: Connect matrix - nl2 - tab
         // - Highlight selected cluster (nl1/matrix)?
-        // - Problem with highlight and diffusion simulation -> only show diff in diff tab and conn in conn tab?
-        // - Kreis gefüllt/ungefüllt Taktik ODER highlight farbe/nichts, entsprechend farbiges quadrat an kante
-        // - Toggle edge direction by holding shift?
+        // - Problem with highlight and diffusion simulation -> only show diff in diff tab and conn in conn tab? Or just ignore because node vs cluster lvl
 
         // - Pinning: Always show selected, bring through different layers (not too hard but only with overlap prevention)
         // - Help tab
@@ -217,7 +215,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         // - Tasks
         // - Recording
 
-        this.selectEdges(node);
+        this.selectEdges(node, e.shiftKey);
       };
       this.nodeDict.set(node, [gfx, level]);
       this.stage.addChild(gfx);
@@ -227,7 +225,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     this.edgeWidthScale = d3.scaleLinear().domain(extent).range(this.edgeWidthRange);
   }
 
-  private selectEdges(node: Node) {
+  private selectEdges(node: Node, toggle: boolean) {
     // Select cluster for edit
     const selectedCluster = this.config.selectedCluster.value;
     if (selectedCluster == undefined || this.graph == undefined) {
@@ -251,8 +249,14 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
 
       // Deselect
       if (selection.length > 0) {
-        for (const [e, i] of selection.reverse()) {
-          this.config.selectedConnections.value.splice(i, 1);
+        if (toggle) {
+          for (const [e, i] of selection) {
+            [e.source, e.target] = [e.target, e.source];
+          }
+        } else {
+          for (const [e, i] of selection.reverse()) {
+            this.config.selectedConnections.value.splice(i, 1);
+          }
         }
       } else {
         // Add missing
@@ -294,34 +298,36 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     // Deselect
     const selectedEdge = this.config.selectedConnections.value.find(e => e.source == selectedNode && e.target == node || e.source == node && e.target == selectedNode);
     if (selectedEdge != undefined) {
-      this.config.selectedConnections.value.splice(this.config.selectedConnections.value.indexOf(selectedEdge), 1);
+      if (toggle) {
+        [selectedEdge.source, selectedEdge.target] = [selectedEdge.target, selectedEdge.source];
+      } else {
+        this.config.selectedConnections.value.splice(this.config.selectedConnections.value.indexOf(selectedEdge), 1);
+      }
       this.config.selectedConnections.next(this.config.selectedConnections.value);
       return;
     }
 
     // Select
-    if (node != selectedNode) {
-      // Check graph
-      const edges = this.config.configuration.value.definition.graph.nodes.get(selectedNode)!;
-      const entry = edges.find(([e, v]) => v.id == node.id); // This could be handled by service or tab-cluster-list
-      let edge = entry != undefined ? entry[0] : undefined;
+    // Check graph
+    const edges = this.config.configuration.value.definition.graph.nodes.get(selectedNode)!;
+    const entry = edges.find(([e, v]) => v.id == node.id); // This could be handled by service or tab-cluster-list
+    let edge = entry != undefined ? entry[0] : undefined;
 
-      // Check selected
-      if (edge == undefined) {
-        edge = this.config.selectedConnections.value.find(e => e.source == selectedNode && e.target == node || e.source == selectedNode && e.target == node);
-      }
-
-      // Create
-      if (edge == undefined) {
-        edge = { source: selectedNode, target: node, data: structuredClone(EmptyConnection) };
-      }
-
-      if (selectedNode != edge.source) {
-        [edge.source, edge.target] = [edge.target, edge.source];
-      }
-      this.config.selectedConnections.value.push(edge);
-      this.config.selectedConnections.next(this.config.selectedConnections.value);
+    // Check selected
+    if (edge == undefined) {
+      edge = this.config.selectedConnections.value.find(e => e.source == selectedNode && e.target == node || e.source == selectedNode && e.target == node);
     }
+
+    // Create
+    if (edge == undefined) {
+      edge = { source: selectedNode, target: node, data: structuredClone(EmptyConnection) };
+    }
+
+    if (selectedNode != edge.source) {
+      [edge.source, edge.target] = [edge.target, edge.source];
+    }
+    this.config.selectedConnections.value.push(edge);
+    this.config.selectedConnections.next(this.config.selectedConnections.value);
   }
 
   private render(graph: EdgeList, signal: AbortSignal, timestamp?: number) {

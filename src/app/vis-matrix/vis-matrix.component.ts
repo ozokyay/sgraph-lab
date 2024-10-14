@@ -52,6 +52,8 @@ export class VisMatrixComponent implements AfterViewInit, OnChanges, OnDestroy {
   svg!: d3.Selection<any, unknown, null, undefined>;
   svgRoot!: d3.Selection<any, unknown, null, undefined>;
   rects!: d3.Selection<any, unknown, null, undefined>;
+  circles!: d3.Selection<any, unknown, null, undefined>;
+  circles2!: d3.Selection<any, unknown, null, undefined>;
   dividersHorizontal!: d3.Selection<any, unknown, null, undefined>;
   dividersHorizontal2!: d3.Selection<any, unknown, null, undefined>;
   dividersVertical!: d3.Selection<any, unknown, null, undefined>;
@@ -108,6 +110,8 @@ export class VisMatrixComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.xScale = d3.scaleBand();
     this.yScale = d3.scaleBand();
     this.rects = this.svg.append("g");
+    this.circles = this.svg.append("g");
+    this.circles2 = this.svg.append("g");
     this.dividersHorizontal = this.svg.append("g");
     this.dividersVertical = this.svg.append("g");
     this.dividersHorizontal2 = this.svg.append("g");
@@ -237,14 +241,7 @@ export class VisMatrixComponent implements AfterViewInit, OnChanges, OnDestroy {
     const color = (d: MatrixCell, hover: boolean): string => {
       const conn = d.edge!.data as ClusterConnection;
       let col: d3.RGBColor | d3.HSLColor;
-      if (d.highlight) {
-        // Color alternatives
-        // -> circle
-        // -> arrow
-        // -> gradient
-        // -> inlayed border
-        col = d3.color("#FFFF00")!; // ratio?
-      } else if (d.cx != d.cy) {
+      if (d.cx != d.cy) {
         col = d3.color(colorScale(logScale(conn.edgeCount + 1)))!;
       } else {
         col = d3.color(colorScale(logScale(this.config.configuration.value.instance.clusterMeasures.get(d.edge!.source.id)!.edgeCount + 1)))!;
@@ -254,7 +251,7 @@ export class VisMatrixComponent implements AfterViewInit, OnChanges, OnDestroy {
 
     const dividerSpace = this.scale;
 
-    const rects = this.rects.selectAll("rect")
+    const rects = this.rects.selectAll("rect") // g with rect, circle
       .data(data)
       .join("rect")
       .attr("x", d => this.xScale(d.x)! + (d.dividerY2 ? dividerSpace : 0))
@@ -324,6 +321,30 @@ export class VisMatrixComponent implements AfterViewInit, OnChanges, OnDestroy {
       .on("mouseout", function(e, d) {
         d3.select(this).style("fill", color(d, false));
       });
+    
+    const circles = this.circles.selectAll("circle")
+      .data(data)
+      .join("circle")
+      .attr("cx", d => this.xScale(d.x)! + (d.dividerY2 ? dividerSpace : 0) + this.xScale.bandwidth() / 2)
+      .attr("cy", d => this.yScale(d.y)! + (d.dividerX ? dividerSpace : 0) + this.xScale.bandwidth() / 2)
+      .attr("r", this.xScale.bandwidth() / 3)
+      .attr("visibility", d => d.highlight ? "visible" : "hidden")
+      .style("pointer-events", "none")
+      .style("fill", "transparent")
+      .style("stroke", "black")
+      .style("stroke-width", 4);
+
+    const circles2 = this.circles2.selectAll("circle")
+      .data(data)
+      .join("circle")
+      .attr("cx", d => this.xScale(d.x)! + (d.dividerY2 ? dividerSpace : 0) + this.xScale.bandwidth() / 2)
+      .attr("cy", d => this.yScale(d.y)! + (d.dividerX ? dividerSpace : 0) + this.xScale.bandwidth() / 2)
+      .attr("r", this.xScale.bandwidth() / 3)
+      .attr("visibility", d => d.highlight ? "visible" : "hidden")
+      .style("pointer-events", "none")
+      .style("fill", d => d.cx == (d.edge as Edge).source ? "yellow" : "transparent")
+      .style("stroke", "yellow")
+      .style("stroke-width", 2);
 
     this.dividersVertical.selectAll("line")
       .data(data)

@@ -577,7 +577,7 @@ export class ConfigurationService {
 
 
     // Overlap prevention step
-    const minDist = 0.5;
+    const minDist = 1;
     const strength = 0.02;
     const levels = Utility.getNodeDepths(this.configuration.value.definition.graph);
     const levelMap = new Map<number, number>();
