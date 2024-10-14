@@ -106,7 +106,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       }
     }));
     this.subscriptions.push(this.config.activeTab.subscribe(t => {
-      // if (t != 1) {
+      // if (t != 2) {
       //   this.reset();
       // }
     }));
@@ -208,7 +208,6 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         // - Kreis gefüllt/ungefüllt Taktik ODER highlight farbe/nichts, entsprechend farbiges quadrat an kante
         // - Toggle edge direction by holding shift?
 
-        // - Edge encoding: Wedge option button (data: ratio from connection), need max width on one end, ratio determines width of other end (same for 1:1, 0 for 1:0)
         // - Pinning: Always show selected, bring through different layers (not too hard but only with overlap prevention)
         // - Help tab
         // - Explain why no matrix mode for single level needed (higher levels very few nodes don't matter)
@@ -552,16 +551,16 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         alpha = Utility.lerp(alpha, 0, this.circleLayoutLerp);
       }
 
-      
+      const w = this.edgeWidthScale(data.edgeCount); // Assuming linear scale
       if (!this.edgeRatio) {
         this.edgeGraphics.moveTo(sourcePos.x, sourcePos.y);
         // this.getNodeColor(edge.source, settings.edgeColoring)
         this.edgeGraphics.lineTo(targetPos.x, targetPos.y);
         this.edgeGraphics.stroke({ width: this.edgeWidthScale(data.edgeCount), color: "black", alpha: alpha });
       } else {
-        const ratio = 1;
-        const wSource = 0; // widthScale(ratio)
-        const wTarget = 0;
+        const ratio = data.sourceNodeCount / data.targetNodeCount;
+        const wSource = Math.min(ratio * w, w);
+        const wTarget = Math.min(1 / ratio * w, w);
         const dir = Utility.subtractP(targetPos, sourcePos);
         let perp: Point = {
           x: dir.y,
@@ -569,9 +568,9 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         };
         perp = Utility.normalizeP(perp);
         const p1 = Utility.addP(sourcePos, Utility.scalarMultiplyP(wSource / 2, perp));
-        const p4 = Utility.addP(sourcePos, Utility.scalarMultiplyP(-wSource / 2, perp));
-        const p2 = Utility.addP(targetPos, Utility.scalarMultiplyP(wTarget / 2, perp));
+        const p2 = Utility.addP(sourcePos, Utility.scalarMultiplyP(-wSource / 2, perp));
         const p3 = Utility.addP(targetPos, Utility.scalarMultiplyP(-wTarget / 2, perp));
+        const p4 = Utility.addP(targetPos, Utility.scalarMultiplyP(wTarget / 2, perp));
         this.edgeGraphics.poly([p1, p2, p3, p4]);
         this.edgeGraphics.fill({ color: "black", alpha: alpha });
       }
@@ -595,6 +594,10 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
 
     // Potential edges or highlight edge selection
     for (const edge of this.config.selectedConnections.value) {
+      if ((edge.data as ClusterConnection).edgeCount > 0) {
+        continue;
+      }
+
       const [sourceGfx, sourceLevel] = this.nodeDict.get(edge.source)!;
       const [targetGfx, targetLevel] = this.nodeDict.get(edge.target)!;
 
@@ -779,7 +782,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       }
     }
 
-    if (changes["nodeColor"] || changes["edgeColor"] || changes["nodeSize"] || changes["toggleEdgeRatio"]) {
+    if (changes["nodeColor"] || changes["edgeColor"] || changes["nodeSize"] || changes["edgeRatio"]) {
       if (this.config.configuration.value.instance.graph.nodes.length > 0 && this.graph != undefined) {
         this.createNodes(this.graph);
         this.render(this.graph, this.abortRender.signal);

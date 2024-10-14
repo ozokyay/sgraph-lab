@@ -64,7 +64,7 @@ export class AppComponent implements OnInit {
   constructor(public python: PythonService, private config: ConfigurationService) {
     config.selectedConnections.subscribe(connections => {
       if (connections.length > 0) {
-        this.selectedTabIndex = 1;
+        this.selectedTabIndex = 2;
       }
     });
     this.config.activeTab.subscribe(t => {
@@ -75,7 +75,7 @@ export class AppComponent implements OnInit {
   }
 
   public onSelectedTabChange(index: number) {
-    // if (index != 1) {
+    // if (index != 2) {
     //   this.config.selectedConnections.next([]); // Really?
     // }
     this.config.activeTab.next(index);
