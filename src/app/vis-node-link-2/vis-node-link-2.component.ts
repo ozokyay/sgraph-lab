@@ -65,6 +65,9 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
   @Input()
   public nodeSize = false;
 
+  @Input()
+  public edgeRatio = false;
+
   @ViewChild('container')
   private container!: ElementRef;
   @ViewChild('canvas')
@@ -199,14 +202,16 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       };
       gfx.onrightclick = () => {
         // TODO
-        // - Highlight selected edges (gray/alpha others, gray self, purple, yellow, circles enough?)
+        // - Highlight selected edges (gray/alpha others, gray self, purple != yellow, circles enough?)
         // - Highlight selected cluster (list/nl1)
+        // - Problem with highlight and diffusion simulation -> only show diff in diff tab and conn in conn tab?
         // - Kreis gefüllt/ungefüllt Taktik ODER highlight farbe/nichts, entsprechend farbiges quadrat an kante
         // - Toggle edge direction by holding shift?
 
-        // - Edge encoding: Wedge option button (data: ratio from connection)
+        // - Edge encoding: Wedge option button (data: ratio from connection), need max width on one end, ratio determines width of other end (same for 1:1, 0 for 1:0)
         // - Pinning: Always show selected, bring through different layers (not too hard but only with overlap prevention)
-        // - Logo: Loading screen, help, favicon
+        // - Help tab
+        // - Explain why no matrix mode for single level needed (higher levels very few nodes don't matter)
 
         this.selectEdges(node);
       };
@@ -547,17 +552,29 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         alpha = Utility.lerp(alpha, 0, this.circleLayoutLerp);
       }
 
-      const middle = {
-        x: (sourcePos.x + targetPos.x) / 2,
-        y: (sourcePos.y + targetPos.y) / 2
-      };
-      this.edgeGraphics.moveTo(sourcePos.x, sourcePos.y);
-      this.edgeGraphics.lineTo(middle.x, middle.y);
-      // this.getNodeColor(edge.source, settings.edgeColoring)
-      this.edgeGraphics.stroke({ width: this.edgeWidthScale(data.edgeCount), color: "black", alpha: alpha });
-      this.edgeGraphics.moveTo(middle.x, middle.y);
-      this.edgeGraphics.lineTo(targetPos.x, targetPos.y);
-      this.edgeGraphics.stroke({ width: this.edgeWidthScale(data.edgeCount), color: "black", alpha: alpha });
+      
+      if (!this.edgeRatio) {
+        this.edgeGraphics.moveTo(sourcePos.x, sourcePos.y);
+        // this.getNodeColor(edge.source, settings.edgeColoring)
+        this.edgeGraphics.lineTo(targetPos.x, targetPos.y);
+        this.edgeGraphics.stroke({ width: this.edgeWidthScale(data.edgeCount), color: "black", alpha: alpha });
+      } else {
+        const ratio = 1;
+        const wSource = 0; // widthScale(ratio)
+        const wTarget = 0;
+        const dir = Utility.subtractP(targetPos, sourcePos);
+        let perp: Point = {
+          x: dir.y,
+          y: -dir.x
+        };
+        perp = Utility.normalizeP(perp);
+        const p1 = Utility.addP(sourcePos, Utility.scalarMultiplyP(wSource / 2, perp));
+        const p4 = Utility.addP(sourcePos, Utility.scalarMultiplyP(-wSource / 2, perp));
+        const p2 = Utility.addP(targetPos, Utility.scalarMultiplyP(wTarget / 2, perp));
+        const p3 = Utility.addP(targetPos, Utility.scalarMultiplyP(-wTarget / 2, perp));
+        this.edgeGraphics.poly([p1, p2, p3, p4]);
+        this.edgeGraphics.fill({ color: "black", alpha: alpha });
+      }
     }
 
     // Potential edges circular layout
@@ -762,7 +779,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       }
     }
 
-    if (changes["nodeColor"] || changes["edgeColor"] || changes["nodeSize"]) {
+    if (changes["nodeColor"] || changes["edgeColor"] || changes["nodeSize"] || changes["toggleEdgeRatio"]) {
       if (this.config.configuration.value.instance.graph.nodes.length > 0 && this.graph != undefined) {
         this.createNodes(this.graph);
         this.render(this.graph, this.abortRender.signal);

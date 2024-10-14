@@ -17,7 +17,7 @@
             <app-vis-node-link #nodeLink class="absolute" [@showHide]="combineClusters ? 'hidden' : 'shown'" [class.ignore-pointer]="combineClusters" [combineClusters]="combineClustersImmediate" [transform]="transform" [nodeColor]="toggleNodeColor.checked" [edgeColor]="toggleEdgeColor.checked" [nodeSize]="toggleNodeSize.checked" [edgeHighlight]="toggleEdgeHighlight.checked"></app-vis-node-link>
         }
         @if (nl2) {
-            <app-vis-node-link-2 #nodeLink2 class="absolute"  [@showHide]="combineClusters ? 'shown' : 'hidden'" [class.ignore-pointer]="!combineClusters" [transform]="transform" [level]="level" [circularLayout]="toggleCircular.checked" [nodeColor]="toggleNodeColor.checked" [edgeColor]="toggleEdgeColor.checked" [nodeSize]="toggleNodeSize.checked"></app-vis-node-link-2>
+            <app-vis-node-link-2 #nodeLink2 class="absolute"  [@showHide]="combineClusters ? 'shown' : 'hidden'" [class.ignore-pointer]="!combineClusters" [transform]="transform" [level]="level" [circularLayout]="toggleCircular.checked" [nodeColor]="toggleNodeColor.checked" [edgeColor]="toggleEdgeColor.checked" [nodeSize]="toggleNodeSize.checked" [edgeRatio]="toggleEdgeRatio.checked"></app-vis-node-link-2>
         }
         <mat-button-toggle-group multiple hideMultipleSelectionIndicator class="button-toggles">
             <mat-button-toggle #toggleCircular [matTooltip]="level != 0 ? 'Circular layout' : 'Circular layout (only on higher levels)'"><img src="assets/circular.png" width="32px" height="32px"></mat-button-toggle>

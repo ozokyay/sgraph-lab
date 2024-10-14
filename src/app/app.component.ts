@@ -20,6 +20,7 @@ import { VisMatrixComponent } from "./vis-matrix/vis-matrix.component";
 import { VisLevelComponent } from "./vis-level/vis-level.component";
 import { VisNodeLink2Component } from './vis-node-link-2/vis-node-link-2.component';
 import { VisContainerComponent } from "./vis-container/vis-container.component";
+import { TabHelpComponent } from './tab-help/tab-help.component';
 
 @Component({
     selector: 'app-root',
@@ -33,6 +34,7 @@ import { VisContainerComponent } from "./vis-container/vis-container.component";
     MatFormFieldModule,
     MatSelectModule,
     MatSlideToggleModule,
+    TabHelpComponent,
     TabImportExportComponent,
     TabClusterComponent,
     TabClusterListComponent,
