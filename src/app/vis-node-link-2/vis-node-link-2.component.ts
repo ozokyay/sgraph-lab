@@ -20,9 +20,8 @@ import { max, Subscription } from 'rxjs';
 export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestroy {
 
   private edgeScale = 500;
-  private nodeRadius = 3;
   private nodeRadiusRange = [50, 150];
-  private edgeWidthRange = [5, 40]
+  private edgeWidthRange = [10, 40]
 
   private app!: PIXI.Application;
   private stage!: PIXI.Container;
@@ -66,7 +65,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
   public nodeSize = false;
 
   @Input()
-  public edgeRatio = false;
+  public edgeRatio = true;
 
   @ViewChild('container')
   private container!: ElementRef;
@@ -202,12 +201,11 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       };
       gfx.onrightclick = () => {
         // TODO
-        // - Highlight selected edges (purple, cube on source)
+        // - Highlight selected edges (single sel/glyph gives false sense of assymetry -> need something on both -> filled or empty circle seems good, esp on yellow)
         // - Highlight selected cluster (nl1/matrix)?
         // - Problem with highlight and diffusion simulation -> only show diff in diff tab and conn in conn tab?
         // - Kreis gefüllt/ungefüllt Taktik ODER highlight farbe/nichts, entsprechend farbiges quadrat an kante
         // - Toggle edge direction by holding shift?
-        // - Ratio in matrix?
 
         // - Pinning: Always show selected, bring through different layers (not too hard but only with overlap prevention)
         // - Help tab
@@ -406,6 +404,8 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         }
       }
 
+      let radius = this.nodeRadiusRange[1] * (1 / Math.tan(Math.PI / anglesList.length));
+      radius = Math.max(1000, radius);
       const mod = (a: number, n: number) => a - Math.floor(a / n) * n;
       const dist = (a: number, b: number) => {
         const abs = Math.abs(a - b);
@@ -431,7 +431,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
             const b = anglesList[j];
             const d = dist(a[1], b[1]);
             // console.log(`c1: ${a[0]} c2: ${b[0]} a: ${a[1]} b: ${b[1]} d: ${d}`);
-            const min = 0.3
+            const min = 0.3 * 1000 / radius;
             if (d < min) {
               let ax = a[1];
               let bx = b[1];
@@ -442,8 +442,8 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
                   bx -= 2 * Math.PI;
               }
               let direction = Math.sign(ax - bx);
-              a[2] += Math.min(1 / d, 0.1) * direction; // Maybe want 1 / (100 * d)
-              b[2] += Math.min(1 / d, 0.1) * -direction;
+              a[2] += Math.min(1 / d, 0.1 * 1000 / radius) * direction; // Maybe want 1 / (100 * d)
+              b[2] += Math.min(1 / d, 0.1 * 1000 / radius) * -direction;
               // console.log(`${a[1]}, ${b[1]} : ${a[2]}, ${b[2]} : ${d}`);
               moved = true;
             }
@@ -461,7 +461,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
 
       // Circle lerp
       for (const [gfx, angle, _] of anglesList) {
-        const circlePos = Utility.addP(centerPos, this.circlePosition(angle - Math.PI, 1000))
+        const circlePos = Utility.addP(centerPos, this.circlePosition(angle - Math.PI, radius))
         gfx.position = Utility.lerpP(gfx.position, circlePos, this.circleLayoutLerp);
       }
     }
@@ -559,28 +559,24 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       }
 
       const w = graph.edges.find(e => (e.data as ClusterConnection).edgeCount > 1) ? this.edgeWidthScale(data.edgeCount) : this.edgeWidthRange[0]; // Assuming linear scale
-      if (!this.edgeRatio) {
-        this.edgeGraphics.moveTo(sourcePos.x, sourcePos.y);
-        // this.getNodeColor(edge.source, settings.edgeColoring)
-        this.edgeGraphics.lineTo(targetPos.x, targetPos.y);
-        this.edgeGraphics.stroke({ width: w, color: "black", alpha: alpha });
-      } else {
-        const ratio = data.sourceNodeCount / data.targetNodeCount;
-        const wSource = Math.min(ratio * w, w);
-        const wTarget = Math.min(1 / ratio * w, w);
-        const dir = Utility.subtractP(targetPos, sourcePos);
-        let perp: Point = {
-          x: dir.y,
-          y: -dir.x
-        };
-        perp = Utility.normalizeP(perp);
-        const p1 = Utility.addP(sourcePos, Utility.scalarMultiplyP(wSource / 2, perp));
-        const p2 = Utility.addP(sourcePos, Utility.scalarMultiplyP(-wSource / 2, perp));
-        const p3 = Utility.addP(targetPos, Utility.scalarMultiplyP(-wTarget / 2, perp));
-        const p4 = Utility.addP(targetPos, Utility.scalarMultiplyP(wTarget / 2, perp));
-        this.edgeGraphics.poly([p1, p2, p3, p4]);
-        this.edgeGraphics.fill({ color: "black", alpha: alpha });
-      }
+      const selected = this.config.selectedConnections.value.find(c => c == edge) != undefined;
+      const c = selected ? "yellow" : "black";
+      const ratio = this.edgeRatio ? data.sourceNodeCount / data.targetNodeCount : 1;
+      const wSource = Math.min(ratio * w, w);
+      const wTarget = Math.min(1 / ratio * w, w);
+      const dir = Utility.subtractP(targetPos, sourcePos);
+      let perp: Point = {
+        x: dir.y,
+        y: -dir.x
+      };
+      perp = Utility.normalizeP(perp);
+      const p1 = Utility.addP(sourcePos, Utility.scalarMultiplyP(wSource / 2, perp));
+      const p2 = Utility.addP(sourcePos, Utility.scalarMultiplyP(-wSource / 2, perp));
+      const p3 = Utility.addP(targetPos, Utility.scalarMultiplyP(-wTarget / 2, perp));
+      const p4 = Utility.addP(targetPos, Utility.scalarMultiplyP(wTarget / 2, perp));
+      this.edgeGraphics.poly([p1, p2, p3, p4]);
+      this.edgeGraphics.fill({ color: "black", alpha: alpha });
+      this.edgeGraphics.stroke({ color: c, width: 6, alpha: alpha });
     }
 
     // Potential edges circular layout
@@ -609,10 +605,10 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       const [targetGfx, targetLevel] = this.nodeDict.get(edge.target)!;
 
       // This is not readable
-      const black = { width: 4, color: "black", alpha: Math.min(sourceGfx.alpha, targetGfx.alpha) };
-      // const orange = { width: 4, color: "orange", alpha: Math.min(sourceGfx.alpha, targetGfx.alpha) };
-      // const blue = { width: 4, color: "blue", alpha: Math.min(sourceGfx.alpha, targetGfx.alpha) };
-      // const sections: [number, PIXI.StrokeInput][] = [[0.5, orange], [1.0, blue]];
+      const black = { width: 3, color: "black", alpha: Math.min(sourceGfx.alpha, targetGfx.alpha) };
+      const yellow = { width: 6, color: "yellow", alpha: Math.min(sourceGfx.alpha, targetGfx.alpha) };
+      this.dashedLine(this.edgeGraphics, sourceGfx.position, targetGfx.position, 24, 12);
+      this.edgeGraphics.stroke(yellow);
       this.dashedLine(this.edgeGraphics, sourceGfx.position, targetGfx.position, 24, 12);
       this.edgeGraphics.stroke(black);
     }

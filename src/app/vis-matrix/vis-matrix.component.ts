@@ -234,26 +234,22 @@ export class VisMatrixComponent implements AfterViewInit, OnChanges, OnDestroy {
     const logScale = d3.scaleLog().domain([1, maxEdges + 1]).range([0, 1]);
     const colorScale = d3.scaleSequential(d3.interpolateGreys).domain([0, 1]);
 
-    const color = (d: MatrixCell) => {
+    const color = (d: MatrixCell, hover: boolean): string => {
       const conn = d.edge!.data as ClusterConnection;
+      let col: d3.RGBColor | d3.HSLColor;
       if (d.highlight) {
         // Color alternatives
         // -> circle
         // -> arrow
         // -> gradient
         // -> inlayed border
-
-        // Alpha according to scale?
-        if (d.cx == d.edge!.source) {
-          return "orange";
-        } else {
-          return "blue";
-        }
+        col = d3.color("#FFFF00")!; // ratio?
       } else if (d.cx != d.cy) {
-        return colorScale(logScale(conn.edgeCount + 1));
+        col = d3.color(colorScale(logScale(conn.edgeCount + 1)))!;
       } else {
-        return colorScale(logScale(this.config.configuration.value.instance.clusterMeasures.get(d.edge!.source.id)!.edgeCount + 1));
+        col = d3.color(colorScale(logScale(this.config.configuration.value.instance.clusterMeasures.get(d.edge!.source.id)!.edgeCount + 1)))!;
       }
+      return hover ? col.darker(0.4).formatRgb() : col.formatRgb();
     }
 
     const dividerSpace = this.scale;
@@ -265,7 +261,7 @@ export class VisMatrixComponent implements AfterViewInit, OnChanges, OnDestroy {
       .attr("y", d => this.yScale(d.y)! + (d.dividerX ? dividerSpace : 0))
       .attr("width", d => this.xScale.bandwidth() - (d.dividerY ? dividerSpace : 0) - (d.dividerY2 ? dividerSpace : 0))
       .attr("height", d => this.yScale.bandwidth() - (d.dividerX ? dividerSpace : 0) - (d.dividerX2 ? dividerSpace : 0))
-      .style("fill", d => color(d))
+      .style("fill", d => color(d, false))
       // .attr("stroke", d => d.highlight ? "#ff6f00" : "transparent")
       .attr("stroke-width", 4)
       .on("click", (_, d) => {
@@ -321,6 +317,12 @@ export class VisMatrixComponent implements AfterViewInit, OnChanges, OnDestroy {
           [d.edge!.source, d.edge!.target] = [d.edge?.target!, d.edge!.source];
           this.config.selectedConnections.next(this.config.selectedConnections.value);
         }
+      })
+      .on("mouseover", function(e, d) {
+        d3.select(this).style("fill", color(d, true));
+      })
+      .on("mouseout", function(e, d) {
+        d3.select(this).style("fill", color(d, false));
       });
 
     this.dividersVertical.selectAll("line")
