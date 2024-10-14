@@ -22,7 +22,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
   private edgeScale = 500;
   private nodeRadius = 3;
   private nodeRadiusRange = [50, 150];
-  private edgeWidthRange = [5, 25]
+  private edgeWidthRange = [5, 40]
 
   private app!: PIXI.Application;
   private stage!: PIXI.Container;
@@ -202,15 +202,22 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       };
       gfx.onrightclick = () => {
         // TODO
-        // - Highlight selected edges (gray/alpha others, gray self, purple != yellow, circles enough?)
-        // - Highlight selected cluster (list/nl1)
+        // - Highlight selected edges (purple, cube on source)
+        // - Highlight selected cluster (nl1/matrix)?
         // - Problem with highlight and diffusion simulation -> only show diff in diff tab and conn in conn tab?
         // - Kreis gefüllt/ungefüllt Taktik ODER highlight farbe/nichts, entsprechend farbiges quadrat an kante
         // - Toggle edge direction by holding shift?
+        // - Ratio in matrix?
 
         // - Pinning: Always show selected, bring through different layers (not too hard but only with overlap prevention)
         // - Help tab
         // - Explain why no matrix mode for single level needed (higher levels very few nodes don't matter)
+        // - Line chart tables, legends
+        // - Attributes (cluster conn and diff, arbitrary amount per cluster), labels (and cluster), define in own tab, distr per cluster, use in diff
+        // - Inf diff lines per cluster
+        // - Walkthrough
+        // - Tasks
+        // - Recording
 
         this.selectEdges(node);
       };
@@ -479,7 +486,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       const [targetGraphics, targetLevel] = this.nodeDict.get(edge.target)!;
 
       if (data.edgeCount == 0) {
-        break;
+        continue;
       }
 
       // Radius could be saved somewhere
@@ -551,12 +558,12 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         alpha = Utility.lerp(alpha, 0, this.circleLayoutLerp);
       }
 
-      const w = this.edgeWidthScale(data.edgeCount); // Assuming linear scale
+      const w = graph.edges.find(e => (e.data as ClusterConnection).edgeCount > 1) ? this.edgeWidthScale(data.edgeCount) : this.edgeWidthRange[0]; // Assuming linear scale
       if (!this.edgeRatio) {
         this.edgeGraphics.moveTo(sourcePos.x, sourcePos.y);
         // this.getNodeColor(edge.source, settings.edgeColoring)
         this.edgeGraphics.lineTo(targetPos.x, targetPos.y);
-        this.edgeGraphics.stroke({ width: this.edgeWidthScale(data.edgeCount), color: "black", alpha: alpha });
+        this.edgeGraphics.stroke({ width: w, color: "black", alpha: alpha });
       } else {
         const ratio = data.sourceNodeCount / data.targetNodeCount;
         const wSource = Math.min(ratio * w, w);

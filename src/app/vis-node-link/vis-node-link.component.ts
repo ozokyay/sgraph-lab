@@ -319,7 +319,6 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
     }
     if ((changes["nodeColor"] || changes["edgeColor"] || changes["nodeSize"] || changes["edgeHighlight"])) {
       if (this.stage != undefined && this.config.forceDirectedLayout.value.nodes.length > 0) {
-        console.log("moin");
         this.createNodes(this.config.forceDirectedLayout.value);
         this.render(this.config.forceDirectedLayout.value, this.abort.signal);
       }
