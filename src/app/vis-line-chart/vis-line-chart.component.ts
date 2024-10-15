@@ -5,6 +5,10 @@ import { Series } from '../series';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatInputModule } from '@angular/material/input';
+import { FormsModule } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { DecimalPipe } from '@angular/common';
 
 @Component({
   selector: 'app-vis-line-chart',
@@ -12,7 +16,11 @@ import { MatInputModule } from '@angular/material/input';
   imports: [
     MatInputModule,
     MatFormFieldModule,
-    MatSlideToggleModule
+    MatSlideToggleModule,
+    MatButtonModule,
+    MatIconModule,
+    FormsModule,
+    DecimalPipe
   ],
   templateUrl: './vis-line-chart.component.html',
   styleUrl: './vis-line-chart.component.css'
@@ -368,5 +376,43 @@ export class VisLineChartComponent implements AfterViewInit, OnChanges {
         .attr("cx", d => this.xScale(d.d.x))
         .attr("cy", d => this.yScale(d.d.y))
     }
+  }
+
+  public onChange() {
+    this.render(true);
+    this.seriesChange.emit(this.series);
+  }
+
+  public validateXChange(point: Point, event: any) {
+    const value = event.target.value;
+    if (value > this.series.xExtent[1]) {
+      this.series.xExtent[1] = value;
+    } else if (value < 1) {
+      event.target.setCustomValidity("The x-coordinate must be at least 1");
+      event.target.reportValidity();
+      event.target.value = point.x;
+      return;
+    } else if (this.series.data.find(p => p.x == value)) {
+      event.target.setCustomValidity("A point with this x-coordinate already exists");
+      event.target.reportValidity();
+      event.target.value = point.x;
+      return;
+    }
+    event.target.setCustomValidity("");
+    point.x = value;
+    this.series.data.sort((a, b) => a.x - b.x);
+    this.onChange();
+  }
+
+  public validateYChange(value: number): number {
+    return Math.min(this.series.yExtent[1], Math.max(this.series.yExtent[0], value));
+  }
+
+  public addPoint() {
+
+  }
+
+  public deletePoint() {
+    
   }
 }

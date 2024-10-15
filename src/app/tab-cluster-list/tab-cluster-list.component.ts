@@ -71,6 +71,10 @@ export class TabClusterListComponent {
   public onAddCluster(event: MouseEvent, parent?: Cluster) {
     event.stopPropagation();
 
+    if (this.clusters.length == 0 && this.config.activeTab.value == 0) {
+      this.config.activeTab.next(1);
+    }
+
     let id = 0;
     if (this.clusters.length > 0) {
       const nodes = [...this.config.configuration.value.definition.graph.nodeDictionary.values()]

@@ -26,4 +26,21 @@
             </div>
         }
     </div>
+    <div>
+        @if (series && editMode) {
+            @for (point of series.data; track $index) {
+                <div style="display: flex;">
+                    <input type="number" placeholder="X" [ngModel]="point.x | number" (change)="validateXChange(point, $event)">
+                    <input type="number" placeholder="Y" [ngModel]="point.y | number" (ngModelChange)="point.y = validateYChange($event)" (change)="onChange()">
+                    <button mat-raised-button type="button" class="button-plus">
+                        <mat-icon>delete</mat-icon>
+                    </button>
+                </div>
+            }
+            <!-- Simply append something within range to end, adjust extent -->
+            <button mat-raised-button type="button" class="button-plus">
+                <mat-icon>add</mat-icon>
+            </button>   
+        }
+    </div>
 </div>

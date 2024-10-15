@@ -583,6 +583,8 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       this.edgeGraphics.poly([p1, p2, p3, p4]);
       this.edgeGraphics.fill({ color: "black", alpha: alpha });
       this.edgeGraphics.stroke({ color: c, width: 6, alpha: alpha });
+
+      // TODO: Draw direction indicators
     }
 
     // Potential edges circular layout

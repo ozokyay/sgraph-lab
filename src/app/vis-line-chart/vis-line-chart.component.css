@@ -21,3 +21,10 @@
 .hide {
     visibility: collapse;
 }
+
+.button-plus {
+    min-width: 45px;
+    width: 45px;
+    padding: 0;
+    padding-left: 16px;
+}
