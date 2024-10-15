@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, ViewChild } from '@angular/core';
 import { ConfigurationService } from '../configuration.service';
 import { DegreesDefault, Series } from '../series';
 import { Cluster } from '../cluster';
@@ -11,6 +11,7 @@ import { NgClass, NgFor } from '@angular/common';
 import { Node } from '../graph';
 import { CLGenerator, MGGenerator } from '../generators';
 import { Utility } from '../utility';
+import { TutorialService } from '../tutorial.service';
 
 @Component({
   selector: 'app-tab-cluster-list',
@@ -26,7 +27,7 @@ import { Utility } from '../utility';
   templateUrl: './tab-cluster-list.component.html',
   styleUrl: './tab-cluster-list.component.css'
 })
-export class TabClusterListComponent {
+export class TabClusterListComponent implements AfterViewInit {
   public edit: boolean = true;
   public deselect: boolean = true;
 
@@ -38,7 +39,10 @@ export class TabClusterListComponent {
   public selectedCluster?: Cluster = undefined;
   public highlight = new Map<Cluster, boolean>();
 
-  constructor(private config: ConfigurationService) {
+  @ViewChild('buttonAddCluster', { read: ElementRef })
+  private buttonAddCluster!: ElementRef;
+
+  constructor(private config: ConfigurationService, public tutorial: TutorialService) {
     Utility.config = config;
     config.configuration.subscribe(configuration => {
       this.clusters = configuration.definition.graph.getNodes().map(n => n.data as Cluster).filter(c => c.parent == -1); // Only root level nodes
@@ -62,6 +66,11 @@ export class TabClusterListComponent {
         this.highlight.set(c.target.data as Cluster, true);
       }
     });
+  }
+
+  ngAfterViewInit() {
+    console.log(this.buttonAddCluster.nativeElement);
+    this.tutorial.buttonAddCluster = this.buttonAddCluster.nativeElement;
   }
 
   public getColor(cluster: Cluster) {

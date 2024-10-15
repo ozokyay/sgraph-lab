@@ -7,10 +7,49 @@
     <img src="assets/logo.png" title="Application Logo">
 </div>
 <mat-divider></mat-divider>
-Start Tutorial: (BUTTON)
 <br>
-What is this about
+<h2 class="mat-headline-medium">Overview</h2>
+<p>This tool allows you to create a clustered graph with lots of control over it's structure. You configure generators to generate clusters from given node degree distributions. Then, you configure how these clusters are interconnected. You can make use of cluster groups and replication to quickly build a hierarchical structure of many clusters. You can also specifiy the distribution of numerical node attributes on the graph and view various graph measures. Finally, you can simulate an information diffusion process on the graph and export the graph or the configuration that generates it.</p>
 <br>
-Steps/Tabs (Section headers)
+<button mat-raised-button class="center-margin" (click)="startTutorial()">Begin Tutorial</button>
 <br>
-Controls
+<h2 class="mat-headline-medium">User Interface</h2>
+<h3 class="mat-title-medium">Cluster List</h3>
+<p>The cluster list provides an overview of the clusters. It allows to browse the hierarchical structure and to select, to add and to delete clusters.</p>
+<h3 class="mat-title-medium">Graph visualizations</h3>
+<p>
+    There are two visualizations for the connections between clusters: The adjacency matrix and the node-link diagram. These visualizations can show different levels of the cluster hierarchy. Th node-link diagram can show the additional result level "R", i.e. the graph resulting from the cluster structure.
+</p>
+<p>
+    There are additional options for the node-link diagram: Circular layout arranges all nodes around the currently focused cluster and hides connections between the other clusters. This allows for overlap-free editing of the connections. Node coloring and edge coloring apply the cluster color on the result level. Node size scales the node radius with the cluster size or with the node degree on the result level. Highlighting selected edges fades out other edges to aid with identifying selected edges on the result level. Node ratio narrows one end of an edge to represent the ratio of nodes eligible for the connection from each cluster.
+</p>
+<h3 class="mat-title-medium">Tabs</h3>
+<p>Cluster Properties: Configure a generator or group that defines a cluster. Replication factors higher than 1 create copies of the cluster definition.</p>
+<p>Cluster Connections: Configure each of the selected connections by setting edge count, node ratio, degree assortativity and degree distributions.</p>
+<p>Graph Measures: Measures of the selected cluster or whole graph.</p>
+<p>Layout Settings: Tuning the force-directed layout of the resulting graph. Sampling helps with performance and overlap, higher gravity leads to more equally-spaced nodes, additoinaly layout iterations can help with unfolding.</p>
+<p>Diffusion Simulation: simulate information diffusion processes with manually placed seed nodes.</p>
+<p>Import/Export: Import or export a configuration or export the resulting graph.</p>
+<h2 class="mat-headline-medium">Controls</h2>
+<h3 class="mat-title-medium">Adjacency matrix</h3>
+<p>
+    Shift + Scroll: Go through levels
+    <br>
+    Click: Select connection (on diagonal to select all)
+    <br>
+    Shift+ Click: Toggle connection direction
+</p>
+<h3 class="mat-title-medium">Node-Link diagram</h3>
+<p>
+    Shift + Scroll: Go through levels
+    <br>
+    Scroll: Zoom
+    <br>
+    Drag: Pan view
+    <br>
+    Click: Select cluster
+    <br>
+    Right-click: Select connections (on focused cluster to select all)
+    <br>
+    Shift + right-click: Toggle connection direction
+</p>

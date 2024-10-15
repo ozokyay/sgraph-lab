@@ -258,7 +258,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       if (selection.length > 0) {
         if (toggle) {
           for (const [e, i] of selection) {
-            [e.source, e.target] = [e.target, e.source];
+            Utility.swapEdge(e);
           }
         } else {
           for (const [e, i] of selection.reverse()) {
@@ -290,7 +290,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
 
           if ((edge.source == selectedNode || edge.target == selectedNode) && selection.find(([e, i]) => e == edge) == undefined) {
             if (selectedNode != edge.source) {
-              [edge.source, edge.target] = [edge.target, edge.source];
+              Utility.swapEdge(edge);
             }
             this.config.selectedConnections.value.push(edge);
           }
@@ -306,7 +306,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     const selectedEdge = this.config.selectedConnections.value.find(e => e.source == selectedNode && e.target == node || e.source == node && e.target == selectedNode);
     if (selectedEdge != undefined) {
       if (toggle) {
-        [selectedEdge.source, selectedEdge.target] = [selectedEdge.target, selectedEdge.source];
+        Utility.swapEdge(selectedEdge);
       } else {
         this.config.selectedConnections.value.splice(this.config.selectedConnections.value.indexOf(selectedEdge), 1);
       }
@@ -331,7 +331,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     }
 
     if (selectedNode != edge.source) {
-      [edge.source, edge.target] = [edge.target, edge.source];
+      Utility.swapEdge(edge);
     }
     this.config.selectedConnections.value.push(edge);
     this.config.selectedConnections.next(this.config.selectedConnections.value);

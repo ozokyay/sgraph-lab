@@ -6,6 +6,7 @@ import * as d3 from 'd3';
 import { CLGenerator, CMGenerator, MGGenerator } from "./generators";
 import { Cluster } from "./cluster";
 import { ConfigurationService } from "./configuration.service";
+import { ClusterConnection } from "./cluster-connection";
 
 export class Utility {
     public static rand = new Rand('default');
@@ -350,6 +351,13 @@ export class Utility {
         children.push(child);
       }
       return children;
+    }
+
+    public static swapEdge(e: Edge) {
+      const conn = e.data as ClusterConnection;
+      [e.source, e.target] = [e.target, e.source];
+      [conn.sourceDegreeDistribution, conn.targetDegreeDistribution] = [conn.targetDegreeDistribution, conn.sourceDegreeDistribution];
+      [conn.sourceNodeCount, conn.targetNodeCount] = [conn.targetNodeCount, conn.sourceNodeCount];
     }
   
     // https://bottosson.github.io/posts/oklab/

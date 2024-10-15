@@ -263,6 +263,6 @@ export class TabConnectionsComponent {
 
   public onClear() {
     this.config.selectedConnections.next([]);
-    this.config.activeTab.next(0);
+    this.config.activeTab.next(1); // Ideally previous tab
   }
 }

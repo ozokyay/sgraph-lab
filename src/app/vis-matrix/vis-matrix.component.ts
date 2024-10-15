@@ -261,14 +261,20 @@ export class VisMatrixComponent implements AfterViewInit, OnChanges, OnDestroy {
       .style("fill", d => color(d, false))
       // .attr("stroke", d => d.highlight ? "#ff6f00" : "transparent")
       .attr("stroke-width", 4)
-      .on("click", (_, d) => {
+      .on("click", (e, d) => {
         if (d.cx != d.cy) {
+          if (e.shiftKey && d.highlight) {
+            Utility.swapEdge(d.edge!);
+            this.config.selectedConnections.next(this.config.selectedConnections.value);
+            return;
+          }
+
           // 1:1
           if (d.highlight) {
             this.config.selectedConnections.value.splice(this.config.selectedConnections.value.indexOf(d.edge!), 1);
           } else {
             if (d.cx != d.edge!.source) {
-              [d.edge!.source, d.edge!.target] = [d.edge?.target!, d.edge!.source];
+              Utility.swapEdge(d.edge!);
             }
             this.config.selectedConnections.value.push(d.edge!);
           }
@@ -287,8 +293,14 @@ export class VisMatrixComponent implements AfterViewInit, OnChanges, OnDestroy {
 
           // Also want missing - single pass?
           if (levelSelection.length == nodes.length - 1) {
-            for (const [e, i] of levelSelection.reverse()) {
-              this.config.selectedConnections.value.splice(i, 1);
+            if (e.shiftKey) {
+              for (const [e, i] of levelSelection) {
+                Utility.swapEdge(e);
+              }
+            } else {
+              for (const [e, i] of levelSelection.reverse()) {
+                this.config.selectedConnections.value.splice(i, 1);
+              }
             }
           } else {
             // Add missing
@@ -296,22 +308,12 @@ export class VisMatrixComponent implements AfterViewInit, OnChanges, OnDestroy {
             for (const edge of allEdges) {
               if ((edge.source == d.cx || edge.target == d.cx) && selection.find(([e, i]) => e == edge) == undefined) {
                 if (d.cx != edge.source) {
-                  [edge.source, edge.target] = [edge.target, edge.source];
+                  Utility.swapEdge(edge);
                 }
                 this.config.selectedConnections.value.push(edge);
               }
             }
           }
-          this.config.selectedConnections.next(this.config.selectedConnections.value);
-        }
-      })
-      .on("contextmenu", (e, d) => {
-        e.preventDefault();
-        if (d.cx == d.cy) {
-          return;
-        }
-        if (d.highlight) {
-          [d.edge!.source, d.edge!.target] = [d.edge?.target!, d.edge!.source];
           this.config.selectedConnections.next(this.config.selectedConnections.value);
         }
       })
