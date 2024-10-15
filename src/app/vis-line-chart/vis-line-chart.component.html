@@ -26,14 +26,13 @@
             </div>
         }
     </div>
-    <!-- Make this expandable -->
-    <mat-expansion-panel>
-        <mat-expansion-panel-header>
-          <mat-panel-title>Data points</mat-panel-title>
-          <!-- <mat-panel-description> This is a summary of the content </mat-panel-description> -->
-        </mat-expansion-panel-header>
-        <div>
-            @if (series && editMode) {
+    @if (series && editMode) {
+        <mat-expansion-panel>
+            <mat-expansion-panel-header>
+              <mat-panel-title>Data points</mat-panel-title>
+              <!-- <mat-panel-description> This is a summary of the content </mat-panel-description> -->
+            </mat-expansion-panel-header>
+            <div>
                 @for (point of series.data; track $index) {
                     <div style="display: flex; margin-bottom: 10px;">
                         <input class="cell" type="number" placeholder="X" [ngModel]="point.x | number" (change)="validateXChange(point, $event)">
@@ -47,7 +46,7 @@
                 <button mat-raised-button type="button" class="button-plus" (click)="addPoint()">
                     <mat-icon>add</mat-icon>
                 </button>   
-            }
-        </div>
-      </mat-expansion-panel>
+            </div>
+        </mat-expansion-panel>
+    }
 </div>
