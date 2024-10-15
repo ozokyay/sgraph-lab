@@ -1,9 +1,14 @@
 import { Component } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
+import { MatDividerModule } from '@angular/material/divider';
 
 @Component({
   selector: 'app-tab-help',
   standalone: true,
-  imports: [],
+  imports: [
+    MatButtonModule,
+    MatDividerModule
+  ],
   templateUrl: './tab-help.component.html',
   styleUrl: './tab-help.component.css'
 })

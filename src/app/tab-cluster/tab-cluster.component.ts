@@ -21,7 +21,6 @@ import { MatDividerModule } from '@angular/material/divider';
     MatFormFieldModule,
     MatSlideToggleModule,
     MatSelectModule,
-    MatDividerModule,
     VisLineChartComponent,
     FormsModule
   ],

@@ -200,20 +200,27 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         }
       };
       gfx.onrightclick = (e: MouseEvent) => {
+        // Attributes
+        // - Numerical (can later be converted to categorical)
+        // - Nodes only
+        // - Own tab, each attribute for all nodes for whole graph (add, delete, name, color, range?)
+        // - Distribution per cluster: annoying but powerful
+        // - Assortativity within cluster: heuristic from auto spread on wohle graph
+        // - At least one seed per connected component
+        // - Seeds: random? set amount?
+        // - On nodes: for connecting clusters
+
         // TODO
         // - Yellow circles make sense: Connect matrix - nl2 - tab
         // - Highlight selected cluster (nl1/matrix)?
-        // - Problem with highlight and diffusion simulation -> only show diff in diff tab and conn in conn tab? Or just ignore because node vs cluster lvl
-
-        // - Pinning: Always show selected, bring through different layers (ignored by overlap prevention but not to bad I guess)
-        // - Help tab
+        // - Help tab, Inf diff lines per cluster (strict lvl == level selection?), legends, labels, attr vis
         // - Explain why no matrix mode for single level needed (higher levels very few nodes don't matter)
         // - Legends
         // - Attributes (cluster conn and diff, arbitrary amount per cluster), labels (and cluster), define in own tab, distr per cluster, use in diff
-        // - Inf diff lines per cluster
-        // - Walkthrough
+        // - Walkthrough (load example, put hints on screen, next button, auto click through features, block everything else)
         // - Tasks
         // - Recording
+        // - !!!Node count setting (input) for clusters that adjusts distribution y scale to the desired node count!!!
 
         this.selectEdges(node, e.shiftKey);
       };
