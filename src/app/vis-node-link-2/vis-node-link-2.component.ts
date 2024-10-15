@@ -116,7 +116,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
             const node = this.config.configuration.value.definition.graph.nodeDictionary.get(c.id)!;
             const cluster = node.data as Cluster;
             const [_, level] = this.nodeDict.get(node)!
-            if (level == this.level || (cluster.children.length == 0 && level < this.level)) {
+            if (cluster == this.config.selectedCluster.value || level == this.level || (cluster.children.length == 0 && level < this.level)) {
               this.circleLayoutLerp = 0;
               this.centerCluster(node);
             } else {
@@ -177,7 +177,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
 
       gfx.clear();
       gfx.circle(0, 0, radius);
-      if (this.config.selectedCluster.value != undefined && node.id == this.config.selectedCluster.value.id && level <= this.level) {
+      if (this.config.selectedCluster.value != undefined && node.id == this.config.selectedCluster.value.id) {
         gfx.stroke({ width: 40, color: 0x222222, alpha: alpha });
       } else {
         gfx.stroke({ width: 3, color: 'black', alpha: alpha });
@@ -205,10 +205,10 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         // - Highlight selected cluster (nl1/matrix)?
         // - Problem with highlight and diffusion simulation -> only show diff in diff tab and conn in conn tab? Or just ignore because node vs cluster lvl
 
-        // - Pinning: Always show selected, bring through different layers (not too hard but only with overlap prevention)
+        // - Pinning: Always show selected, bring through different layers (ignored by overlap prevention but not to bad I guess)
         // - Help tab
         // - Explain why no matrix mode for single level needed (higher levels very few nodes don't matter)
-        // - Line chart tables, legends
+        // - Legends
         // - Attributes (cluster conn and diff, arbitrary amount per cluster), labels (and cluster), define in own tab, distr per cluster, use in diff
         // - Inf diff lines per cluster
         // - Walkthrough
@@ -233,10 +233,10 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     }
     const selectedNode = this.config.configuration.value.definition.graph.nodeDictionary.get(selectedCluster.id)!;
     // Cannot do spooky selection from invisible level
-    const [_, level] = this.nodeDict.get(selectedNode)!;
-    if (level != this.level && (selectedCluster.children.length > 0 || level > this.level)) {
-      return;
-    }
+    // const [_, level] = this.nodeDict.get(selectedNode)!;
+    // if (level != this.level && (selectedCluster.children.length > 0 || level > this.level)) {
+    //   return;
+    // }
 
     if (selectedNode == node) {
       // 1:N
@@ -365,7 +365,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       gfx.position = this.calculateBasePos(node, level, upper, lower);
 
       // Opacity
-      if (cluster.children.length > 0 || level > this.level) {
+      if (cluster != this.config.selectedCluster.value && (cluster.children.length > 0 || level > this.level)) {
         if (level == upper) {
           gfx.alpha = this.currentLevel == upper ? 1 : this.currentLevel - lower;
         } else if (level == lower) {
@@ -400,7 +400,8 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
           }
     
           const [gfx, level] = this.nodeDict.get(node)!;
-          if (level != this.level && (node.data as Cluster).children.length > 0 || level > this.level) {
+          const cluster = node.data as Cluster;
+          if (cluster != this.config.selectedCluster.value && level != this.level && (cluster.children.length > 0 || level > this.level)) {
             continue;
           }
           const gfxVec = Utility.subtractP(gfx.position, centerPos);
@@ -629,7 +630,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       y: pos.y * this.edgeScale
     };
 
-    if (level > 1 && this.level > 0) {
+    if (level > 1 && this.level > 0 && node.data != this.config.selectedCluster.value) {
       const cluster = node.data as Cluster;
       const parent = cluster.parent;
       const parentPos = this.config.centroids.value.get(parent)!;

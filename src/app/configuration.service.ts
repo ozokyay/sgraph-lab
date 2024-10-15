@@ -580,6 +580,7 @@ export class ConfigurationService {
     const minDist = 1;
     const strength = 0.02;
     const levels = Utility.getNodeDepths(this.configuration.value.definition.graph);
+    // Only avoid overlap for nodes that can appear together
     const levelMap = new Map<number, number>();
     for (const [node, level] of levels) {
       const cluster = node.data as Cluster;
