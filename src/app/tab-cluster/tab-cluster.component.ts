@@ -11,6 +11,7 @@ import { Cluster } from '../cluster';
 import { CLGenerator, CMGenerator, MGGenerator } from '../generators';
 import { DegreesDefault, Series } from '../series';
 import { Utility } from '../utility';
+import { MatDividerModule } from '@angular/material/divider';
 
 @Component({
   selector: 'app-tab-cluster',
@@ -20,6 +21,7 @@ import { Utility } from '../utility';
     MatFormFieldModule,
     MatSlideToggleModule,
     MatSelectModule,
+    MatDividerModule,
     VisLineChartComponent,
     FormsModule
   ],

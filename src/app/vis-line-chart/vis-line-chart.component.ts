@@ -8,6 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { DecimalPipe } from '@angular/common';
 
 @Component({
@@ -19,6 +20,7 @@ import { DecimalPipe } from '@angular/common';
     MatSlideToggleModule,
     MatButtonModule,
     MatIconModule,
+    MatExpansionModule,
     FormsModule,
     DecimalPipe
   ],
@@ -409,10 +411,17 @@ export class VisLineChartComponent implements AfterViewInit, OnChanges {
   }
 
   public addPoint() {
-
+    const p = {
+      x: this.series.data.at(-1)!.x + 1,
+      y: 0
+    };
+    this.series.data.push(p);
+    this.series.xExtent[1] = Math.max(p.x, this.series.xExtent[1]);
+    this.onChange();
   }
 
-  public deletePoint() {
-    
+  public deletePoint(point: Point) {
+    this.series.data.splice(this.series.data.indexOf(point), 1);
+    this.onChange();
   }
 }

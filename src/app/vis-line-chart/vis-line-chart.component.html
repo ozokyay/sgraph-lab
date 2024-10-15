@@ -26,21 +26,28 @@
             </div>
         }
     </div>
-    <div>
-        @if (series && editMode) {
-            @for (point of series.data; track $index) {
-                <div style="display: flex;">
-                    <input type="number" placeholder="X" [ngModel]="point.x | number" (change)="validateXChange(point, $event)">
-                    <input type="number" placeholder="Y" [ngModel]="point.y | number" (ngModelChange)="point.y = validateYChange($event)" (change)="onChange()">
-                    <button mat-raised-button type="button" class="button-plus">
-                        <mat-icon>delete</mat-icon>
-                    </button>
-                </div>
+    <!-- Make this expandable -->
+    <mat-expansion-panel>
+        <mat-expansion-panel-header>
+          <mat-panel-title>Data points</mat-panel-title>
+          <!-- <mat-panel-description> This is a summary of the content </mat-panel-description> -->
+        </mat-expansion-panel-header>
+        <div>
+            @if (series && editMode) {
+                @for (point of series.data; track $index) {
+                    <div style="display: flex; margin-bottom: 10px;">
+                        <input class="cell" type="number" placeholder="X" [ngModel]="point.x | number" (change)="validateXChange(point, $event)">
+                        <input class="cell" type="number" placeholder="Y" [ngModel]="point.y | number" (ngModelChange)="point.y = validateYChange($event)" (change)="onChange()">
+                        <button mat-raised-button type="button" class="button-plus" (click)="deletePoint(point)" [disabled]="series.data.length <= 2">
+                            <mat-icon>delete</mat-icon>
+                        </button>
+                    </div>
+                }
+                <!-- Simply append something within range to end, adjust extent -->
+                <button mat-raised-button type="button" class="button-plus" (click)="addPoint()">
+                    <mat-icon>add</mat-icon>
+                </button>   
             }
-            <!-- Simply append something within range to end, adjust extent -->
-            <button mat-raised-button type="button" class="button-plus">
-                <mat-icon>add</mat-icon>
-            </button>   
-        }
-    </div>
+        </div>
+      </mat-expansion-panel>
 </div>
