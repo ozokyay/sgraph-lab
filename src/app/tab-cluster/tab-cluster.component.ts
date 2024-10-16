@@ -33,6 +33,7 @@ export class TabClusterComponent {
   public measuredDistribution?: Series;
   public cluster?: Cluster = undefined;
   public generator?: any = undefined; // To erase type for html
+  public theoreticalNodeCount = 0;
 
   constructor(private config: ConfigurationService) {
     Utility.config = config;
@@ -40,12 +41,14 @@ export class TabClusterComponent {
       if (this.cluster != undefined) {
         this.clusterMeasures = measures.clusterMeasures.get(this.cluster!.id)
         this.measuredDistribution = this.computeMeasuredDistribution();
+        this.theoreticalNodeCount = this.computeTheoreticalNodeCount();
       }
     });
     config.configuration.subscribe(config => {
       if (this.cluster != undefined) {
         this.clusterMeasures = config.instance.clusterMeasures.get(this.cluster!.id)
         this.measuredDistribution = this.computeMeasuredDistribution();
+        this.theoreticalNodeCount = this.computeTheoreticalNodeCount();
       }
     });
     config.selectedCluster.subscribe(cluster => {
@@ -54,6 +57,7 @@ export class TabClusterComponent {
         this.generator = this.cluster.generator;
         this.clusterMeasures = config.measures.value.clusterMeasures.get(this.cluster.id);
         this.measuredDistribution = this.computeMeasuredDistribution();
+        this.theoreticalNodeCount = this.computeTheoreticalNodeCount();
       }
     });
   }
@@ -64,6 +68,18 @@ export class TabClusterComponent {
     } else {
       return this.clusterMeasures?.degreeDistribution;
     }
+  }
+
+  private computeTheoreticalNodeCount(): number {
+    if (this.cluster?.generator?.name != "CL" && this.cluster?.generator?.name != "CM") {
+      return 0;
+    }
+    const gen: CLGenerator | CMGenerator = this.cluster?.generator as CLGenerator | CMGenerator;
+    let total = 0;
+    for (const p of gen.degreeDistribution.data) {
+      total += p.y;
+    }
+    return Math.round(total);
   }
 
   public onChangeGenerator(generator: string) {
@@ -193,5 +209,19 @@ export class TabClusterComponent {
 
     // Allow replication on other levels to replicate subtrees? Not possible because replication is set together with curve, no mechanism to extend replication to subtrees (and no likely need to do so)
     // KISS
+  }
+
+  public onChangeNodeCount(t: any) {
+    const nodeCount = t.value as number;
+    const gen: CLGenerator | CMGenerator = this.cluster?.generator as CLGenerator | CMGenerator;
+    let total = 0;
+    for (const p of gen.degreeDistribution.data) {
+      total += p.y;
+    }
+    Utility.multiplyDistribution(gen.degreeDistribution, 1 / total);
+    Utility.multiplyDistribution(gen.degreeDistribution, nodeCount);
+    const max = gen.degreeDistribution.data.reduce((a, b) => Math.max(a, Math.ceil(b.y)), 0);
+    gen.degreeDistribution.yExtent[1] = max;
+    this.onChange();
   }
 }

@@ -69,7 +69,6 @@ export class TabClusterListComponent implements AfterViewInit {
   }
 
   ngAfterViewInit() {
-    console.log(this.buttonAddCluster.nativeElement);
     this.tutorial.buttonAddCluster = this.buttonAddCluster.nativeElement;
   }
 

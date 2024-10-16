@@ -213,14 +213,13 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         // TODO
         // - Yellow circles make sense: Connect matrix - nl2 - tab
         // - Highlight selected cluster (nl1/matrix)?
-        // - Help tab, Inf diff lines per cluster (strict lvl == level selection?), legends, labels, attr vis
+        // - Inf diff lines per cluster (strict lvl == level selection?), legends, labels, attr vis
         // - Explain why no matrix mode for single level needed (higher levels very few nodes don't matter)
         // - Legends
         // - Attributes (cluster conn and diff, arbitrary amount per cluster), labels (and cluster), define in own tab, distr per cluster, use in diff
         // - Walkthrough (load example, put hints on screen, next button, auto click through features, block everything else)
         // - Tasks
         // - Recording
-        // - !!!Node count setting (input) for clusters that adjusts distribution y scale to the desired node count!!!
 
         this.selectEdges(node, e.shiftKey);
       };

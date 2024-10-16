@@ -39,6 +39,12 @@
   <br>
   <p class="label top-margin">Nodes: {{clusterMeasures?.nodeCount}}</p>
   <p class="label">Edges: {{clusterMeasures?.edgeCount}}</p>
+  @if (cluster.generator.name != "MG") {
+    <mat-form-field>
+      <mat-label>Node count</mat-label>
+      <input matInput type="number" [value]="theoreticalNodeCount" (change)="onChangeNodeCount($event.target)">
+    </mat-form-field>
+  }
 } @else {
   <p class="center-text">Select a cluster to edit</p>
 }
