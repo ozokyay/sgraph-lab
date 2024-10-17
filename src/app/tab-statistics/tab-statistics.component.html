@@ -1,18 +1,23 @@
+<h2 class="mat-headline-small">Settings</h2>
 <mat-slide-toggle [(ngModel)]="global" (change)="setStatistics()">Show measures for global graph</mat-slide-toggle>
 <br><br>
 @if (statistics != undefined) {
+    <h2 class="mat-headline-small">Overview</h2>
     <p class="label">Nodes: {{statistics.nodeCount}}</p>
     <p class="label">Edges: {{statistics.edgeCount}}</p>
     <p class="label">Density: {{statistics.density}}</p>
     <p class="label">Diameter: {{statistics.diameter}}</p>
     <p class="label">Degree assortativity: {{statistics.degreeAssortativity}}</p>
     <br>
-    <h4 class="between">Degree Distribution</h4>
+    <h2 class="mat-headline-small">Degree Distribution</h2>
     <app-vis-line-chart [editMode]="false" [allowLogToggles]="false" [allowAxisScaling]="false" [series]="statistics.degreeDistribution" xLabel="Node Degree" yLabel="Node Count"></app-vis-line-chart>
-    <h4 class="between">Local Clustering Coefficient Distribution</h4>
+    <br>
+    <h2 class="mat-headline-small">Local Clustering Coefficient Distribution</h2>
     <app-vis-line-chart [editMode]="false" [allowLogToggles]="false" [allowAxisScaling]="false" [series]="statistics.clusteringCoefficientDistribution" xLabel="Local Clustering Coefficient" yLabel="Node Count"></app-vis-line-chart>
-    <h4 class="between">Average Local Clustering Coefficient by Degree</h4>
+    <br>
+    <h2 class="mat-headline-small">Average Local Clustering Coefficient by Degree</h2>
     <app-vis-line-chart [editMode]="false" [allowLogToggles]="false" [allowAxisScaling]="false" [series]="statistics.clusteringCoefficientDistribution2" xLabel="Node Degree" yLabel="Avg. Local Clustering Coefficient" yFormat=".2f"></app-vis-line-chart>
-    <h4 class="between">Eigenvector Centrality Distribution</h4>
+    <br>
+    <h2 class="mat-headline-small">Eigenvector Centrality Distribution</h2>
     <app-vis-line-chart [editMode]="false" [allowLogToggles]="false" [allowAxisScaling]="false" [series]="statistics.eigenvectorCentralityDistribution" xLabel="Eigenvector Centrality" yLabel="Node count"></app-vis-line-chart>
 }

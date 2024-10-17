@@ -1,0 +1,13 @@
+table td:last-child {
+    width: 100%;
+}
+
+td {
+    white-space: nowrap;
+}
+
+mat-slider {
+    display: block;
+    max-width: 100%;
+    margin-left: 20px;
+}

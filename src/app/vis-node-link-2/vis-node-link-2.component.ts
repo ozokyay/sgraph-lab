@@ -192,10 +192,12 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       }
       gfx.fill({ color: this.getNodeColor(node, true), alpha: alpha }); // No color makes no sense
       gfx.interactive = true;
-      gfx.onmouseenter = () => {
+      gfx.onpointermove = e => {
+        this.showTooltip(e.client, (node.data as Cluster).name);
         gfx.tint = 0x9A9A9A;
       };
-      gfx.onmouseleave = () => {
+      gfx.onpointerleave = () => {
+        this.hideTooltip();
         gfx.tint = 0xFFFFFF;
       }
       gfx.onclick = () => {
@@ -223,21 +225,17 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         // - list of expandable cards, name editable, can select highlight mode from there
 
         // TODO
-        // - Yellow circles make sense: Connect matrix - nl2 - tab, but requires matrix direction, yellow dot is more discrete
-        // - Highlight selected cluster (nl1/matrix)?
-        // - Inf diff lines per cluster (strict lvl == level selection?), legends, labels, attr vis
         // - Explain why no matrix mode for single level needed (higher levels very few nodes don't matter)
-        // - Additional assortativity edges
         // - Attributes (cluster conn and diff, arbitrary amount per cluster), labels (and cluster), define in own tab, distr per cluster, use in diff
-        // - Tasks
-        // - Recording
 
         // - Tab layout
         // - Test cases
         // - Datenschutzerklärung
         // - Online-Fragebogen
         // - Ablauf (Instruktionen, Interview-Recording)
+        // - Cluster name tooltip
         // - Extra assortativity edges
+        // - Highlight selected cluster (nl1/matrix hull or color)?
         // - Attribute
 
         this.selectEdges(node, e.shiftKey);
@@ -874,6 +872,22 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
   public zoom(transform: d3.ZoomTransform) {
     this.stage.scale = { x: transform.k, y: transform.k };
     this.stage.pivot = { x: -transform.x / transform.k * devicePixelRatio, y: -transform.y / transform.k * devicePixelRatio };
+  }
+
+  private showTooltip(pos: Point, text: string) {
+    d3.select(this.tooltip.nativeElement)
+      .text(text)
+      .style("display", "inline-block")
+      .style("left", `${pos.x - this.rect.x + 20}px`)
+      .style("top", `${pos.y - this.rect.y + 20}px`);
+  }
+
+  private hideTooltip() {
+    d3.select(this.tooltip.nativeElement)
+      .text("")
+      .style("display", "none")
+      .style("top", "-100px")
+      .style("left", "-100px");
   }
 
   // Could allow color sections as argument

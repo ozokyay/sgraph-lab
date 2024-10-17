@@ -102,6 +102,7 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
                               .flatMap(([k, v]) => v);
 
     for (const node of graph.nodes) {
+      const cluster = this.getNodeCluster(node);
       const gfx = new PIXI.Graphics({ zIndex: 1 });
       let radius = this.nodeRadius;
       if (this.nodeSize) {
@@ -117,10 +118,12 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
       gfx.stroke({ width: 3, color: 'black', alpha: alpha });
       gfx.fill({ color: this.getNodeColor(node, this.nodeColor), alpha: alpha });
       gfx.interactive = true;
-      gfx.onmouseenter = () => {
+      gfx.onpointermove = e => {
+        this.showTooltip(e.client, cluster.name);
         gfx.tint = 0x9A9A9A;
       };
-      gfx.onmouseleave = () => {
+      gfx.onpointerleave = () => {
+        this.hideTooltip();
         gfx.tint = 0xFFFFFF;
       }
       gfx.onclick = () => {
@@ -238,14 +241,18 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
     // this.edgeGraphics.stroke({width: 4, color: 'gray'});
   }
 
+  private getNodeCluster(node: Node): Cluster {
+    const data = node.data as NodeData;
+    const clusterNode = this.config.configuration.value.definition.graph.nodeDictionary.get(data.clusterID)!;
+    const cluster = clusterNode.data as Cluster;
+    return cluster;
+  }
+
   private getNodeColor(node: Node, communityColor: boolean = true): number | string {
     if (this.config.selectedDiffusionSeeds.value.has(node)) {
       return 0xFF00FF;
     } else if (communityColor) {
-      const data = node.data as NodeData;
-      const clusterNode = this.config.configuration.value.definition.graph.nodeDictionary.get(data.clusterID)!;
-      const cluster = clusterNode.data as Cluster;
-      return cluster.color;
+      return this.getNodeCluster(node).color;
     } else {
       return 0x000000
     }
@@ -337,5 +344,21 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
   public zoom(transform: d3.ZoomTransform) {
     this.stage.scale = { x: transform.k, y: transform.k };
     this.stage.pivot = { x: -transform.x / transform.k * devicePixelRatio, y: -transform.y / transform.k * devicePixelRatio };
+  }
+
+  private showTooltip(pos: Point, text: string) {
+    d3.select(this.tooltip.nativeElement)
+      .text(text)
+      .style("display", "inline-block")
+      .style("left", `${pos.x - this.rect.x + 20}px`)
+      .style("top", `${pos.y - this.rect.y + 20}px`);
+  }
+
+  private hideTooltip() {
+    d3.select(this.tooltip.nativeElement)
+      .text("")
+      .style("display", "none")
+      .style("top", "-100px")
+      .style("left", "-100px");
   }
 }
