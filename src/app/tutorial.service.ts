@@ -6,7 +6,7 @@ import { Subject } from 'rxjs';
 })
 export class TutorialService {
 
-  public buttonAddCluster!: HTMLElement;
+  public tabClusterList!: HTMLElement;
   public visPrimary!: HTMLElement;
   public visSecondary!: HTMLElement;
   public tabs!: HTMLElement;
@@ -19,4 +19,11 @@ export class TutorialService {
   public update = new Subject<void>();
   public playDiffusion = new Subject<void>();
   public stopDiffusion = new Subject<void>();
+
+  public highlightClusterList = false;
+  public highlightPrimaryVis = false;
+  public highlightSecondaryVis = false;
+  public highlightPrimaryLevelVis = false;
+  public highlightPrimaryOptions = false;
+  public highlightTabs = false;
 }

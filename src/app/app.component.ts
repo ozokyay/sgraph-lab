@@ -70,8 +70,11 @@ export class AppComponent implements OnInit, AfterViewInit {
 
   @ViewChild('tabs', { read: ElementRef })
   private tabsRef!: ElementRef;
+
+  @ViewChild('tabClusterList', { read: ElementRef })
+  private tabClusterList!: ElementRef;
   
-  constructor(public python: PythonService, private config: ConfigurationService, private tutorial: TutorialService) {
+  constructor(public python: PythonService, private config: ConfigurationService, public tutorial: TutorialService) {
     config.selectedConnections.subscribe(connections => {
       if (connections.length > 0) {
         this.selectedTabIndex = 2;
@@ -118,6 +121,7 @@ export class AppComponent implements OnInit, AfterViewInit {
   public ngAfterViewInit() {
     this.tutorial.visPrimary = this.containerPrimaryRef.nativeElement;
     this.tutorial.visSecondary = this.containerSecondaryRef.nativeElement;
+    this.tutorial.tabClusterList = this.tabClusterList.nativeElement;
     this.tutorial.tabs = this.tabsRef.nativeElement;
   }
 

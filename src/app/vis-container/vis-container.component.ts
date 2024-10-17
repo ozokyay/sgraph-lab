@@ -87,7 +87,7 @@ export class VisContainerComponent implements AfterViewInit {
   @ViewChild('toggleEdgeColor')
   public toggleEdgeColor!: MatButtonToggle;
 
-  constructor(private tutorial: TutorialService) {
+  constructor(public tutorial: TutorialService) {
     tutorial.update.subscribe(() => {
       this.visLevel.level = this.level;
       this.visLevel.levelText = this.level == 0 ? "R" : this.level.toString();

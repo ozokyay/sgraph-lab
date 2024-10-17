@@ -18,32 +18,28 @@
       <mat-label>Replication</mat-label>
       <input type="number" matInput [(ngModel)]="cluster.replication" value="1" min="1" oninput="this.value = Math.max(1, Math.round(this.value));" (change)="onChange()" [disabled]="cluster.immutable">
     </mat-form-field>
-  }
-  @if (cluster.generator.name == "CL") {
-  <app-vis-line-chart [series]="generator.degreeDistribution" [series2]="measuredDistribution" (seriesChange)="onChange()" [editMode]="!cluster.immutable" [allowAxisScaling]="!cluster.immutable" [allowLogToggles]="!cluster.immutable"></app-vis-line-chart>
-    <mat-slide-toggle [(ngModel)]="generator.extractGiantComponent" (change)="onChange()" [disabled]="cluster.immutable">
-      Keep only largest connected component
-    </mat-slide-toggle>
-  } @else if (cluster.generator.name == "CM") {
-    <app-vis-line-chart [series]="generator.degreeDistribution" [series2]="measuredDistribution" (seriesChange)="onChange()" [editMode]="!cluster.immutable" [allowAxisScaling]="!cluster.immutable" [allowLogToggles]="!cluster.immutable"></app-vis-line-chart>
-    <mat-slide-toggle [(ngModel)]="generator.extractGiantComponent" (change)="onChange()" [disabled]="cluster.immutable">
-      Keep only largest connected component
-    </mat-slide-toggle>
-  } @else if (cluster.generator.name == "MG") {
     <br>
-    <span>Add child clusters in the cluster list</span>
-    <br>
-  } @else {
-    <span>unknown</span>
-  }
-  <br>
-  <p class="label top-margin">Nodes: {{clusterMeasures?.nodeCount}}</p>
-  <p class="label">Edges: {{clusterMeasures?.edgeCount}}</p>
-  @if (cluster.generator.name != "MG") {
     <mat-form-field>
       <mat-label>Node count</mat-label>
       <input matInput type="number" [value]="theoreticalNodeCount" (change)="onChangeNodeCount($event.target)">
     </mat-form-field>
+    <br>
+    <mat-slide-toggle [(ngModel)]="generator.extractGiantComponent" (change)="onChange()" [disabled]="cluster.immutable">
+      Keep only largest connected component
+    </mat-slide-toggle>
+    <br><br>
+  }
+  <p class="label top-margin">Resulting node count: {{clusterMeasures?.nodeCount}}</p>
+  <p class="label">Resulting edge count: {{clusterMeasures?.edgeCount}}</p>
+  @if (cluster.generator.name == "CL") {
+    <app-vis-line-chart [series]="generator.degreeDistribution" [series2]="measuredDistribution" (seriesChange)="onChange()" [editMode]="!cluster.immutable" [allowAxisScaling]="!cluster.immutable" [allowLogToggles]="!cluster.immutable"></app-vis-line-chart>
+  } @else if (cluster.generator.name == "CM") {
+    <app-vis-line-chart [series]="generator.degreeDistribution" [series2]="measuredDistribution" (seriesChange)="onChange()" [editMode]="!cluster.immutable" [allowAxisScaling]="!cluster.immutable" [allowLogToggles]="!cluster.immutable"></app-vis-line-chart>
+  } @else if (cluster.generator.name == "MG") {
+    <span>Add child clusters in the cluster list</span>
+    <br>
+  } @else {
+    <span>unknown</span>
   }
 } @else {
   <p class="center-text">Select a cluster to edit</p>

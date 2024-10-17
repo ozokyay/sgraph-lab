@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, ViewChild } from '@angular/core';
+import { Component } from '@angular/core';
 import { ConfigurationService } from '../configuration.service';
 import { DegreesDefault, Series } from '../series';
 import { Cluster } from '../cluster';
@@ -27,7 +27,7 @@ import { TutorialService } from '../tutorial.service';
   templateUrl: './tab-cluster-list.component.html',
   styleUrl: './tab-cluster-list.component.css'
 })
-export class TabClusterListComponent implements AfterViewInit {
+export class TabClusterListComponent {
   public edit: boolean = true;
   public deselect: boolean = true;
 
@@ -38,9 +38,6 @@ export class TabClusterListComponent implements AfterViewInit {
   public clusters: Cluster[] = [];
   public selectedCluster?: Cluster = undefined;
   public highlight = new Map<Cluster, boolean>();
-
-  @ViewChild('buttonAddCluster', { read: ElementRef })
-  private buttonAddCluster!: ElementRef;
 
   constructor(private config: ConfigurationService, public tutorial: TutorialService) {
     Utility.config = config;
@@ -73,10 +70,6 @@ export class TabClusterListComponent implements AfterViewInit {
         }
       }
     });
-  }
-
-  ngAfterViewInit() {
-    this.tutorial.buttonAddCluster = this.buttonAddCluster.nativeElement;
   }
 
   public getColor(cluster: Cluster) {

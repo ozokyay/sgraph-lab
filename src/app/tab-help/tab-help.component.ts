@@ -60,16 +60,17 @@ export class TabHelpComponent {
       }
     
       case 1: {
-        const rect = this.tutorial.buttonAddCluster.getBoundingClientRect();
+        const rect = this.tutorial.tabClusterList.getBoundingClientRect();
         const pos = {
-          x: rect.right + 100,
-          y: rect.top - 150
+          x: rect.right + 10,
+          y: rect.top + 150
         };
         data = {
           title: "Cluster List",
           text: "The cluster list allows you to add and remove clusters. Clusters can have child clusters.",
           position: pos
         };
+        this.tutorial.highlightClusterList = true;
         break;
       }
 
@@ -84,6 +85,9 @@ export class TabHelpComponent {
           text: "There are two views: The primary in the center and the secondary in the top left-hand corner.",
           position: pos
         };
+        this.tutorial.highlightClusterList = false;
+        this.tutorial.highlightPrimaryVis = true;
+        this.tutorial.highlightSecondaryVis = true;
         break;
       }
 
@@ -98,13 +102,14 @@ export class TabHelpComponent {
           text: "The matrix provides an overlap-free visualization of the cluster connections all the time, but it is disconnected from the resulting graph and doesn't show the clusters themselves.",
           position: pos
         };
+        this.tutorial.highlightPrimaryVis = false;
         break;
       }
 
       case 4: {
         const rect = this.tutorial.visPrimary.getBoundingClientRect();
         const pos = {
-          x: rect.left + 400,
+          x: rect.left + 100,
           y: rect.top + 400
         };
         data = {
@@ -112,6 +117,8 @@ export class TabHelpComponent {
           text: "The node link diagram shows clusters as nodes and connections between them as edges. By default, force-directed layout is used to position the nodes.",
           position: pos
         };
+        this.tutorial.highlightPrimaryVis = true;
+        this.tutorial.highlightSecondaryVis = false;
         break;
       }
 
@@ -126,6 +133,8 @@ export class TabHelpComponent {
           text: "Each view can independently show information about the graph on a cluster level. The node-link diagram can also show the final result level R.",
           position: pos
         };
+        this.tutorial.highlightPrimaryVis = false;
+        this.tutorial.highlightPrimaryLevelVis = true;
         this.tutorial.primaryVisLevel.next(0);
         this.tutorial.update.next();
         break;
@@ -134,7 +143,7 @@ export class TabHelpComponent {
       case 6: {
         const rect = this.tutorial.visPrimary.getBoundingClientRect();
         const pos = {
-          x: rect.left + 10,
+          x: rect.left + 30,
           y: rect.top + 600
         };
         data = {
@@ -142,6 +151,7 @@ export class TabHelpComponent {
           text: "You can click on a cluster in the list or node-link diagram to select it.",
           position: pos
         };
+        this.tutorial.highlightPrimaryLevelVis = false;
         this.tutorial.primaryVisLevel.next(2);
         this.tutorial.secondaryVisLevel.next(2);
         this.tutorial.update.next();
@@ -160,6 +170,7 @@ export class TabHelpComponent {
           text: "There are different options for highlighting certain parts or encoding variables in the visualization. The circular layout is particiularly useful when inspecting or editing a cluster's connections to other cluster because it prevents overlap and hides other edges.",
           position: pos
         };
+        this.tutorial.highlightPrimaryOptions = true;
         this.tutorial.primaryCircular.next(true);
         break;
       }
@@ -175,6 +186,8 @@ export class TabHelpComponent {
           text: "In this tab, you configure a cluster. It can directly refer to a cluster in the final graph which is created from a generator, or it can be a group that has child clusters. The replication factor determines how many instances are created from this definition.",
           position: pos
         };
+        this.tutorial.highlightPrimaryOptions = false;
+        this.tutorial.highlightTabs = true;
         this.config.activeTab.next(1);
         break;
       }
@@ -293,6 +306,7 @@ export class TabHelpComponent {
           position: pos
         };
         done = true;
+        this.tutorial.highlightTabs = false;
         this.config.clear();
         this.config.update("Empty graph");
         this.config.activeTab.next(0);

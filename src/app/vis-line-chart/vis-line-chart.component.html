@@ -3,31 +3,31 @@
     <div #controls class="flexi">
         @if (allowAxisScaling) {
             <div class="flex-element">
-                <mat-form-field class="small">
-                    <mat-label>Max. x value</mat-label>
+                <mat-form-field class="small" subscriptSizing="dynamic">
+                    <mat-label>X-axis scale</mat-label>
                     <input matNativeControl #xMaxInput type="number" min="2" (change)="changeXAxis($event)" [value]="this.series ? this.series.xExtent[1] : 10" />
                 </mat-form-field>
             </div>
         }
         @if (allowAxisScaling) {
             <div class="flex-element">
-                <mat-form-field class="small">
-                    <mat-label>Max. y value</mat-label>
+                <mat-form-field class="small" subscriptSizing="dynamic">
+                    <mat-label>Y-axis scale</mat-label>
                     <input matNativeControl #yMaxInput type="number" min="2" (change)="changeYAxis($event)" [value]="this.series ? this.series.yExtent[1] : 100" />
                 </mat-form-field>
             </div>
         }
         @if (allowLogToggles) {
             <div class="flex-element">
-                <mat-slide-toggle class="flex-element space-vert block" (change)="rescaleCoordinatesX($event)">Log. x-axis</mat-slide-toggle>
+                <mat-slide-toggle class="flex-element block" (change)="rescaleCoordinatesX($event)">Log. x-axis</mat-slide-toggle>
             </div>
             <div class="flex-element">
-                <mat-slide-toggle class="flex-element space-vert block" (change)="rescaleCoordinatesY($event)">Log. y-axis</mat-slide-toggle>
+                <mat-slide-toggle class="flex-element block" (change)="rescaleCoordinatesY($event)">Log. y-axis</mat-slide-toggle>
             </div>
         }
     </div>
     @if (series && editMode) {
-        <mat-expansion-panel>
+        <mat-expansion-panel class="space-vert-top">
             <mat-expansion-panel-header>
               <mat-panel-title>Data points</mat-panel-title>
               <!-- <mat-panel-description> This is a summary of the content </mat-panel-description> -->

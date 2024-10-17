@@ -212,25 +212,30 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         // - Nodes only
         // - Own tab, each attribute for all nodes for whole graph (add, delete, name, color, range?)
         // - Distribution per cluster: annoying but powerful
-        // - Assortativity within cluster: heuristic from auto spread on wohle graph
+        // - Assortativity within cluster: heuristic from auto spread on whole graph
         // - At least one seed per connected component
         // - Seeds: random? set amount?
         // - On nodes: for connecting clusters
         // - measures?
         // - tooltips?
         // - vis radius and vis color, attr selection
-        // - list of expandable cards, name editable
+        // - list of expandable cards, name editable, can select highlight mode from there
 
         // TODO
         // - Yellow circles make sense: Connect matrix - nl2 - tab
         // - Highlight selected cluster (nl1/matrix)?
         // - Inf diff lines per cluster (strict lvl == level selection?), legends, labels, attr vis
         // - Explain why no matrix mode for single level needed (higher levels very few nodes don't matter)
-        // - Legends (line chart)
+        // - Legends (two lines, in box, in rect, in line chart)
         // - Attributes (cluster conn and diff, arbitrary amount per cluster), labels (and cluster), define in own tab, distr per cluster, use in diff
-        // - Walkthrough (load example, put hints on screen, next button, auto click through features, block everything else)
         // - Tasks
         // - Recording
+
+        // - Legend
+        // - Multiple Lines
+        // - Yellow circles
+        // - Tab layout
+        // - Test cases
         // - Datenschutzerklärung
         // - Online-Fragebogen
         // - Ablauf (Instruktionen, Interview-Recording)
@@ -528,7 +533,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       // 2. OK highlight edges on tab select
       // 3. OK highlight community in list and disable controls on tab select
       // 4. highlight cluster on hover, zIndex (matrix + nl2 + nl1)
-      // 4.0 encode stuff in edges
+      // 4.0 OK encode stuff in edges
       // 4.1 Scaling (min radius or radius setting in layout options)
       // 4.2 multi level (circle packing, pinning)
       // 5. OK overlap handling
@@ -537,10 +542,10 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       // 8. labels, legends
       // 9. OK wildcard selection in matrix and nl2
       // 10. better inf diff, better connections tab, better tabs, help tab
-      // 11. tables
+      // 11. OK tables
       // 12. attributes
       // 13. data recording
-      // 14. walkthrough (from help tab)
+      // 14. OK walkthrough (from help tab)
       // 15. tasks
       // 16. Labels in vis and hover for attributes, cluster color select (5 buttons), warning editing hidden edges
 
