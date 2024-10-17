@@ -1,5 +1,3 @@
-import { Cluster } from "./cluster";
-import { ClusterConnection } from "./cluster-connection";
 import { AdjacencyList, Node, Edge, EdgeList } from "./graph";
 import { Series } from "./series";
 
@@ -36,7 +34,7 @@ export interface GraphMeasures {
     
 }
 
-export const EmptyMeasures: GraphMeasures = {
+export const EmptyMeasures = (): GraphMeasures => ({
     nodeCount: 0,
     edgeCount: 0,
     density: 0,
@@ -47,17 +45,17 @@ export const EmptyMeasures: GraphMeasures = {
     diameter: 0,
     eigenvectorCentralityDistribution: { data: [], xExtent: [0, 0], yExtent: [0, 0] },
     degreeAssortativity: 0
-}
+});
 
-export const EmptyDefinition: GraphDefintion = {
+export const EmptyDefinition = (): GraphDefintion => ({
     graph: new AdjacencyList(),
     seed: 42
-}
+});
 
-export const EmptyInstance: GraphInstance = {
+export const EmptyInstance = (): GraphInstance => ({
     clusters: new Map(),
     connections: new Map(),
     graph: new EdgeList(),
     clusterMeasures: new Map(),
-    globalMeasures: EmptyMeasures
-}
+    globalMeasures: EmptyMeasures()
+});

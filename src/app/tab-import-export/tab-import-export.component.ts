@@ -30,11 +30,9 @@ export class TabImportExportComponent {
         return;
       }
 
+      this.config.clear();
       const definition = Utility.parse(e.target.result.toString());
-
       this.config.configuration.value.definition = definition;
-      this.config.configuration.value.instance = EmptyInstance;
-      this.config.history.value.splice(0, this.config.history.value.length);
       this.config.update("Import graph");
     }
     reader.readAsText(file);

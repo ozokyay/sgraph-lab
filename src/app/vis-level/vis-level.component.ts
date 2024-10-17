@@ -3,6 +3,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { ConfigurationService } from '../configuration.service';
 import { Utility } from '../utility';
+import { TutorialService } from '../tutorial.service';
 
 @Component({
   selector: 'app-vis-level',

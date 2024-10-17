@@ -1,7 +1,7 @@
 import { Component, Input, ViewChild, HostBinding, AfterViewInit, ElementRef } from '@angular/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
-import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatButtonToggle, MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { VisMatrixComponent } from '../vis-matrix/vis-matrix.component';
 import { VisNodeLink2Component } from '../vis-node-link-2/vis-node-link-2.component';
@@ -9,6 +9,7 @@ import { VisNodeLinkComponent } from '../vis-node-link/vis-node-link.component';
 import { VisLevelComponent } from '../vis-level/vis-level.component';
 import { trigger, state, style, animate, transition } from '@angular/animations';
 import * as d3 from 'd3';
+import { TutorialService } from '../tutorial.service';
 
 @Component({
   selector: 'app-vis-container',
@@ -73,6 +74,25 @@ export class VisContainerComponent implements AfterViewInit {
 
   @ViewChild('container')
   private container!: ElementRef;
+
+  @ViewChild('visLevel')
+  private visLevel!: VisLevelComponent;
+
+  @ViewChild('toggleCircular')
+  public toggleCircular!: MatButtonToggle;
+
+  @ViewChild('toggleNodeColor')
+  public toggleNodeColor!: MatButtonToggle;
+
+  @ViewChild('toggleEdgeColor')
+  public toggleEdgeColor!: MatButtonToggle;
+
+  constructor(private tutorial: TutorialService) {
+    tutorial.update.subscribe(() => {
+      this.visLevel.level = this.level;
+      this.visLevel.levelText = this.level == 0 ? "R" : this.level.toString();
+    });
+  }
   
   ngAfterViewInit() {
     this.width = this.container.nativeElement.clientWidth;
@@ -85,7 +105,6 @@ export class VisContainerComponent implements AfterViewInit {
   }
 
   public changeLevel(level: number) {
-    const previous = this.level;
     this.level = level;
 
     if (this.visualization == "matrix") {

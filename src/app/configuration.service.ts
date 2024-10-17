@@ -18,12 +18,12 @@ import { ForceDirected } from './graphwagu/webgpu/force_directed';
 })
 export class ConfigurationService {
   public configuration = new BehaviorSubject<GraphConfiguration>({
-    definition: EmptyDefinition,
-    instance: EmptyInstance,
+    definition: EmptyDefinition(),
+    instance: EmptyInstance(),
     message: "Empty graph"
   });
 
-  public measures = new BehaviorSubject<GraphInstance>(EmptyInstance);
+  public measures = new BehaviorSubject<GraphInstance>(this.configuration.value.instance);
   public hoveredCluster = new BehaviorSubject<Cluster | undefined>(undefined);
   public selectedCluster = new BehaviorSubject<Cluster | undefined>(undefined);
   public selectedConnections = new BehaviorSubject<Edge[]>([]);
@@ -50,7 +50,23 @@ export class ConfigurationService {
       this.runLayout(this.configuration.value.instance.graph, this.layout, this.abortLayout.signal);
     });
   }
-   
+
+  public clear() {
+    this.configuration.next({
+      definition: EmptyDefinition(),
+      instance: EmptyInstance(),
+      message: "Empty graph"
+    });
+    this.measures.next(this.configuration.value.instance);
+    this.history.value.splice(0, this.history.value.length);
+    this.history.value.push(structuredClone(this.configuration.value));
+    this.layoutSettings.next(DefaultLayout);
+    // Must clear selection because no history
+    this.selectedCluster.next(undefined);
+    this.selectedConnections.next([]);
+    this.selectedDiffusionSeeds.next(new Set());
+  }
+
   public async update(message: string) {
     this.configuration.value.message = message;
     // Build graph
@@ -86,7 +102,7 @@ export class ConfigurationService {
     this.configuration.value.message = message;
     this.history.value.push(structuredClone({
       definition: this.configuration.value.definition,
-      instance: EmptyInstance,
+      instance: EmptyInstance(),
       message: this.configuration.value.message
     }));
     this.history.next(this.history.value);
@@ -146,6 +162,9 @@ export class ConfigurationService {
         if (clusterNew == undefined) {
           // Remove
           configuration.instance.clusters.delete(clusterOld.id);
+          if (this.selectedCluster.value == clusterOld) {
+            this.selectedCluster.next(undefined);
+          }
           // Remove from selection
           const indices = this.selectedConnections.value.filter(e => e.source.id == old.id || e.target.id == old.id).map((_, i) => i);
           for (let i = indices.length - 1; i >= 0; i--) {
@@ -372,7 +391,7 @@ export class ConfigurationService {
 
   private computeFastMeasures() {
     const compute = (graph: EdgeList): GraphMeasures => {
-      const measures = structuredClone(EmptyMeasures);
+      const measures = EmptyMeasures();
       measures.nodeCount = graph.nodes.length;
       measures.edgeCount = graph.edges.length;
       measures.density = Math.round(2 * graph.edges.length / (graph.nodes.length * (graph.nodes.length - 1)) * 1000) / 1000;

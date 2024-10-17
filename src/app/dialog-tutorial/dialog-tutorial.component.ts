@@ -26,10 +26,12 @@ export class DialogTutorialComponent implements OnInit {
   constructor(private matDialogRef: MatDialogRef<DialogTutorialComponent>) {}
 
   public ngOnInit() {
-    this.matDialogRef.updatePosition({
-      left: `${this.data.position.x}px`,
-      top: `${this.data.position.y}px`
-    });
+    if (this.data.position.x != -1 && this.data.position.y != -1) {
+      this.matDialogRef.updatePosition({
+        left: `${this.data.position.x}px`,
+        top: `${this.data.position.y}px`
+      });
+    }
     this.matDialogRef.disableClose = true;
   }
 

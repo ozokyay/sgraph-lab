@@ -10,6 +10,7 @@ import { EmptySeries, Series } from '../series';
 import { AdjacencyList, Node } from '../graph';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
+import { TutorialService } from '../tutorial.service';
 
 @Component({
   selector: 'app-tab-information-diffusion',
@@ -42,7 +43,7 @@ export class TabInformationDiffusionComponent {
   private originalSeedNodes: Set<Node> = new Set();
   private intervalID = 0;
 
-  constructor(private config: ConfigurationService) {
+  constructor(private config: ConfigurationService, private tutorial: TutorialService) {
     config.configuration.subscribe(configuration => {
       this.graph = new AdjacencyList(configuration.instance.graph);
       this.seedNodes.clear();
@@ -52,6 +53,15 @@ export class TabInformationDiffusionComponent {
     });
     config.selectedDiffusionSeeds.subscribe(seeds => {
       this.seedNodes = seeds;
+    });
+    tutorial.playDiffusion.subscribe(() => {
+      this.onPlay();
+    });
+    tutorial.stopDiffusion.subscribe(() => {
+      this.seedNodes.clear();
+      this.originalSeedNodes.clear();
+      this.onPause();
+      this.onReset(true);
     });
   }
 

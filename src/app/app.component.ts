@@ -1,4 +1,4 @@
-import { Component, HostListener, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, HostListener, OnInit, ViewChild } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle'
 import { MatTabsModule } from '@angular/material/tabs';
@@ -21,6 +21,7 @@ import { VisLevelComponent } from "./vis-level/vis-level.component";
 import { VisNodeLink2Component } from './vis-node-link-2/vis-node-link-2.component';
 import { VisContainerComponent } from "./vis-container/vis-container.component";
 import { TabHelpComponent } from './tab-help/tab-help.component';
+import { TutorialService } from './tutorial.service';
 
 @Component({
     selector: 'app-root',
@@ -49,7 +50,7 @@ import { TabHelpComponent } from './tab-help/tab-help.component';
     VisContainerComponent
 ]
 })
-export class AppComponent implements OnInit {
+export class AppComponent implements OnInit, AfterViewInit {
 
   public pyodideReady = false;
   public selectedTabIndex = 0;
@@ -60,8 +61,17 @@ export class AppComponent implements OnInit {
 
   @ViewChild('containerSecondary')
   private containerSecondary!: VisContainerComponent;
+
+  @ViewChild('containerPrimary', { read: ElementRef })
+  private containerPrimaryRef!: ElementRef;
+
+  @ViewChild('containerSecondary', { read: ElementRef })
+  private containerSecondaryRef!: ElementRef;
+
+  @ViewChild('tabs', { read: ElementRef })
+  private tabsRef!: ElementRef;
   
-  constructor(public python: PythonService, private config: ConfigurationService) {
+  constructor(public python: PythonService, private config: ConfigurationService, private tutorial: TutorialService) {
     config.selectedConnections.subscribe(connections => {
       if (connections.length > 0) {
         this.selectedTabIndex = 2;
@@ -71,6 +81,25 @@ export class AppComponent implements OnInit {
       if (this.selectedTabIndex != t) {
         this.selectedTabIndex = t;
       }
+    });
+    this.tutorial.start.subscribe(() => {
+      this.containerPrimary.visualization = "node-link";
+      this.containerSecondary.visualization = "matrix";
+      this.containerPrimary.changeLevel(1);
+      this.containerSecondary.changeLevel(1);
+    });
+    this.tutorial.primaryVisLevel.subscribe(l => {
+      this.containerPrimary.changeLevel(l);
+    });
+    this.tutorial.secondaryVisLevel.subscribe(l => {
+      this.containerSecondary.changeLevel(l);
+    });
+    this.tutorial.primaryCircular.subscribe(b => {
+      this.containerPrimary.toggleCircular.checked = b;
+    });
+    this.tutorial.primaryDiffusionMode.subscribe(b => {
+      this.containerPrimary.toggleNodeColor.checked = b;
+      this.containerPrimary.toggleEdgeColor.checked = b;
     });
   }
 
@@ -84,6 +113,12 @@ export class AppComponent implements OnInit {
   public async ngOnInit() {
     await this.python.initPython();
     this.pyodideReady = true;
+  }
+
+  public ngAfterViewInit() {
+    this.tutorial.visPrimary = this.containerPrimaryRef.nativeElement;
+    this.tutorial.visSecondary = this.containerSecondaryRef.nativeElement;
+    this.tutorial.tabs = this.tabsRef.nativeElement;
   }
 
   @HostListener('document:mousemove')

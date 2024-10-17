@@ -18,11 +18,11 @@
       </as-split>
     </as-split-area>
     <as-split-area size="50">
-      <app-vis-container #containerPrimary class="flex-parent" [visualization]="'node-link'"></app-vis-container>
+      <app-vis-container #containerPrimary class="flex-parent" [visualization]="'node-link'" [initialZoom]="0.5"></app-vis-container>
     </as-split-area>
     <as-split-area size="*" class="noscroll">
-      <mat-tab-group class="scroll" (selectedTabChange)="onSelectedTabChange($event.index)" [(selectedIndex)]="selectedTabIndex">
-        <mat-tab label="Help">
+      <mat-tab-group #tabs class="scroll" (selectedTabChange)="onSelectedTabChange($event.index)" [(selectedIndex)]="selectedTabIndex">
+        <mat-tab label="Welcome">
           <div class="padded">
             <app-tab-help />
           </div>          

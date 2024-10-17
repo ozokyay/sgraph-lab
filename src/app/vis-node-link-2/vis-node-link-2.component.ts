@@ -115,7 +115,14 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
           if (c != undefined) {
             const node = this.config.configuration.value.definition.graph.nodeDictionary.get(c.id)!;
             const cluster = node.data as Cluster;
-            const [_, level] = this.nodeDict.get(node)!
+            let level;
+            const entry = this.nodeDict.get(node);
+            if (entry != undefined) {
+              level = entry[1];
+            } else {
+              const depths = Utility.getNodeDepths(this.config.configuration.value.definition.graph);
+              level = depths.find(([n, d]) => n == node)![1];
+            }
             if (cluster == this.config.selectedCluster.value || level == this.level || (cluster.children.length == 0 && level < this.level)) {
               this.circleLayoutLerp = 0;
               this.centerCluster(node);
@@ -209,17 +216,24 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         // - At least one seed per connected component
         // - Seeds: random? set amount?
         // - On nodes: for connecting clusters
+        // - measures?
+        // - tooltips?
+        // - vis radius and vis color, attr selection
+        // - list of expandable cards, name editable
 
         // TODO
         // - Yellow circles make sense: Connect matrix - nl2 - tab
         // - Highlight selected cluster (nl1/matrix)?
         // - Inf diff lines per cluster (strict lvl == level selection?), legends, labels, attr vis
         // - Explain why no matrix mode for single level needed (higher levels very few nodes don't matter)
-        // - Legends
+        // - Legends (line chart)
         // - Attributes (cluster conn and diff, arbitrary amount per cluster), labels (and cluster), define in own tab, distr per cluster, use in diff
         // - Walkthrough (load example, put hints on screen, next button, auto click through features, block everything else)
         // - Tasks
         // - Recording
+        // - Datenschutzerklärung
+        // - Online-Fragebogen
+        // - Ablauf (Instruktionen, Interview-Recording)
 
         this.selectEdges(node, e.shiftKey);
       };
@@ -630,7 +644,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
   }
 
   private calculateBasePos(node: Node, level: number, upper: number, lower: number) {
-    const pos = this.config.centroids.value.get(node.id)!;
+    const pos = this.config.centroids.value.get(node.id) ?? { x: 0, y: 0 };
     let result: Point = {
       x: pos.x * this.edgeScale,
       y: pos.y * this.edgeScale
@@ -639,7 +653,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     if (level > 1 && this.level > 0 && node.data != this.config.selectedCluster.value) {
       const cluster = node.data as Cluster;
       const parent = cluster.parent;
-      const parentPos = this.config.centroids.value.get(parent)!;
+      const parentPos = this.config.centroids.value.get(parent) ?? { x: 0, y: 0 };
       const scaledParentPos = {
         x: parentPos.x * this.edgeScale,
         y: parentPos.y * this.edgeScale

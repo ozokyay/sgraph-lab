@@ -66,6 +66,13 @@ export class TabClusterListComponent implements AfterViewInit {
         this.highlight.set(c.target.data as Cluster, true);
       }
     });
+    tutorial.start.subscribe(() => {
+      for (const c of this.clusters) {
+        if (c.parent == -1) {
+          this.treeControl.expand(c);
+        }
+      }
+    });
   }
 
   ngAfterViewInit() {
