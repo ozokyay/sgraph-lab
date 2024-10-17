@@ -30,6 +30,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
   private height: number = 0;
   private nodeDict: Map<Node, [PIXI.Graphics, number]> = new Map();
   private edgeGraphics!: PIXI.Graphics;
+  private edgeGraphics2!: PIXI.Graphics;
   private radiusScale!: d3.ScaleLinear<number, number>;
   private graph?: EdgeList = undefined;
   private abort: AbortController = new AbortController();
@@ -222,7 +223,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         // - list of expandable cards, name editable, can select highlight mode from there
 
         // TODO
-        // - Yellow circles make sense: Connect matrix - nl2 - tab
+        // - Yellow circles make sense: Connect matrix - nl2 - tab, but requires matrix direction, yellow dot is more discrete
         // - Highlight selected cluster (nl1/matrix)?
         // - Inf diff lines per cluster (strict lvl == level selection?), legends, labels, attr vis
         // - Explain why no matrix mode for single level needed (higher levels very few nodes don't matter)
@@ -231,13 +232,13 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         // - Tasks
         // - Recording
 
-        // - Multiple Lines
-        // - Yellow circles
         // - Tab layout
         // - Test cases
         // - Datenschutzerklärung
         // - Online-Fragebogen
         // - Ablauf (Instruktionen, Interview-Recording)
+        // - Extra assortativity edges
+        // - Attribute
 
         this.selectEdges(node, e.shiftKey);
       };
@@ -508,6 +509,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
 
     // Render edges
     this.edgeGraphics?.clear();
+    this.edgeGraphics2?.clear();
     for (const edge of graph.edges) {
       const data = edge.data as ClusterConnection;
       const source = edge.source.data as Cluster;
@@ -609,7 +611,9 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       this.edgeGraphics.fill({ color: "black", alpha: alpha });
       this.edgeGraphics.stroke({ color: c, width: 6, alpha: alpha });
 
-      // TODO: Draw direction indicators
+      if (selected) {
+        this.directionIndicators(sourcePos, targetPos, alpha);
+      }
     }
 
     // Potential edges circular layout
@@ -634,16 +638,24 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         continue;
       }
 
-      const [sourceGfx, sourceLevel] = this.nodeDict.get(edge.source)!;
-      const [targetGfx, targetLevel] = this.nodeDict.get(edge.target)!;
+      const [sourceGraphics, sourceLevel] = this.nodeDict.get(edge.source)!;
+      const [targetGraphics, targetLevel] = this.nodeDict.get(edge.target)!;
+      const midRadius = (this.nodeRadiusRange[0] + this.nodeRadiusRange[1]) / 2;
+      const sourceRadius = this.nodeSize ? this.radiusScale(this.config.configuration.value.instance.clusterMeasures.get(edge.source.id)!.nodeCount) : midRadius;
+      const targetRadius = this.nodeSize ? this.radiusScale(this.config.configuration.value.instance.clusterMeasures.get(edge.target.id)!.nodeCount) : midRadius;
+
+      const sourcePos = Utility.addP(sourceGraphics.position, Utility.scalarMultiplyP(sourceRadius, Utility.normalizeP(Utility.subtractP(targetGraphics.position, sourceGraphics.position))));
+      const targetPos = Utility.addP(targetGraphics.position, Utility.scalarMultiplyP(targetRadius, Utility.normalizeP(Utility.subtractP(sourceGraphics.position, targetGraphics.position))));
 
       // This is not readable
-      const black = { width: 3, color: "black", alpha: Math.min(sourceGfx.alpha, targetGfx.alpha) };
-      const yellow = { width: 6, color: "yellow", alpha: Math.min(sourceGfx.alpha, targetGfx.alpha) };
-      this.dashedLine(this.edgeGraphics, sourceGfx.position, targetGfx.position, 24, 12);
+      const alpha = Math.min(sourceGraphics.alpha, targetGraphics.alpha);
+      const black = { width: 3, color: "black", alpha: alpha };
+      const yellow = { width: 6, color: "yellow", alpha: alpha };
+      this.dashedLine(this.edgeGraphics, sourcePos, targetPos, 24, 12);
       this.edgeGraphics.stroke(yellow);
-      this.dashedLine(this.edgeGraphics, sourceGfx.position, targetGfx.position, 24, 12);
+      this.dashedLine(this.edgeGraphics, sourcePos, targetPos, 24, 12);
       this.edgeGraphics.stroke(black);
+      this.directionIndicators(sourcePos, targetPos, alpha);
     }
   }
 
@@ -676,6 +688,16 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       x: Math.cos(angle) * radius,
       y: Math.sin(angle) * radius
     };
+  }
+
+  private directionIndicators(sourcePos: Point, targetPos: Point, alpha: number) {
+    const normDir = Utility.normalizeP(Utility.subtractP(targetPos, sourcePos));
+    const targetDirectionIndicator = Utility.addP(targetPos, Utility.scalarMultiplyP(17, normDir));
+    const sourceDirectionIndicator = Utility.addP(sourcePos, Utility.scalarMultiplyP(-17, normDir));
+    this.edgeGraphics2.circle(sourceDirectionIndicator.x, sourceDirectionIndicator.y, 12);
+    this.edgeGraphics2.fill({ color: "yellow", alpha: alpha });
+    this.edgeGraphics2.circle(targetDirectionIndicator.x, targetDirectionIndicator.y, 12);
+    this.edgeGraphics2.stroke({ width: 4, color: "yellow", alpha: alpha });
   }
 
   private getNodeColor(node: Node, communityColor: boolean = true): number | string {
@@ -768,7 +790,9 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       });
       this.app.stage.addChild(this.stage);
       this.edgeGraphics = new PIXI.Graphics();
+      this.edgeGraphics2 = new PIXI.Graphics({ zIndex: 2000 });
       this.stage.addChild(this.edgeGraphics);
+      this.stage.addChild(this.edgeGraphics2);
       this.resize();
       this.init();
     })();

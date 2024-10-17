@@ -1,6 +1,6 @@
 @if (connections && connections.length > 0) {
+    <button mat-button (click)="onClear()">Clear selection</button>
     @if (connections.length == 1 || multiEditing) {
-        <button mat-button (click)="onClear()">Clear selection</button>
         <br>
         <span>
             <mat-form-field>
