@@ -32,9 +32,9 @@
   <p class="label top-margin">Resulting node count: {{clusterMeasures?.nodeCount}}</p>
   <p class="label">Resulting edge count: {{clusterMeasures?.edgeCount}}</p>
   @if (cluster.generator.name == "CL") {
-    <app-vis-line-chart [series]="generator.degreeDistribution" [series2]="measuredDistribution" (seriesChange)="onChange()" [editMode]="!cluster.immutable" [allowAxisScaling]="!cluster.immutable" [allowLogToggles]="!cluster.immutable"></app-vis-line-chart>
+    <app-vis-line-chart [showLegend]="true" [series]="generator.degreeDistribution" [series2]="measuredDistribution" (seriesChange)="onChange()" [editMode]="!cluster.immutable" [allowAxisScaling]="!cluster.immutable" [allowLogToggles]="!cluster.immutable"></app-vis-line-chart>
   } @else if (cluster.generator.name == "CM") {
-    <app-vis-line-chart [series]="generator.degreeDistribution" [series2]="measuredDistribution" (seriesChange)="onChange()" [editMode]="!cluster.immutable" [allowAxisScaling]="!cluster.immutable" [allowLogToggles]="!cluster.immutable"></app-vis-line-chart>
+    <app-vis-line-chart [showLegend]="true" [series]="generator.degreeDistribution" [series2]="measuredDistribution" (seriesChange)="onChange()" [editMode]="!cluster.immutable" [allowAxisScaling]="!cluster.immutable" [allowLogToggles]="!cluster.immutable"></app-vis-line-chart>
   } @else if (cluster.generator.name == "MG") {
     <span>Add child clusters in the cluster list</span>
     <br>

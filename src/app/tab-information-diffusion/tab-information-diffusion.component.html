@@ -12,7 +12,7 @@
     <input matSliderThumb value="0.5" [(value)]="activationProbability" [disabled]="running">
 </mat-slider>
 <!-- TODO: Line per community mode => line chart with arbitrary num lines -->
-<app-vis-line-chart [series]="totalActive" [series2]="stepActive" xLabel="Timestep" yLabel="Activated Nodes" [allowAxisScaling]="false" [allowLogToggles]="false" [editMode]="false"></app-vis-line-chart>
+<app-vis-line-chart [showLegend]="true" [legendWidth]="150" legend1="Total active" legend2="In cluster" [series]="totalActive" [seriesList]="clusterActive" xLabel="Timestep" yLabel="Activated Nodes" [allowAxisScaling]="false" [allowLogToggles]="false" [editMode]="false"></app-vis-line-chart>
 <mat-form-field class="small">
     <mat-label>Timesteps per Second</mat-label>
     <input matNativeControl type="number" min="1" max="100000" [(ngModel)]="simulationSpeed" [disabled]="running"/>

@@ -127,7 +127,7 @@ function getGraphMeasure(measure: "clustering" | "pagerank" | "eigenvector_centr
         yExtent: d3.extent(points, p => p.y) as [number, number]
       } 
   } catch (error) {
-    return structuredClone(EmptySeries);
+    return EmptySeries();
   }
 }
 
@@ -142,7 +142,7 @@ function getClusteringCoefficientDistribution2(): Series {
   const arrays = obj.toJs();
   const maxDeg = d3.max(arrays[1], (a: number[]) => a[1])! + 1;
   if (Number.isNaN(maxDeg)) {
-    return EmptySeries;
+    return EmptySeries();
   }
   const degToCC: number[] = new Array(maxDeg);
   const degToCount: number[] = new Array(maxDeg);

@@ -11,6 +11,7 @@ import { AdjacencyList, Node } from '../graph';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { TutorialService } from '../tutorial.service';
+import { Cluster } from '../cluster';
 
 @Component({
   selector: 'app-tab-information-diffusion',
@@ -32,8 +33,9 @@ export class TabInformationDiffusionComponent {
   public diffusionModel: "SI" | "LT" = "SI";
   public activationProbability = 0.1;
   public simulationSpeed = 10;
-  public totalActive: Series = EmptySeries;
-  public stepActive: Series = EmptySeries;
+  public totalActive: Series = EmptySeries();
+  public stepActive: Series = EmptySeries();
+  public clusterActive: Map<number, [Series, string]> = new Map();
   public seedNodes: Set<Node> = new Set();
   public step = 0;
   public running = false;
@@ -68,6 +70,8 @@ export class TabInformationDiffusionComponent {
   public onPlay() {
     if (!this.dirty) {
       this.originalSeedNodes = new Set(this.seedNodes);
+      const entries = this.config.configuration.value.definition.graph.getNodes().map(n => [n.id, [{ data: [], xExtent: [0, 10], yExtent: [0, this.graph!.nodes.size] }, (n.data as Cluster).color]] as [number, [Series, string]]);
+      this.clusterActive = new Map(entries);
     }
     this.dirty = true;
     this.running = true;
@@ -92,6 +96,7 @@ export class TabInformationDiffusionComponent {
     // Reset series
     this.totalActive = { data: [], xExtent: [0, 10], yExtent: [0, this.graph!.nodes.size] };
     this.stepActive = { data: [], xExtent: [0, 10], yExtent: [0, this.graph!.nodes.size] };
+    this.clusterActive = new Map();
 
     // Prevent event chaining
     if (!noSeedEvent) {
@@ -140,6 +145,28 @@ export class TabInformationDiffusionComponent {
     }
     for (const n of toAdd) {
       this.seedNodes.add(n);
+    }
+
+    // Calculate per cluster
+    for (const [id, graph] of this.config.configuration.value.instance.clusters.entries()) {
+      const cluster = this.config.configuration.value.definition.graph.nodeDictionary.get(id)!.data as Cluster;
+      if (cluster.parent == -1) {
+        const [series, _] = this.clusterActive.get(cluster.id)!;
+        let count = series.data[0]?.y ?? 0;
+        for (const n of graph.nodes) {
+          if (this.seedNodes.has(n)) {
+            count++;
+          }
+        }
+        series.data.push({
+          x: this.step,
+          y: count
+        });
+        if (series.xExtent[1] <= this.step) {
+          series.xExtent[1] = Math.round(1.5 * series.xExtent[1]);
+        }
+        // Just rely on updates from total active
+      }
     }
 
     // Update series (extent in steps +1/3 free)

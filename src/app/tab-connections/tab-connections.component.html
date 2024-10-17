@@ -47,13 +47,13 @@
             Custom degree distribution for nodes from {{sourceName}}
         </mat-slide-toggle>
         @if (degreeDistributionSource != undefined) {
-            <app-vis-line-chart yLabel="Node frequency" [(series)]="degreeDistributionSource" [series2]="actualDistributionSource" [allowAxisScaling]="false" (seriesChange)="onChange()"></app-vis-line-chart>
+            <app-vis-line-chart [showLegend]="true" [legendWidth]="130" legend1="Selection" legend2="Cluster" yLabel="Node frequency" [(series)]="degreeDistributionSource" [series2]="actualDistributionSource" [allowAxisScaling]="false" (seriesChange)="onChange()"></app-vis-line-chart>
         }
         <mat-slide-toggle [checked]="degreeDistributionTarget != undefined" (change)="onChangeDistributionTarget($event.checked)">
             Custom degree distribution for nodes from {{targetName}}
         </mat-slide-toggle>
         @if (degreeDistributionTarget != undefined) {
-            <app-vis-line-chart yLabel="Node frequency" [(series)]="degreeDistributionTarget" [series2]="actualDistributionTarget" [allowAxisScaling]="false" (seriesChange)="onChange()"></app-vis-line-chart>
+            <app-vis-line-chart [showLegend]="true" [legendWidth]="130" legend1="Selection" legend2="Cluster" yLabel="Node frequency" [(series)]="degreeDistributionTarget" [series2]="actualDistributionTarget" [allowAxisScaling]="false" (seriesChange)="onChange()"></app-vis-line-chart>
         }
     } @else {
         <p class="center-text">The selected connections are inconsistent. You can reset them for multi-editing.</p>

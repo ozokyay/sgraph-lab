@@ -34,6 +34,9 @@ export class VisLineChartComponent implements AfterViewInit, OnChanges {
   @Input()
   series2?: Series;
 
+  @Input()
+  seriesList?: Map<number, [Series, string]>;
+
   @Output()
   seriesChange = new EventEmitter<Series>();
 
@@ -51,6 +54,18 @@ export class VisLineChartComponent implements AfterViewInit, OnChanges {
 
   @Input()
   yFormat?: string;
+
+  @Input()
+  legend1 = "Input";
+
+  @Input()
+  legend2 = "Actual";
+
+  @Input()
+  legendWidth = 100;
+
+  @Input()
+  showLegend = false;
 
   @Input()
   editMode = true;
@@ -72,7 +87,9 @@ export class VisLineChartComponent implements AfterViewInit, OnChanges {
   yAxis!: d3.Selection<any, unknown, null, undefined>;
   line!: d3.Selection<any, unknown, null, undefined>;
   line2!: d3.Selection<any, unknown, null, undefined>;
+  listLines!: d3.Selection<any, unknown, null, undefined>;
   handles!: d3.Selection<any, unknown, null, undefined>;
+  legend!: d3.Selection<any, unknown, null, undefined>;
 
   // Margin and aspect ratio
   margin = { top: 30, right: 10, bottom: 50, left: 50 };
@@ -270,9 +287,46 @@ export class VisLineChartComponent implements AfterViewInit, OnChanges {
       .append("path");
     this.line = this.svg.append("g")
       .append("path");
+    this.listLines = this.svg.append("g");
     
 
     this.handles = this.svg.append("g");
+    this.legend = this.svg.append("g");
+    const legendHeight = 50;
+    this.legend.attr("transform", `translate(${this.width - this.legendWidth},${0})`)
+      .attr("visibility", this.showLegend ? "visible" : "hidden")
+      .style("pointer-events", "none");
+    this.legend.append("rect")
+      .attr("x", 0)
+      .attr("y", 0)
+      .attr("width", this.legendWidth)
+      .attr("height", legendHeight)
+      .attr("fill", "none")
+      .attr("stroke", "black")
+      .attr("stroke-width", 1);
+    this.legend.append("line")
+      .attr("x1", 10)
+      .attr("y1", 15)
+      .attr("x2", 30)
+      .attr("y2", 15)
+      .attr("stroke", this.seriesList ? "black" : "steelblue")
+      .attr("stroke-width", 2);
+    this.legend.append("line")
+      .attr("x1", 10)
+      .attr("y1", 35)
+      .attr("x2", 30)
+      .attr("y2", 35)
+      .attr("stroke", this.seriesList ? "black" : "orange")
+      .attr("stroke-width", 2)
+      .attr("stroke-dasharray", this.seriesList ? "4,4" : "");
+    this.legend.append("text")
+      .attr("x", 40)
+      .attr("y", 20)
+      .text(this.legend1);
+    this.legend.append("text")
+      .attr("x", 40)
+      .attr("y", 40)
+      .text(this.legend2);
 
     if (this.initialized) {
       this.render();
@@ -330,6 +384,32 @@ export class VisLineChartComponent implements AfterViewInit, OnChanges {
         .attr("d", line2)
     }
     
+    // Clear listLines in onchanges
+    const tSeries = this.series;
+    const txScale = this.xScale;
+    const tyScale = this.yScale;
+    if (this.seriesList && this.seriesList.size > 0) {
+      this.listLines.selectAll("path")
+        .data(this.seriesList.values())
+        .join("path")
+        .each(function(d, i, t) {
+          const [series, color] = d;
+          console.log(color);
+          let dLine = d3.select(this).datum(series.data.filter(p => p.x <= tSeries.xExtent[1]));
+          const l = d3.line<Point>()
+            .curve(d3.curveLinear)
+            .x(d => txScale(d.x))
+            .y(d => tyScale(d.y));
+          dLine.attr("class", "line")
+            .attr("fill", "none")
+            .attr("stroke", color)
+            .attr("stroke-width", 2)
+            .attr("stroke-dasharray", "4,4")
+            .attr("d", l);
+        });
+    }
+    
+    // Edit mode
     if (!this.editMode) {
       this.handles.selectAll("circle")
         .remove();
