@@ -230,11 +230,8 @@ export class TabConnectionsComponent {
       // Utility.multiplyPointValues(distribution.data, 1 / max);
       // distribution.yExtent = [0, 1];
     }
-    for (const edge of this.connections) {
-      const conn = edge.data as ClusterConnection;
-      conn.sourceDegreeDistribution = structuredClone(distribution);
-    }
     this.degreeDistributionSource = distribution;
+    this.onChange();
   }
 
   public onChangeDistributionTarget(value: boolean) {
@@ -254,11 +251,8 @@ export class TabConnectionsComponent {
       }
       distribution.data[1].x = distribution.xExtent[1];
     }
-    for (const edge of this.connections) {
-      const conn = edge.data as ClusterConnection;
-      conn.targetDegreeDistribution = structuredClone(distribution);
-    }
     this.degreeDistributionTarget = distribution;
+    this.onChange();
   }
 
   public onClear() {
