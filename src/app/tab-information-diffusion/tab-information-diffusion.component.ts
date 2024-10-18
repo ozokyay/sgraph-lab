@@ -36,6 +36,7 @@ export class TabInformationDiffusionComponent {
   public totalActive: Series = EmptySeries();
   public stepActive: Series = EmptySeries();
   public clusterActive: Map<number, [Series, string]> = new Map();
+  public clusters: [string, number][] = [];
   public seedNodes: Set<Node> = new Set();
   public step = 0;
   public running = false;
@@ -97,6 +98,7 @@ export class TabInformationDiffusionComponent {
     this.totalActive = { data: [], xExtent: [0, 10], yExtent: [0, this.graph!.nodes.size] };
     this.stepActive = { data: [], xExtent: [0, 10], yExtent: [0, this.graph!.nodes.size] };
     this.clusterActive = new Map();
+    this.clusters = [];
 
     // Prevent event chaining
     if (!noSeedEvent) {
@@ -148,6 +150,7 @@ export class TabInformationDiffusionComponent {
     }
 
     // Calculate per cluster
+    this.clusters = [];
     for (const [id, graph] of this.config.configuration.value.instance.clusters.entries()) {
       const cluster = this.config.configuration.value.definition.graph.nodeDictionary.get(id)!.data as Cluster;
       if (cluster.parent == -1) {
@@ -165,6 +168,7 @@ export class TabInformationDiffusionComponent {
         if (series.xExtent[1] <= this.step) {
           series.xExtent[1] = Math.round(1.5 * series.xExtent[1]);
         }
+        this.clusters.push([cluster.name, count]);
         // Just rely on updates from total active
       }
     }

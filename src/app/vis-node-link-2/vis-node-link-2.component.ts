@@ -233,8 +233,9 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         // - Datenschutzerklärung
         // - Online-Fragebogen
         // - Ablauf (Instruktionen, Interview-Recording)
-        // - Cluster name tooltip
         // - Extra assortativity edges
+        // - Legend min/max node size, min/max edge width
+        // - Tooltips edges/matrix
         // - Highlight selected cluster (nl1/matrix hull or color)?
         // - Attribute
 

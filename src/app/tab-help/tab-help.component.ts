@@ -210,7 +210,7 @@ export class TabHelpComponent {
         const rect = this.tutorial.tabs.getBoundingClientRect();
         const pos = {
           x: rect.left - 600,
-          y: rect.top + 200
+          y: rect.top + 500
         };
         data = {
           title: "Cluster Connections",

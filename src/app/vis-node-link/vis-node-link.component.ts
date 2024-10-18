@@ -29,6 +29,7 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
   private width: number = 0;
   private height: number = 0;
   private nodeDict: Map<Node, PIXI.Graphics> = new Map();
+  private hoveredNode?: Node;
   private edgeGraphics!: PIXI.Graphics;
   private abort: AbortController = new AbortController();
   private centroidLerp: number = 1;
@@ -92,6 +93,7 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
       gfx.destroy();
     }
     this.nodeDict.clear();
+    this.hoveredNode = undefined;
 
     const degrees = this.config.measures.value.globalMeasures.degrees;
     const degreesExtent = d3.extent(degrees.values()) as [number, number];
@@ -113,18 +115,25 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
       // Alpha: This node has selected incident edges
       // This does not only depend on cluster id, but must be from the correct edge bundle which makes things inefficient
       const anySelection = this.config.selectedConnections.value.length > 0;
+      const diffisionSeed = this.config.selectedDiffusionSeeds.value.has(node);
       const alpha = !this.edgeHighlight || !anySelection || selectedEdges.find(e => e.source == node || e.target == node) ? 1 : 0.2;
 
       gfx.stroke({ width: 3, color: 'black', alpha: alpha });
-      gfx.fill({ color: this.getNodeColor(node, this.nodeColor), alpha: alpha });
+      gfx.fill({ color: diffisionSeed ? 0xFF00FF : this.getNodeColor(node, this.nodeColor), alpha: alpha });
       gfx.interactive = true;
+      gfx.onpointerenter = () => {
+        gfx.tint = 0x9A9A9A;
+        this.hoveredNode = node;
+        this.render(graph, this.abort.signal);
+      }
       gfx.onpointermove = e => {
         this.showTooltip(e.client, cluster.name);
-        gfx.tint = 0x9A9A9A;
       };
       gfx.onpointerleave = () => {
         this.hideTooltip();
         gfx.tint = 0xFFFFFF;
+        this.hoveredNode = undefined;
+        this.render(graph, this.abort.signal);
       }
       gfx.onclick = () => {
         const seeds = this.config.selectedDiffusionSeeds.value;
@@ -206,9 +215,13 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
       const data = edge.data as EdgeData;
       const source = edge.source.data as NodeData;
       const target = edge.target.data as NodeData;
+      
+      const hover = edge.source == this.hoveredNode || edge.target == this.hoveredNode;
+      const selected = selectedEdges.indexOf(edge) != -1;
+      const diffusionSeeds = this.config.selectedDiffusionSeeds.value.has(edge.source) && this.config.selectedDiffusionSeeds.value.has(edge.target);
 
       // Transparency of unselected if there is an active selection
-      const alpha = !this.edgeHighlight || !anySelection || selectedEdges.indexOf(edge) != -1 ? 1 : 0.2;
+      const alpha = !this.edgeHighlight || hover || !anySelection || selected ? 1 : 0.2;
 
       const middle = {
         x: (source.renderPosition.x + target.renderPosition.x) / 2,
@@ -216,10 +229,10 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
       };
       this.edgeGraphics.moveTo(source.renderPosition.x * this.edgeScale, source.renderPosition.y * this.edgeScale);
       this.edgeGraphics.lineTo(middle.x * this.edgeScale, middle.y * this.edgeScale);
-      this.edgeGraphics.stroke({width: 1, color: this.getNodeColor(edge.source, this.edgeColor), alpha: alpha });
+      this.edgeGraphics.stroke({width: 1, color: hover || diffusionSeeds ? 0xFF00FF : this.getNodeColor(edge.source, this.edgeColor), alpha: alpha });
       this.edgeGraphics.moveTo(middle.x * this.edgeScale, middle.y * this.edgeScale);
       this.edgeGraphics.lineTo(target.renderPosition.x * this.edgeScale, target.renderPosition.y * this.edgeScale);
-      this.edgeGraphics.stroke({width: 1, color: this.getNodeColor(edge.target, this.edgeColor), alpha: alpha });
+      this.edgeGraphics.stroke({width: 1, color: hover || diffusionSeeds ? 0xFF00FF : this.getNodeColor(edge.target, this.edgeColor), alpha: alpha });
     }
 
     // Render convex hull
@@ -249,9 +262,7 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private getNodeColor(node: Node, communityColor: boolean = true): number | string {
-    if (this.config.selectedDiffusionSeeds.value.has(node)) {
-      return 0xFF00FF;
-    } else if (communityColor) {
+    if (communityColor) {
       return this.getNodeCluster(node).color;
     } else {
       return 0x000000

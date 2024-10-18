@@ -20,7 +20,7 @@
     </mat-form-field>
     <br>
     <mat-form-field>
-      <mat-label>Node count</mat-label>
+      <mat-label>Desired node count</mat-label>
       <input matInput type="number" [value]="theoreticalNodeCount" (change)="onChangeNodeCount($event.target)">
     </mat-form-field>
     <br>
@@ -29,8 +29,10 @@
     </mat-slide-toggle>
     <br><br>
   }
-  <p class="label top-margin">Resulting node count: {{clusterMeasures?.nodeCount}}</p>
-  <p class="label">Resulting edge count: {{clusterMeasures?.edgeCount}}</p>
+  <span class="top-margin">Resulting node count: {{clusterMeasures?.nodeCount}}</span>
+  <br>
+  <span>Resulting edge count: {{clusterMeasures?.edgeCount}}</span>
+  <br>
   @if (cluster.generator.name == "CL") {
     <app-vis-line-chart [showLegend]="true" [series]="generator.degreeDistribution" [series2]="measuredDistribution" (seriesChange)="onChange()" [editMode]="!cluster.immutable" [allowAxisScaling]="!cluster.immutable" [allowLogToggles]="!cluster.immutable"></app-vis-line-chart>
   } @else if (cluster.generator.name == "CM") {
@@ -44,3 +46,5 @@
 } @else {
   <p class="center-text">Select a cluster to edit</p>
 }
+
+<!-- Two columns: percent, cluster names, rest stays stacked -->

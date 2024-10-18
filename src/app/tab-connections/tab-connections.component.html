@@ -17,7 +17,7 @@
             </mat-slider>
 
             <mat-form-field class="left-margin">
-                <mat-label>Nodes percent</mat-label>
+                <mat-label>Nodes proportion (%)</mat-label>
                 <input type="number" matInput [(ngModel)]="nodeCountSource" min="0" max="100" (change)="onChange()">
             </mat-form-field>
         </span>
@@ -29,7 +29,7 @@
                 <input matSliderThumb [(value)]="nodeCountTarget" (valueChange)="onChange()">
             </mat-slider>
             <mat-form-field class="left-margin">
-                <mat-label>Nodes percent</mat-label>
+                <mat-label>Nodes proportion (%)</mat-label>
                 <input type="number" matInput [(ngModel)]="nodeCountTarget" min="0" max="100" (change)="onChange()">
             </mat-form-field>
         </span>

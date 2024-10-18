@@ -18,14 +18,17 @@
     <input matNativeControl type="number" min="1" max="100000" [(ngModel)]="simulationSpeed" [disabled]="running"/>
 </mat-form-field>
 <br />
-<span>Active nodes: {{seedNodes.size}}</span>
-<br />
-<span>Current Timestep: {{step}}</span>
-<br />
-<br />
 <span>
     <button mat-raised-button class="button" [disabled]="running" (click)="onPlay()"><mat-icon>play_arrow</mat-icon></button>
     <button mat-raised-button class="button" [disabled]="!running" (click)="onPause()"><mat-icon>pause</mat-icon></button>
     <button mat-raised-button class="button" [disabled]="running || !dirty" (click)="onReset()"><mat-icon>replay</mat-icon></button>
     <button mat-stroked-button [disabled]="running || dirty || seedNodes.size == 0" (click)="onClear()">Clear Seed Nodes</button>
 </span>
+<br><br>
+<span>Current Timestep: {{step}}</span>
+<br />
+<span>Total active nodes: {{seedNodes.size}}</span>
+@for (c of clusters; track $index) {
+    <br>
+    <span>{{c[0]}}: {{c[1]}}</span>
+}
