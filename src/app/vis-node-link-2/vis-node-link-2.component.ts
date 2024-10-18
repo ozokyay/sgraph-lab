@@ -228,7 +228,6 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         // - Explain why no matrix mode for single level needed (higher levels very few nodes don't matter)
         // - Attributes (cluster conn and diff, arbitrary amount per cluster), labels (and cluster), define in own tab, distr per cluster, use in diff
 
-        // - Tab layout
         // - Test cases
         // - Datenschutzerklärung
         // - Online-Fragebogen

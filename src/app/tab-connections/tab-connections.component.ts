@@ -12,6 +12,8 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { FormsModule } from '@angular/forms';
+import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 // To make things clear once and for all:
 // - Edge count is the actual number (no intuitive range for normalization)
@@ -28,6 +30,8 @@ import { FormsModule } from '@angular/forms';
     MatSlideToggleModule,
     MatInputModule,
     MatFormFieldModule,
+    MatIconModule,
+    MatTooltipModule,
     FormsModule,
     VisLineChartComponent
   ],
@@ -44,8 +48,8 @@ export class TabConnectionsComponent {
   public degreeAssortativity = 0;
   public maxEdgeCount = 0;
 
-  public sourceName: string = "";
-  public targetName: string = "";
+  public sourceNames: string[] = [];
+  public targetNames: string[] = [];
 
   public degreeDistributionSource?: Series = undefined;
   public degreeDistributionTarget?: Series = undefined;
@@ -126,8 +130,8 @@ export class TabConnectionsComponent {
     // How to show actual? => from final graph
     // preview -> actual
     
-    this.sourceName = "";
-    this.targetName = "";
+    this.sourceNames = [];
+    this.targetNames = [];
 
     // Check consistency and multi-editing
     for (const edge of this.connections) {
@@ -144,8 +148,8 @@ export class TabConnectionsComponent {
         this.multiEditing = false;
       }
 
-      this.sourceName += (edge.source.data as Cluster).name + " ";
-      this.targetName += (edge.target.data as Cluster).name + " ";
+      this.sourceNames.push((edge.source.data as Cluster).name);
+      this.targetNames.push((edge.target.data as Cluster).name);
     }
   }
 
@@ -257,6 +261,6 @@ export class TabConnectionsComponent {
 
   public onClear() {
     this.config.selectedConnections.next([]);
-    this.config.activeTab.next(1); // Ideally previous tab
+    // this.config.activeTab.next(1); // Ideally previous tab
   }
 }
