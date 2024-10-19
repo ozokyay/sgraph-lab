@@ -141,4 +141,9 @@ export class AppComponent implements OnInit, AfterViewInit {
     this.containerPrimary.resize();
     this.containerSecondary.resize();
   }
+
+  @HostListener('window:beforeunload', ['$event'])
+  windowBeforeUnload(event: BeforeUnloadEvent) {
+    return this.config.configuration.value.definition.graph.nodes.size == 0;
+  }
 }

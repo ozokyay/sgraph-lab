@@ -141,10 +141,9 @@ export class TabHelpComponent {
       }
 
       case 6: {
-        const rect = this.tutorial.visPrimary.getBoundingClientRect();
         const pos = {
-          x: rect.left + 30,
-          y: rect.top + 600
+          x: -1,
+          y: -1
         };
         data = {
           title: "Node-Link Diagram",
@@ -254,6 +253,7 @@ export class TabHelpComponent {
           text: "Layout settings allow you to tune the force-directed layout algorithm. For example, you can use sampling to reduce clutter and improve performance.",
           position: pos
         };
+        this.tutorial.primaryVisLevel.next(0);
         this.config.activeTab.next(4);
         break;
       }
@@ -270,7 +270,6 @@ export class TabHelpComponent {
           position: pos
         };
         this.config.activeTab.next(5);
-        this.tutorial.primaryVisLevel.next(0);
         this.tutorial.primaryDiffusionMode.next(false);
         this.config.selectedDiffusionSeeds.value.add(this.config.configuration.value.instance.graph.nodes[0]);
         this.config.selectedDiffusionSeeds.next(this.config.selectedDiffusionSeeds.value);

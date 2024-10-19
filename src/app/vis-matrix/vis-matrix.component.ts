@@ -230,8 +230,10 @@ export class VisMatrixComponent implements AfterViewInit, OnChanges, OnDestroy {
       data[i * nodes.length + i].edge = { source: nodeX, target: nodeX, data: structuredClone(EmptyConnection) };
     }
 
-    this.xScale.domain(nodes.map(v => (v.data as Cluster).name));
-    this.yScale.domain(nodes.map(v => (v.data as Cluster).name));
+    let names = nodes.map(v => (v.data as Cluster).name);
+    names = names.map(n => n.length > 10 ? n.slice(0, 8) + "..." : n)
+    this.xScale.domain(names);
+    this.yScale.domain(names);
 
     let maxEdges = data.reduce((v, m) => Math.max(v, (m.edge!.data as ClusterConnection)?.edgeCount), 0);
     maxEdges = Math.max(maxEdges, [...this.config.configuration.value.instance.clusterMeasures.values()].reduce((v, m) => Math.max(v, m.edgeCount), 0));

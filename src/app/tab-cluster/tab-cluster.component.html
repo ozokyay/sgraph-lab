@@ -27,8 +27,9 @@
     <mat-slide-toggle [(ngModel)]="generator.extractGiantComponent" (change)="onChange()" [disabled]="cluster.immutable">
       Keep only largest connected component
     </mat-slide-toggle>
-    <br><br>
+    <br>
   }
+  <br>
   <span class="top-margin">Resulting node count: {{clusterMeasures?.nodeCount}}</span>
   <br>
   <span>Resulting edge count: {{clusterMeasures?.edgeCount}}</span>

@@ -228,7 +228,9 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         // - Explain why no matrix mode for single level needed (higher levels very few nodes don't matter)
         // - Attributes (cluster conn and diff, arbitrary amount per cluster), labels (and cluster), define in own tab, distr per cluster, use in diff
 
-        // - Test cases
+        // - Button to load curve (power law, exponential, uniform, linear, bell, S-shape) into current ranges
+        // - Circular -> Egocentric
+        // - Test cases: School, Social Media (Highlight strengths of program, correct order -> edge selection more precise? extra buttons?)
         // - Datenschutzerklärung
         // - Online-Fragebogen
         // - Ablauf (Instruktionen, Interview-Recording)
