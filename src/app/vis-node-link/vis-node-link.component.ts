@@ -36,6 +36,8 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
   private centroidLerpTargetTime: number = 0;
   private centroidLerpTransitionTime: number = 500;
   private lastRenderTime: number = 0;
+  private dragging = false;
+  private dragTimeout = -1;
 
   private subscriptions: Subscription[] = [];
 
@@ -124,16 +126,22 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
       gfx.onpointerenter = () => {
         gfx.tint = 0x9A9A9A;
         this.hoveredNode = node;
-        this.render(graph, this.abort.signal);
+        if (!this.dragging) {
+          this.render(graph, this.abort.signal);
+        }
       }
       gfx.onpointermove = e => {
-        this.showTooltip(e.client, cluster.name);
+        if (!this.dragging) {
+          this.showTooltip(e.client, cluster.name);
+        }
       };
       gfx.onpointerleave = () => {
         this.hideTooltip();
         gfx.tint = 0xFFFFFF;
         this.hoveredNode = undefined;
-        this.render(graph, this.abort.signal);
+        if (!this.dragging) {
+          this.render(graph, this.abort.signal); 
+        }
       }
       gfx.onclick = () => {
         const seeds = this.config.selectedDiffusionSeeds.value;
@@ -332,6 +340,11 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
     }
     if (changes["transform"]) {
       if (this.stage != undefined) {
+        clearTimeout(this.dragTimeout);
+        this.dragTimeout = setTimeout(() => {
+          this.dragging = false;
+        }, 100);
+        this.dragging = true;
         this.zoom(this.transform.value);
       }
     }

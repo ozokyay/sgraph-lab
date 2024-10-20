@@ -596,7 +596,7 @@ export class ConfigurationService {
 
 
     // Overlap prevention step
-    const minDist = 1;
+    const minDist = 0.6;
     const strength = 0.02;
     const levels = Utility.getNodeDepths(this.configuration.value.definition.graph);
     // Only avoid overlap for nodes that can appear together

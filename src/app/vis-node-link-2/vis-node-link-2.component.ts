@@ -42,6 +42,8 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
   private circleLayoutLerp: number = 0;
   private circleSpacingLerpTarget: number = 0;
   private lastRenderTime: number = 0;
+  private dragging = false;
+  private dragTimeout = -1;
 
   private currentLevel = 1;
   private speed = 1 / 500;
@@ -193,8 +195,10 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       gfx.fill({ color: this.getNodeColor(node, true), alpha: alpha }); // No color makes no sense
       gfx.interactive = true;
       gfx.onpointermove = e => {
-        this.showTooltip(e.client, (node.data as Cluster).name);
-        gfx.tint = 0x9A9A9A;
+        if (!this.dragging) {
+          this.showTooltip(e.client, (node.data as Cluster).name);
+          gfx.tint = 0x9A9A9A;
+        }
       };
       gfx.onpointerleave = () => {
         this.hideTooltip();
@@ -802,6 +806,11 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
   public ngOnChanges(changes: SimpleChanges) {
     if (changes["transform"]) {
       if (this.stage != undefined) {
+        clearTimeout(this.dragTimeout);
+        this.dragTimeout = setTimeout(() => {
+          this.dragging = false;
+        }, 100);
+        this.dragging = true;
         this.zoom(this.transform.value);
       }
     }
