@@ -230,6 +230,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
 
         // - Button to load curve (power law, exponential, uniform, linear, bell, S-shape) into current ranges
         // - Circular -> Egocentric
+        // - Setting node count breaks things
         // - Test cases: School, Social Media (Highlight strengths of program, correct order -> edge selection more precise? extra buttons?)
         // - Datenschutzerklärung
         // - Online-Fragebogen

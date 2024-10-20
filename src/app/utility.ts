@@ -131,6 +131,7 @@ export class Utility {
         }
       }
       const data = [...xDict.entries()].map(([x, [value, count]]) => { return { x: x, y: value / count }; });
+      data.sort((a, b) => a.x - b.x);
       const xExtent = [Math.min(...distributions.map(d => d.xExtent[0])), Math.max(...distributions.map(d => d.xExtent[1]))];
       const ys = data.map(p => p.y);
       const yExtent = [Math.min(...ys), Math.max(...ys)]
