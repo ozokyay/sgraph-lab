@@ -237,12 +237,10 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         // - Selectable expandable edges list with buttons?
         // - Extra assortativity edges
         // - Legend min/max node size, min/max edge width
-        // - Highlight selected cluster (nl1 hull)?
         // - Test cases: School, Social Media (Highlight strengths of program, correct order -> edge selection more precise? extra buttons?)
         // - Online-Fragebogen
         // - Ablauf (Instruktionen, Interview-Recording) => Test!
 
-        // - Highlight parent-child (outside of level) nodes
         // - Explain why no matrix mode for single level needed (higher levels very few nodes don't matter)
         // - Tooltips edges/matrix
         // - Attribute

@@ -401,7 +401,6 @@ export class VisLineChartComponent implements AfterViewInit, OnChanges {
         .join("path")
         .each(function(d, i, t) {
           const [series, color] = d;
-          console.log(color);
           let dLine = d3.select(this).datum(series.data.filter(p => p.x <= tSeries.xExtent[1]));
           const l = d3.line<Point>()
             .curve(d3.curveLinear)

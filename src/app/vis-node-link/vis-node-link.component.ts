@@ -75,6 +75,11 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
     this.subscriptions.push(this.config.forceDirectedLayout.subscribe(graph => {
       this.render(graph, this.abort.signal);
     }));
+    this.subscriptions.push(this.config.selectedCluster.subscribe(c => {
+      if (this.config.forceDirectedLayout.value.nodes.length > 0) {
+        this.render(this.config.forceDirectedLayout.value, this.abort.signal);
+      }
+    }));
     this.subscriptions.push(this.config.selectedConnections.subscribe(() => {
       if (this.config.forceDirectedLayout.value.nodes.length > 0) {
         this.createNodes(this.config.forceDirectedLayout.value);
@@ -243,22 +248,24 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
     }
 
     // Render convex hull
-
-    // Problem: Outliers -> soft margin -> pre-filter points too far away from centroid -> hyper-parameter?
-
-    // const cluster1 = [...this.config.configuration.value.instance.clusters.values()][0].nodes;
-    // const points: [number, number][] = cluster1.map(n => {
-    //   const data = n.data as NodeData;
-    //   return [data.renderPosition.x, data.renderPosition.y];
-    // });
-    // const hull = d3.polygonHull(points)!;
-    // for (let i = 0; i < hull.length; i++) {
-    //   const point1 = hull[i];
-    //   const point2 = hull[i == hull.length - 1 ? 0 : (i + 1)];
-    //   this.edgeGraphics.moveTo(point1[0] * this.edgeScale, point1[1] * this.edgeScale);
-    //   this.edgeGraphics.lineTo(point2[0] * this.edgeScale, point2[1] * this.edgeScale);
-    // }
-    // this.edgeGraphics.stroke({width: 4, color: 'gray'});
+    if (this.config.selectedCluster.value != undefined) {
+      const cluster1 = this.config.configuration.value.instance.clusters.get(this.config.selectedCluster.value.id)?.nodes;
+      if (cluster1 == undefined) {
+        return;
+      }
+      const points: [number, number][] = cluster1.map(n => {
+        const data = n.data as NodeData;
+        return [data.renderPosition.x, data.renderPosition.y];
+      });
+      const hull = d3.polygonHull(points)!;
+      for (let i = 0; i < hull.length; i++) {
+        const point1 = hull[i];
+        const point2 = hull[i == hull.length - 1 ? 0 : (i + 1)];
+        this.edgeGraphics.moveTo(point1[0] * this.edgeScale, point1[1] * this.edgeScale);
+        this.edgeGraphics.lineTo(point2[0] * this.edgeScale, point2[1] * this.edgeScale);
+      }
+      this.edgeGraphics.stroke({ width: 4, color: 0x222222 });
+    }
   }
 
   private getNodeCluster(node: Node): Cluster {
