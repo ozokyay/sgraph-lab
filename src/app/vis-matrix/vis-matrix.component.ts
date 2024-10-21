@@ -30,16 +30,6 @@ interface MatrixCell {
 })
 export class VisMatrixComponent implements AfterViewInit, OnChanges, OnDestroy {
 
-
-  // TODO:
-  // - Selection modality (how to handle multiple?)
-  // A) Single only
-  // B) Disable directional properties (except for 1:N case) <- preferred
-  // C) Directionality selection (complete matrix)
-  
-  // Show connection strength [min, max] color
-  // Selection of arbitrary number of edges
-
   @Input()
   level: number = 1;
 
@@ -231,7 +221,7 @@ export class VisMatrixComponent implements AfterViewInit, OnChanges, OnDestroy {
     }
 
     let names = nodes.map(v => (v.data as Cluster).name);
-    names = names.map(n => n.length > 10 ? n.slice(0, 8) + "..." : n)
+    // names = names.map(n => n.length > 10 ? n.slice(0, 8) + "..." : n)
     this.xScale.domain(names);
     this.yScale.domain(names);
 
@@ -415,10 +405,13 @@ export class VisMatrixComponent implements AfterViewInit, OnChanges, OnDestroy {
       }
     };
 
+    const ellipsis = (s: string): string => s.length > 14 ? s.slice(0, 12) + "..." : s;
+
     const scalingFactor = Math.min(1, 17 / nodes.length * this.scale);
 
     this.xAxis.selectAll("text")
       .data(nodes)
+      .text(d => ellipsis((d.data as Cluster).name))
       .style("text-anchor", "end")
       .attr("transform", `translate(${scalingFactor * -4 - 9}, ${10}) rotate(-65)`)
       .attr("font-weight", d => label(d))
@@ -426,6 +419,7 @@ export class VisMatrixComponent implements AfterViewInit, OnChanges, OnDestroy {
     
     this.yAxis.selectAll("text")
       .data(nodes)
+      .text(d => ellipsis((d.data as Cluster).name))
       .style("text-anchor", "end")
       .attr("x", -15)
       .attr("font-weight", d => label(d))
