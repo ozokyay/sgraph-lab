@@ -419,6 +419,11 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         }
       }
 
+      // If spawned in by selection
+      if (cluster == this.config.selectedCluster.value && level != this.level && (cluster.children.length > 0 || level > this.level)) {
+        gfx.alpha = 0.5;
+      }
+
       gfx.interactive = gfx.alpha > 0;
 
       // Overlap prevention
@@ -603,13 +608,15 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       // Transparency of unselected if there is an active selection
       
       // Keep selected, fade out unselected from active selection
-      let alpha = Math.min(sourceGraphics.alpha, targetGraphics.alpha);
-      if (source != this.circleLayoutCenter?.data && target != this.circleLayoutCenter?.data) {
+      const selected = this.config.selectedConnections.value.find(c => c == edge) != undefined;
+      const sourceAlpha = source == this.config.selectedCluster.value ? 1 : sourceGraphics.alpha;
+      const targetAlpha = target == this.config.selectedCluster.value ? 1 : targetGraphics.alpha;
+      let alpha = Math.min(sourceAlpha, targetAlpha);
+      if (!selected && source != this.circleLayoutCenter?.data && target != this.circleLayoutCenter?.data) {
         alpha = Utility.lerp(alpha, 0, this.circleLayoutLerp);
       }
 
       const w = graph.edges.find(e => (e.data as ClusterConnection).edgeCount > 1) ? this.edgeWidthScale(data.edgeCount) : this.edgeWidthRange[0]; // Assuming linear scale
-      const selected = this.config.selectedConnections.value.find(c => c == edge) != undefined;
       const c = selected ? "yellow" : "black";
       const ratio = this.edgeRatio ? data.sourceNodeCount / data.targetNodeCount : 1;
       const wSource = Math.min(ratio * w, w);
@@ -648,8 +655,9 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       const sourcePos = Utility.addP(sourceGraphics.position, Utility.scalarMultiplyP(sourceRadius, Utility.normalizeP(Utility.subtractP(targetGraphics.position, sourceGraphics.position))));
       const targetPos = Utility.addP(targetGraphics.position, Utility.scalarMultiplyP(targetRadius, Utility.normalizeP(Utility.subtractP(sourceGraphics.position, targetGraphics.position))));
 
-      // This is not readable
-      const alpha = Math.min(sourceGraphics.alpha, targetGraphics.alpha);
+      const sourceAlpha = edge.source.data == this.config.selectedCluster.value ? 1 : sourceGraphics.alpha;
+      const targetAlpha = edge.target.data == this.config.selectedCluster.value ? 1 : targetGraphics.alpha;
+      const alpha = Math.min(sourceAlpha, targetAlpha);
       const black = { width: 3, color: "black", alpha: alpha };
       const yellow = { width: 6, color: "yellow", alpha: alpha };
       this.dashedLine(this.edgeGraphics, sourcePos, targetPos, 24, 12);

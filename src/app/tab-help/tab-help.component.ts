@@ -199,7 +199,7 @@ export class TabHelpComponent {
         };
         data = {
           title: "Cluster Properties",
-          text: "The generator takes a distribution of node degrees a is input.",
+          text: "The generator takes a distribution of node degrees a its input. You can generate a distribution or edit the points manually.",
           position: pos
         };
         break;
