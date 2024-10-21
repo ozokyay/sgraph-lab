@@ -13,8 +13,6 @@ import { DegreesDefault, Series } from '../series';
 import { Utility } from '../utility';
 import { MatDividerModule } from '@angular/material/divider';
 
-export type Distribution = "power-law" | "linear-growing" | "linear-shrinking" | "uniform" | "custom";
-
 @Component({
   selector: 'app-tab-cluster',
   standalone: true,
@@ -36,7 +34,6 @@ export class TabClusterComponent {
   public cluster?: Cluster = undefined;
   public generator?: any = undefined; // To erase type for html
   public theoreticalNodeCount = 0;
-  public distribution: Distribution = "power-law";
 
   constructor(private config: ConfigurationService) {
     Utility.config = config;
@@ -74,7 +71,7 @@ export class TabClusterComponent {
       result = this.clusterMeasures?.degreeDistribution;
     }
 
-    if (result != undefined) {
+    if (result != undefined && result.data.length > 0) {
       if (result.data[0].x == 0) {
         result.data.splice(0, 1);
       }
@@ -118,14 +115,11 @@ export class TabClusterComponent {
         break;
     }
     this.generator = this.cluster!.generator;
-    this.onChange(false);
+    this.onChange();
   }
 
-  public onChange(changedDistribution: boolean = true) {
+  public onChange() {
     if (this.cluster != undefined) {
-      if (changedDistribution) {
-        this.distribution = "custom";
-      }
       this.updateReplication();
       this.cluster.changeUUID = crypto.randomUUID();
       this.config.update("Change cluster " + this.cluster.id);
@@ -229,71 +223,34 @@ export class TabClusterComponent {
   }
 
   public onChangeNodeCount(t: any) {
-    const nodeCount = t.value as number;
+    let nodeCount = t.value as number;
     const gen: CLGenerator | CMGenerator = this.cluster?.generator as CLGenerator | CMGenerator;
-    const distr = Utility.computeDistribution(gen.degreeDistribution);
-    let total = 0;
-    for (const p of distr) {
-      total += p.y;
-    }
-    for (const p of distr) {
-      p.y = Math.round(p.y / total * nodeCount);
-    }
-    // Must re-create gaps
-    const simple = Utility.simplifyDistribution(distr);
-    gen.degreeDistribution.data.splice(gen.degreeDistribution.data.length);
-    gen.degreeDistribution.data = simple;
-    const max = simple.reduce((a, b) => Math.max(a, Math.ceil(b.y)), 0);
-    gen.degreeDistribution.yExtent[1] = max;
-    this.onChange();
-  }
-
-  public onChangeDistribution(distribution: Distribution) {
-    if (this.generator == undefined) {
-      console.log("Generator undefined");
-      return;
-    }
-
-    if (this.generator.name == "MG" || distribution == "custom") {
-      return;
-    }
-
-    // Should allow to enter exponent for power law @if power-law
-    this.distribution = distribution;
-    const gen = this.generator as CLGenerator | CMGenerator;
-    const maxX = Math.max(1, gen.degreeDistribution.xExtent[1]);
-    const maxY = gen.degreeDistribution.yExtent[1];
-    gen.degreeDistribution.data.splice(0, gen.degreeDistribution.data.length);
-
-    // Here, both axis take priority (only one would be weird)
-    // Therefore, ignore node count
-    switch (distribution) {
-      case "power-law":
-        for (let x = 1; x < maxX; x = Math.ceil(x + x / 10)) {
-          gen.degreeDistribution.data.push({ x: x, y: maxY / x });
-        }
-        gen.degreeDistribution.data.push({ x: maxX, y: maxY / maxX });
-        break;
-      
-      case "linear-growing":
-        gen.degreeDistribution.data.push({ x: 1, y: 0 });
-        gen.degreeDistribution.data.push({ x: maxX, y: maxY });
-        break;
-        
-      case "linear-shrinking":
-        gen.degreeDistribution.data.push({ x: 1, y: maxY } );
-        gen.degreeDistribution.data.push({ x: maxX, y: 0 });
-        break;      
-    
-      case "uniform":
-        gen.degreeDistribution.data.push({ x: 1, y: maxY / 2 });
-        gen.degreeDistribution.data.push({ x: maxX, y: maxY / 2 });
-        break;
-    
-      default:
-        break;
-    }
-
-    this.onChange(false);
+    let measured: number | undefined;
+    let it = 0;
+    do {
+      const distr = Utility.computeDistribution(gen.degreeDistribution);
+      let total = 0;
+      for (const p of distr) {
+        total += p.y;
+      }
+      for (const p of distr) {
+        p.y = Math.round(p.y / total * nodeCount);
+      }
+      // Must re-create gaps
+      const simple = Utility.simplifyDistribution(distr);
+      gen.degreeDistribution.data.splice(gen.degreeDistribution.data.length);
+      gen.degreeDistribution.data = simple;
+      const max = simple.reduce((a, b) => Math.max(a, Math.ceil(b.y)), 0);
+      gen.degreeDistribution.yExtent[1] = max;
+      this.onChange();
+      // Dirty hack
+      measured = this.clusterMeasures?.nodeCount;
+      if (measured == undefined) {
+        console.log("Node count measures undefined");
+        return;
+      }
+      it++;
+      nodeCount = measured < nodeCount ? +t.value + 1 : +t.value - 1;
+    } while (false && !gen.extractGiantComponent && measured != nodeCount && it < 3);
   }
 }

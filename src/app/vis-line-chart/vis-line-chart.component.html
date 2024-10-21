@@ -29,6 +29,30 @@
     @if (series && editMode) {
         <mat-expansion-panel class="space-vert-top">
             <mat-expansion-panel-header>
+                <mat-panel-title>Curve generator</mat-panel-title>
+            </mat-expansion-panel-header>
+            <div>
+                <mat-form-field>
+                    <mat-label>Type</mat-label>
+                    <mat-select #type [(ngModel)]="distributionType">
+                      <mat-option value="power-law">Power-Law</mat-option>
+                      <mat-option value="linear-growing">Linear (growing)</mat-option>
+                      <mat-option value="linear-shrinking">Linear (shrinking)</mat-option>
+                      <mat-option value="uniform">Uniform</mat-option>
+                    </mat-select>
+                </mat-form-field>
+                @if (type.value == "power-law") {
+                <mat-form-field style="margin-left: 10px;">
+                    <mat-label>Exponent</mat-label>
+                    <input matInput type="number" max="0" [(ngModel)]="exponent">
+                </mat-form-field>
+                }
+                <br>
+                <button mat-stroked-button (click)="onGenerate()">Generate</button>
+            </div>
+        </mat-expansion-panel>
+        <mat-expansion-panel class="space-vert-top">
+            <mat-expansion-panel-header>
               <mat-panel-title>Data points</mat-panel-title>
               <!-- <mat-panel-description> This is a summary of the content </mat-panel-description> -->
             </mat-expansion-panel-header>

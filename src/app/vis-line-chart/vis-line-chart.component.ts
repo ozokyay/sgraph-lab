@@ -10,6 +10,9 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { DecimalPipe } from '@angular/common';
+import { MatSelectModule } from '@angular/material/select';
+
+export type Distribution = "power-law" | "linear-growing" | "linear-shrinking" | "uniform" | "custom";
 
 @Component({
   selector: 'app-vis-line-chart',
@@ -20,6 +23,7 @@ import { DecimalPipe } from '@angular/common';
     MatSlideToggleModule,
     MatButtonModule,
     MatIconModule,
+    MatSelectModule,
     MatExpansionModule,
     FormsModule,
     DecimalPipe
@@ -95,6 +99,9 @@ export class VisLineChartComponent implements AfterViewInit, OnChanges {
   margin = { top: 30, right: 10, bottom: 50, left: 50 };
   width = 550 - this.margin.left - this.margin.right;
   height = 300 - this.margin.top - this.margin.bottom;
+
+  public distributionType: Distribution = "power-law";
+  public exponent = -1;
 
   rescaleCoordinatesX(e: any) {
     const dom = this.xScale.domain();
@@ -502,6 +509,43 @@ export class VisLineChartComponent implements AfterViewInit, OnChanges {
 
   public deletePoint(point: Point) {
     this.series.data.splice(this.series.data.indexOf(point), 1);
+    this.onChange();
+  }
+
+  public onGenerate() {
+    const maxX = Math.max(1, this.series.xExtent[1]);
+    const maxY = this.series.yExtent[1];
+    this.series.data.splice(0, this.series.data.length);
+
+    // Here, both axis take priority (only one would be weird)
+    // Therefore, ignore node count
+    switch (this.distributionType) {
+      case "power-law":
+        for (let x = 1; x < maxX; x = Math.ceil(x + x / 10)) {
+          this.series.data.push({ x: x, y: maxY * Math.pow(x, this.exponent) });
+        }
+        this.series.data.push({ x: maxX, y: maxY * Math.pow(maxX, this.exponent) });
+        break;
+      
+      case "linear-growing":
+        this.series.data.push({ x: 1, y: 0 });
+        this.series.data.push({ x: maxX, y: maxY });
+        break;
+        
+      case "linear-shrinking":
+        this.series.data.push({ x: 1, y: maxY } );
+        this.series.data.push({ x: maxX, y: 0 });
+        break;      
+    
+      case "uniform":
+        this.series.data.push({ x: 1, y: maxY / 2 });
+        this.series.data.push({ x: maxX, y: maxY / 2 });
+        break;
+    
+      default:
+        break;
+    }
+
     this.onChange();
   }
 }
