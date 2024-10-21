@@ -26,8 +26,17 @@
                 <mat-icon>add</mat-icon>
             </button>
         }
+        <button mat-icon-button [class.li-icon-end]="node.immutable" [class.li-icon]="node.generator.name != 'MG'" title="Visibility" (click)="onToggleVisibility($event, node)">
+            <mat-icon>
+                @if (hidden.has(node.id)) {
+                    visibility_off
+                } @else {
+                    visibility
+                }
+            </mat-icon>
+        </button>
         @if (!node.immutable) {
-            <button mat-icon-button class="li-icon-end" [class.li-icon]="node.generator.name != 'MG'" title="Delete cluster" (click)="onRemoveCluster($event, node)" [disabled]="!edit">
+            <button mat-icon-button class="li-icon-end" title="Delete cluster" (click)="onRemoveCluster($event, node)" [disabled]="!edit">
                 <mat-icon>delete</mat-icon>
             </button>
         }
@@ -47,8 +56,17 @@
                     <mat-icon>add</mat-icon>
                 </button>
             }
+            <button mat-icon-button [class.li-icon-end]="node.immutable" [class.li-icon]="node.generator.name != 'MG'" title="Visibility" (click)="onToggleVisibility($event, node)">
+                <mat-icon>
+                    @if (hidden.has(node.id)) {
+                        visibility_off
+                    } @else {
+                        visibility
+                    }
+                </mat-icon>
+            </button>
             @if (!node.immutable) {
-                <button mat-icon-button class="li-icon-end" [class.li-icon]="node.generator.name != 'MG'" title="Delete cluster" (click)="onRemoveCluster($event, node)" [disabled]="!edit">
+                <button mat-icon-button class="li-icon-end" title="Delete cluster" (click)="onRemoveCluster($event, node)" [disabled]="!edit">
                     <mat-icon>delete</mat-icon>
                 </button>
             }

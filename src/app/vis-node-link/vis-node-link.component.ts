@@ -87,6 +87,12 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
         this.render(this.config.forceDirectedLayout.value, this.abort.signal);
       }
     }));
+    this.subscriptions.push(this.config.hiddenClusters.subscribe(cs => {
+      if (this.config.forceDirectedLayout.value.nodes.length > 0) {
+        this.createNodes(this.config.forceDirectedLayout.value);
+        this.render(this.config.forceDirectedLayout.value, this.abort.signal);
+      }
+    }));
   }
 
   private createNodes(graph: EdgeList) {
@@ -107,6 +113,9 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
 
     for (const node of graph.nodes) {
       const cluster = this.getNodeCluster(node);
+      if (this.config.hiddenClusters.value.has(cluster.id)) {
+        continue;
+      }
       const gfx = new PIXI.Graphics({ zIndex: 1 });
       let radius = this.nodeRadius;
       if (this.nodeSize) {
@@ -177,15 +186,6 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
 
     this.zoom(this.transform.value);
 
-    // let zooming = d3.select(this.app.canvas as any)
-    //   .call(this.zoom.on('zoom', zoom).filter((e: any) => (!e.ctrlKey || e.type === 'wheel') && !e.button && !e.shiftKey));
-    
-    // Initial zoom to center
-    // if (this.transform.x == 0 && this.transform.y == 0) {
-    //   zooming.call(this.zoom.transform, d3.zoomIdentity.translate(this.width / 2, this.height / 2));
-    // }
-
-
     // Join with selectedConnections to determine alpha/highlight value
     const anySelection = this.config.selectedConnections.value.length > 0;
     const selectedEdges = [...this.config.configuration.value.instance.connections.entries()]
@@ -197,6 +197,9 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
     // Lerp for possible cluster aggregation
     for (const node of graph.nodes) {
       const data = node.data as NodeData;
+      if (this.config.hiddenClusters.value.has(data.clusterID)) {
+        continue;
+      }
       const centroid = this.config.centroids.value.get(data.clusterID);
       const gfx = this.nodeDict.get(node);
       if (data == undefined || centroid == undefined || gfx == undefined) {
@@ -207,14 +210,6 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
         x: data.renderPosition.x * this.edgeScale,
         y: data.renderPosition.y * this.edgeScale
       };
-
-      
-
-      // Change fill/tint depending on selection
-      // Or re-create nodes in subject change subscription event
-
-      // Kind of prefer tint here tbh (less calls other than render)
-      // Or just call createNodes(), easy
     }
 
     // Render edges
@@ -223,6 +218,10 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
       const data = edge.data as EdgeData;
       const source = edge.source.data as NodeData;
       const target = edge.target.data as NodeData;
+
+      if (this.config.hiddenClusters.value.has(source.clusterID) || this.config.hiddenClusters.value.has(target.clusterID)) {
+        continue;
+      }
       
       const hover = edge.source == this.hoveredNode || edge.target == this.hoveredNode;
       const selected = selectedEdges.indexOf(edge) != -1;

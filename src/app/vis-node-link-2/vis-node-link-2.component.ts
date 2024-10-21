@@ -143,6 +143,12 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         this.render(this.graph, this.abortRender.signal);
       }
     }));
+    this.subscriptions.push(this.config.hiddenClusters.subscribe(cs => {
+      if (this.graph != undefined && this.stage != undefined && this.graph.nodes.length > 0) {
+        this.createNodes(this.graph);
+        this.render(this.graph, this.abortRender.signal);
+      }
+    }));
   }
 
   private reset() {
@@ -153,12 +159,6 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
   }
 
   private prepare(graph: EdgeList): EdgeList {
-    // Step 1: Node + edge scaling (OK)
-    // Step 2.1: Lerp to level (OK)
-    // Step 2.2: Lerp to minimap (OK)
-    // Step 3: Minimap scaling
-    // Step 4: Multilevel support
-
     // Need all nodes and edges here, lerp position and alpha in render()
     this.createNodes(graph);
     return graph;
@@ -166,7 +166,6 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
 
   private createNodes(graph: EdgeList) {
     for (const [gfx, _] of this.nodeDict.values()) {
-      // this.stage.removeChild(gfx);
       gfx.destroy();
     }
     this.nodeDict.clear();
@@ -181,6 +180,11 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     this.zoom(this.transform.value);
 
     for (const [node, level] of levels) {
+      // Skip hidden
+      if (this.config.hiddenClusters.value.has(node.id)) {
+        continue;
+      }
+
       const gfx = new PIXI.Graphics();
       const radius = this.nodeSize ? this.radiusScale(measures.get(node.id)!.nodeCount) : (this.nodeRadiusRange[0] + this.nodeRadiusRange[1]) / 2;
       const alpha = 1;
@@ -230,18 +234,17 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
 
         // TODO
         // - Circular -> Egocentric
-        // - Selecting (all) edges within cluster -> extra modifier selection modality or UI? -> Visibility selector in list to filter clusters (alpha, selectoion, inherit from parent)
         // - Selectable expandable edges list with buttons?
-        // - Test cases: School, Social Media (Highlight strengths of program, correct order -> edge selection more precise? extra buttons?)
-        // - Online-Fragebogen
         // - Extra assortativity edges
         // - Legend min/max node size, min/max edge width
+        // - Highlight selected cluster (nl1 hull)?
+        // - Test cases: School, Social Media (Highlight strengths of program, correct order -> edge selection more precise? extra buttons?)
+        // - Online-Fragebogen
         // - Ablauf (Instruktionen, Interview-Recording) => Test!
 
         // - Highlight parent-child (outside of level) nodes
         // - Explain why no matrix mode for single level needed (higher levels very few nodes don't matter)
         // - Tooltips edges/matrix
-        // - Highlight selected cluster (nl1/matrix hull or color)?
         // - Attribute
 
         this.selectEdges(node, e.shiftKey);
@@ -292,8 +295,11 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         // Search through all real edges
         const edges = this.config.configuration.value.definition.graph.nodes.get(selectedNode)!;
         for (const other of this.config.configuration.value.definition.graph.getNodes()) {
+          if (this.config.hiddenClusters.value.has(other.id)) {
+            continue;
+          }
           const [_, level] = this.nodeDict.get(other)!;
-          if (other == selectedNode || (level != this.level && ((other.data as Cluster).children.length > 0 || level > this.level))) {
+          if (other == selectedNode || this.config.hiddenClusters.value.has(other.id) || (level != this.level && ((other.data as Cluster).children.length > 0 || level > this.level))) {
             continue;
           }
 
@@ -389,7 +395,14 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     // Level positions
     for (const node of graph.nodes) {
       const cluster = node.data as Cluster;
-      const [gfx, level] = this.nodeDict.get(node)!;
+      if (this.config.hiddenClusters.value.has(node.id)) {
+        continue;
+      }
+      const entry = this.nodeDict.get(node);
+      if (!entry) {
+        continue;
+      }
+      const [gfx, level] = entry;
       gfx.zIndex = 1000 - level;
       gfx.position = this.calculateBasePos(node, level, upper, lower);
 
@@ -418,13 +431,13 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     }
 
     // Circular
-    if (this.circleLayoutCenter != undefined) {
+    if (this.circleLayoutCenter != undefined && !this.config.hiddenClusters.value.has(this.circleLayoutCenter.id)) {
       let centerPos = this.nodeDict.get(this.circleLayoutCenter)![0].position;
       const anglesList: [PIXI.Graphics, number, number][] = [];
 
       if (graph.nodes.length > 1) {
         for (const node of graph.nodes) {
-          if (node == this.circleLayoutCenter) {
+          if (node == this.circleLayoutCenter || this.config.hiddenClusters.value.has(node.id)) {
             continue;
           }
     
@@ -519,12 +532,12 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       const source = edge.source.data as Cluster;
       const target = edge.target.data as Cluster;
 
-      const [sourceGraphics, sourceLevel] = this.nodeDict.get(edge.source)!;
-      const [targetGraphics, targetLevel] = this.nodeDict.get(edge.target)!;
-
-      if (data.edgeCount == 0) {
+      if (data.edgeCount == 0 || this.config.hiddenClusters.value.has(source.id) || this.config.hiddenClusters.value.has(target.id)) {
         continue;
       }
+
+      const [sourceGraphics, sourceLevel] = this.nodeDict.get(edge.source)!;
+      const [targetGraphics, targetLevel] = this.nodeDict.get(edge.target)!;
 
       // Radius could be saved somewhere
       const midRadius = (this.nodeRadiusRange[0] + this.nodeRadiusRange[1]) / 2;
@@ -620,25 +633,9 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       }
     }
 
-    // Potential edges circular layout
-    // if (this.circleLayoutCenter != undefined) {
-    //   const [centerGfx, _] = this.nodeDict.get(this.circleLayoutCenter)!;
-    //   for (const node of graph.nodes) {
-    //     if (node == this.circleLayoutCenter) {
-    //       continue;
-    //     }
-    //     const [gfx, level] = this.nodeDict.get(node)!;
-    //     if (level != this.level) { // This
-    //       continue;
-    //     }
-    //     this.dashedLine(this.edgeGraphics, centerGfx.position, gfx.position, 24, 12);
-    //     this.edgeGraphics.stroke({ width: 4, color: "black", alpha: this.circleLayoutLerp });
-    //   }
-    // }
-
     // Potential edges or highlight edge selection
     for (const edge of this.config.selectedConnections.value) {
-      if ((edge.data as ClusterConnection).edgeCount > 0) {
+      if ((edge.data as ClusterConnection).edgeCount > 0 || this.config.hiddenClusters.value.has(edge.source.id) || this.config.hiddenClusters.value.has(edge.target.id)) {
         continue;
       }
 

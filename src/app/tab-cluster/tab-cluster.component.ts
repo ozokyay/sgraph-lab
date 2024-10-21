@@ -147,6 +147,7 @@ export class TabClusterComponent {
       for (const child of this.cluster.children) {
         const node = this.config.configuration.value.definition.graph.nodeDictionary.get(child)!;
         this.config.configuration.value.definition.graph.removeNode(node);
+        this.config.hiddenClusters.value.delete(node.id);
       }
       this.cluster.children = [];
       const children: number[] = [];
@@ -190,9 +191,13 @@ export class TabClusterComponent {
         children.push(newChild.id);
         newChild.changeUUID = crypto.randomUUID();
         this.config.configuration.value.definition.graph.addNode({ id: newChild.id, data: newChild });
+        if (this.config.hiddenClusters.value.has(this.cluster.id)) {
+          this.config.hiddenClusters.value.add(id);
+        }
         id++;
       }
       this.cluster.children = children;
+      this.config.hiddenClusters.next(this.config.hiddenClusters.value);
       
       // Update colors
       const topLevel = this.config.configuration.value.definition.graph.getNodes().map(n => n.data as Cluster).filter(c => c.parent == -1);

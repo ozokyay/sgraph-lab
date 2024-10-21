@@ -26,6 +26,7 @@ export class ConfigurationService {
   public measures = new BehaviorSubject<GraphInstance>(this.configuration.value.instance);
   public hoveredCluster = new BehaviorSubject<Cluster | undefined>(undefined);
   public selectedCluster = new BehaviorSubject<Cluster | undefined>(undefined);
+  public hiddenClusters = new BehaviorSubject<Set<number>>(new Set());
   public selectedConnections = new BehaviorSubject<Edge[]>([]);
   public selectedDiffusionSeeds = new BehaviorSubject<Set<Node>>(new Set());
   public layoutSettings = new BehaviorSubject<LayoutSettings>(DefaultLayout);

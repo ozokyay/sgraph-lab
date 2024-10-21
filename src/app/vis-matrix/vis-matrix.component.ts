@@ -2,7 +2,7 @@ import { AfterViewInit, Component, ElementRef, HostListener, Input, OnChanges, O
 import { ConfigurationService } from '../configuration.service';
 import * as d3 from 'd3';
 import { Cluster } from '../cluster';
-import { AdjacencyList, Edge, Node } from '../graph';
+import { AdjacencyList, Edge, EdgeList, Node } from '../graph';
 import { Utility } from '../utility';
 import { ClusterConnection, EmptyConnection } from '../cluster-connection';
 import { MGGenerator } from '../generators';
@@ -81,6 +81,9 @@ export class VisMatrixComponent implements AfterViewInit, OnChanges, OnDestroy {
     }));
     this.subscriptions.push(this.config.selectedConnections.subscribe(c => {
       // Redundant with level change, but level change can only be propagated after this
+      this.render(this.config.configuration.value.definition.graph, this.level);
+    }));
+    this.subscriptions.push(this.config.hiddenClusters.subscribe(cs => {
       this.render(this.config.configuration.value.definition.graph, this.level);
     }));
   }
@@ -166,9 +169,24 @@ export class VisMatrixComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
   render(graph: AdjacencyList, level: number) {
+    // Easiest is new graph without hidden nodes
+    const old = new EdgeList(graph);
+    graph = new AdjacencyList();
+    for (const node of old.nodes) {
+      if (!this.config.hiddenClusters.value.has(node.id)) {
+        graph.addNode(node);
+      }
+    }
+    for (const edge of old.edges) {
+      if (!this.config.hiddenClusters.value.has(edge.source.id) && !this.config.hiddenClusters.value.has(edge.target.id)) {
+        graph.addEdge(edge);
+      }
+    }
+
     const levels: number[] = [];
     let nodes = graph.getNodes().filter(v => (v.data as Cluster).parent == -1);
-    nodes = this.bfs(nodes.map(v => [v, 0]), level, levels);
+    nodes = this.bfs(graph, nodes.map(v => [v, 0]), level, levels); // Nodes sorted by level
+
 
     // Matrix cells
     const data: MatrixCell[] = [];
@@ -475,7 +493,7 @@ export class VisMatrixComponent implements AfterViewInit, OnChanges, OnDestroy {
     //   .attr("fill", "lightgray");
   }
 
-  private bfs(queue: [Node, number][], limit: number, levels: number[] = []): Node[] {
+  private bfs(graph: AdjacencyList, queue: [Node, number][], limit: number, levels: number[] = []): Node[] {
     const depthLevels: number[] = [];
     const output: Node[] = [];
     while (queue.length > 0) {
@@ -491,7 +509,7 @@ export class VisMatrixComponent implements AfterViewInit, OnChanges, OnDestroy {
           continue;
         }
         for (const c of cluster.children) {
-          const child = this.config.configuration.value.definition.graph.nodeDictionary.get(c)!;
+          const child = graph.nodeDictionary.get(c)!;
           queue.push([child, depth + 1]);
         }
       }

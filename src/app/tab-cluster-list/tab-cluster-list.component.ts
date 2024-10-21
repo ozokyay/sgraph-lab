@@ -38,6 +38,7 @@ export class TabClusterListComponent {
   public clusters: Cluster[] = [];
   public selectedCluster?: Cluster = undefined;
   public highlight = new Map<Cluster, boolean>();
+  public hidden = new Set<number>();
 
   constructor(private config: ConfigurationService, public tutorial: TutorialService) {
     Utility.config = config;
@@ -51,6 +52,12 @@ export class TabClusterListComponent {
       }
     });
     config.selectedCluster.subscribe(cluster => this.selectedCluster = cluster);
+    config.hiddenClusters.subscribe(clusters => {
+      this.hidden.clear();
+      for (const c of clusters) {
+        this.hidden.add(c);
+      }
+    });
     // config.activeTab.subscribe(t => {
     //   this.edit = t != 1;
     // });
@@ -90,16 +97,6 @@ export class TabClusterListComponent {
       const latestCluster = latestNode.data as Cluster;
       id = latestCluster.id + 1;
     }
-
-    // Then
-    // TODO: Matrix (levels)
-    // TODO: Minimap (levels)
-    // TODO: NL (levels)
-    // TODO: Distribution Tables
-    // TODO: Attributes and assortativity
-    // TODO: Circle Packing
-    // TODO: (Tree)
-    // https://sites.cc.gatech.edu/gvu/ii/icet/
 
     let sIndex;
     if (parent !== undefined) {
@@ -148,6 +145,7 @@ export class TabClusterListComponent {
     if (cluster == this.selectedCluster) {
       this.config.selectedCluster.next(undefined);
     }
+    this.config.hiddenClusters.value.delete(cluster.id);
     for (const i of [...cluster.children]) {
       this.onRemoveCluster(event, Utility.getCluster(i), false);
     }
@@ -170,6 +168,24 @@ export class TabClusterListComponent {
       return;
     }
     this.config.selectedCluster.next(cluster);
+  }
+
+  public onToggleVisibility(event: MouseEvent, cluster: Cluster) {
+    event.stopPropagation();
+    this.setVisibility(cluster, this.config.hiddenClusters.value.has(cluster.id));
+    this.config.hiddenClusters.next(this.config.hiddenClusters.value);
+  }
+
+  private setVisibility(cluster: Cluster, visible: boolean) {
+    if (visible) {
+      this.config.hiddenClusters.value.delete(cluster.id);
+    } else {
+      this.config.hiddenClusters.value.add(cluster.id);
+    }
+    for (const c of cluster.children) {
+      const node = this.config.configuration.value.definition.graph.nodeDictionary.get(c)!;
+      this.setVisibility(node.data as Cluster, visible);
+    }
   }
 
   public onHoverCluster(cluster?: Cluster) {
