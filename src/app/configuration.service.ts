@@ -396,7 +396,7 @@ export class ConfigurationService {
       measures.edgeCount = graph.edges.length;
       measures.density = Math.round(2 * graph.edges.length / (graph.nodes.length * (graph.nodes.length - 1)) * 1000) / 1000;
       measures.degrees = Utility.computeNodeDegrees(graph);
-      measures.degreeDistribution = Utility.getDegreeDistribution(measures.degrees);      
+      measures.degreeDistribution = Utility.getDegreeDistribution(measures.degrees);
       return measures;
     };
 

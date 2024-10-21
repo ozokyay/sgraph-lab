@@ -232,13 +232,16 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         // - Explain why no matrix mode for single level needed (higher levels very few nodes don't matter)
         // - Attributes (cluster conn and diff, arbitrary amount per cluster), labels (and cluster), define in own tab, distr per cluster, use in diff
 
-        // - Button to load curve (power law, exponential, uniform, linear, bell, S-shape) into current ranges
+        // - Button to load curve (custom on change, power law, exponential, uniform, linear, bell, S-shape) into current ranges
+        // - Highlight parent-child (outside of level) nodes
         // - Circular -> Egocentric
-        // - Setting node count breaks things
+        // - Setting node count breaks things (rounding, flooring)
+        // - Selecting (all) edges within cluster -> extra modifier selection modality or UI? -> Visibility selector in list to filter clusters (alpha, selectoion, inherit from parent)
+        // - Selectable expandable edges list with buttons?
         // - Test cases: School, Social Media (Highlight strengths of program, correct order -> edge selection more precise? extra buttons?)
         // - Datenschutzerklärung
         // - Online-Fragebogen
-        // - Ablauf (Instruktionen, Interview-Recording)
+        // - Ablauf (Instruktionen, Interview-Recording) => Test!
         // - Extra assortativity edges
         // - Legend min/max node size, min/max edge width
         // - Tooltips edges/matrix

@@ -35,8 +35,30 @@
   <span>Resulting edge count: {{clusterMeasures?.edgeCount}}</span>
   <br>
   @if (cluster.generator.name == "CL") {
+    <br>
+    <mat-form-field>
+      <mat-label>Distribution</mat-label>
+      <mat-select [ngModel]="distribution" (valueChange)="onChangeDistribution($event)" [disabled]="cluster.immutable">
+        <mat-option value="power-law">Power-Law</mat-option>
+        <mat-option value="linear-growing">Linear (growing)</mat-option>
+        <mat-option value="linear-shrinking">Linear (shrinking)</mat-option>
+        <mat-option value="uniform">Uniform</mat-option>
+        <mat-option value="custom">Custom</mat-option>
+      </mat-select>
+    </mat-form-field>
     <app-vis-line-chart [showLegend]="true" [series]="generator.degreeDistribution" [series2]="measuredDistribution" (seriesChange)="onChange()" [editMode]="!cluster.immutable" [allowAxisScaling]="!cluster.immutable" [allowLogToggles]="!cluster.immutable"></app-vis-line-chart>
   } @else if (cluster.generator.name == "CM") {
+    <br>
+    <mat-form-field>
+      <mat-label>Distribution</mat-label>
+      <mat-select [ngModel]="distribution" (valueChange)="onChangeDistribution($event)" [disabled]="cluster.immutable">
+        <mat-option value="power-law">Power-Law</mat-option>
+        <mat-option value="linear-growing">Linear (growing)</mat-option>
+        <mat-option value="linear-shrinking">Linear (shrinking)</mat-option>
+        <mat-option value="uniform">Uniform</mat-option>
+        <mat-option value="custom">Custom</mat-option>
+      </mat-select>
+    </mat-form-field>
     <app-vis-line-chart [showLegend]="true" [series]="generator.degreeDistribution" [series2]="measuredDistribution" (seriesChange)="onChange()" [editMode]="!cluster.immutable" [allowAxisScaling]="!cluster.immutable" [allowLogToggles]="!cluster.immutable"></app-vis-line-chart>
   } @else if (cluster.generator.name == "MG") {
     <span>Add child clusters in the cluster list</span>

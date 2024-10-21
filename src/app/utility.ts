@@ -201,6 +201,20 @@ export class Utility {
       }
     }
 
+    public static simplifyDistribution(s: Point[]): Point[] {
+      const points: Point[] = [ s[0] ];
+      for (let i = 0; i < s.length - 2; i++) {
+        const start = s[i];
+        const middle = s[i + 1];
+        const end = s[i + 2]
+        if (Math.abs(middle.y - (start.y + end.y) / 2) >= 0.0001) {
+          points.push(middle);
+        }
+      }
+      points.push(s[s.length - 1]);
+      return points;
+    }
+
     // Bias is sparse distribution, y in [0, 1]
     // Data is dense distribution
     public static computeBiasedProportions(data: Series, bias: Series): Point[] {
