@@ -313,6 +313,26 @@ export class Utility {
       return distribution;
     }
 
+    public static extraAssortativityEdges(g: EdgeList, count: number) {
+        const adj = new AdjacencyList(g);
+        const degMap = Utility.computeNodeDegrees(g);
+        const degrees = [...degMap.entries()];
+        const combinations: Edge[] = [];
+        for (let i = 0; i < degrees.length; i++) {
+            for (let j = 0; j < i; j++) {
+                if (i == j) {
+                    continue;
+                }
+                const distance = Math.abs(degrees[i][1] - degrees[j][1]);
+                if (adj.nodes.get(degrees[i][0])!.find(([e, n]) => n == degrees[j][0]) == undefined) {
+                    combinations.push({ source: degrees[i][0], target: degrees[j][0], data: distance });
+                }
+            }
+        }
+        combinations.sort((a, b) => (a.data as number) - (b.data as number));
+        g.edges.push(...combinations.slice(0, Math.min(count, combinations.length)));
+    }
+
     public static arraysEqual(a: Point[], b: Point[]): boolean {
       if (a.length != b.length) {
         return false;

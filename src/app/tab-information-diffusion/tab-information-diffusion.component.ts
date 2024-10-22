@@ -38,6 +38,8 @@ export class TabInformationDiffusionComponent {
   public clusterActive: Map<number, [Series, string]> = new Map();
   public clusters: [string, number][] = [];
   public seedNodes: Set<Node> = new Set();
+  public contacted: Set<Node> = new Set();
+  public refractory: Set<Node> = new Set();
   public step = 0;
   public running = false;
   public dirty = false;

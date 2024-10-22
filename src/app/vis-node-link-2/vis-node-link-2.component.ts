@@ -233,11 +233,11 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         // - list of expandable cards, name editable, can select highlight mode from there
 
         // TODO
-        // - Circular -> Egocentric
+        // - SIR, SCIR
         // - Selectable expandable edges list with buttons?
         // - Extra assortativity edges
         // - Legend min/max node size, min/max edge width
-        // - Test cases: School, Social Media (Highlight strengths of program, correct order -> edge selection more precise? extra buttons?)
+        // - Test cases: School, Social Media (Highlight strengths of program, correct order)
         // - Online-Fragebogen
         // - Ablauf (Instruktionen, Interview-Recording) => Test!
 

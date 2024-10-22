@@ -337,7 +337,7 @@ export class ConfigurationService {
       nodes1 = nodes1.slice(0, count1);
     } else {
       const sum = connection.sourceDegreeDistribution.data.reduce((a, b) => a + b.y, 0);
-      const scaled = Utility.deepCopyPoints(connection.sourceDegreeDistribution.data);
+      const scaled = Utility.computeDistribution(connection.sourceDegreeDistribution);
 
       // TODO: Three things to work out here
       // a) Enough nodes for maxEdges available
@@ -352,7 +352,7 @@ export class ConfigurationService {
       nodes2 = nodes2.slice(0, count2);
     } else {
       const sum = connection.targetDegreeDistribution.data.reduce((a, b) => a + b.y, 0);
-      const scaled = Utility.deepCopyPoints(connection.targetDegreeDistribution.data);
+      const scaled = Utility.computeDistribution(connection.targetDegreeDistribution);
       Utility.multiplyPointValues(scaled, count2 / sum);
       nodes2 = Utility.drawProportionally(count2, buckets2, scaled);
     }

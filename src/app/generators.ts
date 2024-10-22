@@ -1,4 +1,4 @@
-import { AdjacencyList, EdgeList } from "./graph";
+import { AdjacencyList, Edge, EdgeList } from "./graph";
 import { LocalService } from "./local.service";
 import { Series } from "./series";
 import { Utility } from "./utility";
@@ -35,11 +35,15 @@ export class CLGenerator implements Generator {
                 sum += deg;
             }
         }
+
         // Run generator
         let g = LocalService.generateChungLu(nodeDegrees);
         if (this.extractGiantComponent) {
             g = LocalService.extractGiantComponent(new AdjacencyList(g));
         }
+
+        // Extra assortativity edges
+
         return g;
     }
 }
@@ -79,6 +83,9 @@ export class CMGenerator implements Generator {
         if (this.extractGiantComponent) {
             g = LocalService.extractGiantComponent(new AdjacencyList(g));
         }
+
+        // Extra assortativity edges
+
         return g;
     }
 }

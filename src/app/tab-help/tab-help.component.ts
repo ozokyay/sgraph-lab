@@ -166,7 +166,7 @@ export class TabHelpComponent {
         };
         data = {
           title: "Node-Link Diagram",
-          text: "There are different options for highlighting certain parts or encoding variables in the visualization. The circular layout is particiularly useful when inspecting or editing a cluster's connections to other cluster because it prevents overlap and hides other edges.",
+          text: "There are different options for highlighting certain parts or encoding variables in the visualization. The egocentric layout is particiularly useful when inspecting or editing a cluster's connections to other cluster because it prevents overlap and hides other edges.",
           position: pos
         };
         this.tutorial.highlightPrimaryOptions = true;
