@@ -2,16 +2,21 @@
     <mat-label>Diffusion Model</mat-label>
     <mat-select [(value)]="diffusionModel" [disabled]="running">
         <mat-option value="SI">Susceptible Infected</mat-option>
-        <mat-option value="LT">Linear Threshold</mat-option>
+        <mat-option value="SCIR">Susceptipe Contacted Infected Refractory</mat-option>
     </mat-select>
 </mat-form-field>
 <br />
 <span>Activation Probability</span>
 <br>
 <mat-slider discrete min="0" max="1" step="0.01">
-    <input matSliderThumb value="0.5" [(value)]="activationProbability" [disabled]="running">
+    <input matSliderThumb value="0.5" [(value)]="infectionProbability" [disabled]="running">
 </mat-slider>
-<!-- TODO: Line per community mode => line chart with arbitrary num lines -->
+@if (diffusionModel == "SCIR") {
+    <br>
+    <mat-slider discrete min="0" max="1" step="0.01">
+        <input matSliderThumb value="0.5" [(value)]="refractoryProbability" [disabled]="running">
+    </mat-slider>
+}
 <app-vis-line-chart [showLegend]="true" [legendWidth]="150" legend1="Total active" legend2="In cluster" [series]="totalActive" [seriesList]="clusterActive" xLabel="Timestep" yLabel="Activated Nodes" [allowAxisScaling]="false" [allowLogToggles]="false" [editMode]="false"></app-vis-line-chart>
 <mat-form-field class="small">
     <mat-label>Timesteps per Second</mat-label>
