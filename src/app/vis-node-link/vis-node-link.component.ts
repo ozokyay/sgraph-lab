@@ -92,6 +92,12 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
         this.render(this.config.forceDirectedLayout.value, this.abort.signal);
       }
     }));
+    this.subscriptions.push(this.config.diffusionNodeStates.subscribe(() => {
+      if (this.config.forceDirectedLayout.value.nodes.length > 0) {
+        this.createNodes(this.config.forceDirectedLayout.value);
+        this.render(this.config.forceDirectedLayout.value, this.abort.signal);
+      }
+    }));
     this.subscriptions.push(this.config.hiddenClusters.subscribe(cs => {
       if (this.config.forceDirectedLayout.value.nodes.length > 0) {
         this.createNodes(this.config.forceDirectedLayout.value);
@@ -132,6 +138,8 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
       // This does not only depend on cluster id, but must be from the correct edge bundle which makes things inefficient
       const anySelection = this.config.selectedConnections.value.length > 0;
       const diffisionSeed = this.config.selectedDiffusionSeeds.value.has(node);
+      // Gray if ref, yellow if contacted
+      
       const alpha = !this.edgeHighlight || !anySelection || selectedEdges.find(e => e.source == node || e.target == node) ? 1 : 0.2;
 
       gfx.stroke({ width: 3, color: 'black', alpha: alpha });

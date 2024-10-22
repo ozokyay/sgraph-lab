@@ -12,6 +12,7 @@ import { PythonService } from './python.service';
 import { Uniform10 } from './series';
 import { Point } from './point';
 import { ForceDirected } from './graphwagu/webgpu/force_directed';
+import { NodeState } from './tab-information-diffusion/tab-information-diffusion.component';
 
 @Injectable({
   providedIn: 'root'
@@ -29,6 +30,7 @@ export class ConfigurationService {
   public hiddenClusters = new BehaviorSubject<Set<number>>(new Set());
   public selectedConnections = new BehaviorSubject<Edge[]>([]);
   public selectedDiffusionSeeds = new BehaviorSubject<Set<Node>>(new Set());
+  public diffusionNodeStates = new BehaviorSubject<Map<Node, NodeState>>(new Map());
   public layoutSettings = new BehaviorSubject<LayoutSettings>(DefaultLayout);
   public sample = new BehaviorSubject<EdgeList>({ nodes: [], edges: [] });
   public centroids = new BehaviorSubject<Map<number, Point>>(new Map());

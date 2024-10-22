@@ -107,6 +107,7 @@ export class TabInformationDiffusionComponent {
     for (const n of this.originalSeedNodes) {
       this.seedNodes.add(n);
     }
+    this.nodeState.clear();
 
     // Reset series
     this.totalActive = { data: [], xExtent: [0, 10], yExtent: [0, this.graph!.nodes.size] };
@@ -118,6 +119,7 @@ export class TabInformationDiffusionComponent {
     if (!noSeedEvent) {
       // Render
       this.config.selectedDiffusionSeeds.next(this.seedNodes);
+      this.config.diffusionNodeStates.next(this.nodeState);
     }
   }
 
@@ -257,6 +259,10 @@ export class TabInformationDiffusionComponent {
     this.step++;
 
     // Render
-    this.config.selectedDiffusionSeeds.next(this.seedNodes);
+    if (this.diffusionModel == "SI") {
+      this.config.selectedDiffusionSeeds.next(this.seedNodes);
+    } else if (this.diffusionModel == "SCIR") {
+      this.config.diffusionNodeStates.next(this.nodeState);
+    }
   }
 }
