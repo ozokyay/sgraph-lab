@@ -64,6 +64,9 @@ export class TabInformationDiffusionComponent {
     config.selectedDiffusionSeeds.subscribe(seeds => {
       this.seedNodes = seeds;
     });
+    config.diffusionNodeStates.subscribe(states => {
+      this.nodeState = states;
+    });
     tutorial.playDiffusion.subscribe(() => {
       this.onPlay();
     });
@@ -79,11 +82,13 @@ export class TabInformationDiffusionComponent {
     if (!this.dirty) {
       this.originalSeedNodes = new Set(this.seedNodes);
       this.nodeState = new Map();
-      for (const n of this.graph!.nodes.keys()) {
-        this.nodeState.set(n, "susceptible");
-      }
-      for (const n of this.originalSeedNodes) {
-        this.nodeState.set(n, "infected");
+      if (this.diffusionModel == "SCIR") {
+        for (const n of this.graph!.nodes.keys()) {
+          this.nodeState.set(n, "susceptible");
+        }
+        for (const n of this.originalSeedNodes) {
+          this.nodeState.set(n, "infected");
+        }
       }
       const entries = this.config.configuration.value.definition.graph.getNodes().map(n => [n.id, [{ data: [], xExtent: [0, 10], yExtent: [0, this.graph!.nodes.size] }, (n.data as Cluster).color]] as [number, [Series, string]]);
       this.clusterActive = new Map(entries);

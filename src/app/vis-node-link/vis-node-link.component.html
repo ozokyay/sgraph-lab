@@ -1,3 +1,16 @@
 <div #container class="container">
     <div #tooltip class="tooltip"></div>
+    @if (config.activeTab.value == 5) {
+        <svg style="position: absolute; right: 10px" width="130" height="100">
+            <g>
+                <rect x="2" y="2" width="126" height="96" fill="white" stroke="black"></rect>
+                <circle cx="20" cy="20" r="10" fill="#ff00ff" stroke="black"></circle>
+                <circle cx="20" cy="50" r="10" fill="yellow" stroke="black"></circle>
+                <circle cx="20" cy="80" r="10" fill="white" stroke="black"></circle>
+                <text x="40" y="25">Infected</text>
+                <text x="40" y="55">Contacted</text>
+                <text x="40" y="85">Refractory</text>
+            </g>
+        </svg>
+    }
 </div>

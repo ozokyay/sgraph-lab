@@ -64,7 +64,7 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
   @ViewChild('tooltip')
   private tooltip!: ElementRef;
 
-  constructor(private config: ConfigurationService) {}
+  constructor(public config: ConfigurationService) {}
 
   private init() {
     this.subscriptions.push(this.config.sample.subscribe(graph => {
@@ -137,13 +137,24 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
       // Alpha: This node has selected incident edges
       // This does not only depend on cluster id, but must be from the correct edge bundle which makes things inefficient
       const anySelection = this.config.selectedConnections.value.length > 0;
-      const diffisionSeed = this.config.selectedDiffusionSeeds.value.has(node);
-      // Gray if ref, yellow if contacted
-      
+      const diffusionSeed = this.config.selectedDiffusionSeeds.value.has(node);
+      const state = this.config.diffusionNodeStates.value.get(node);
       const alpha = !this.edgeHighlight || !anySelection || selectedEdges.find(e => e.source == node || e.target == node) ? 1 : 0.2;
 
+      // Node color for diffusion simulation
+      let col: PIXI.ColorSource;
+      if (diffusionSeed) { // implicit || state == 'infected'
+        col = 0xFF00FF;
+      } else if (state == 'contacted') {
+        col = 0xFFFF00;
+      } else if (state == 'refractory') {
+        col = 0xFFFFFF;
+      } else {
+        col = this.getNodeColor(node, this.nodeColor);
+      }
+
       gfx.stroke({ width: 3, color: 'black', alpha: alpha });
-      gfx.fill({ color: diffisionSeed ? 0xFF00FF : this.getNodeColor(node, this.nodeColor), alpha: alpha });
+      gfx.fill({ color: col, alpha: alpha });
       gfx.interactive = true;
       gfx.onpointerenter = () => {
         gfx.tint = 0x9A9A9A;
@@ -169,8 +180,10 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
         const seeds = this.config.selectedDiffusionSeeds.value;
         if (seeds.has(node)) {
           seeds.delete(node);
+          this.config.diffusionNodeStates.value.set(node, 'susceptible');
         } else {
           seeds.add(node);
+          this.config.diffusionNodeStates.value.set(node, 'infected');
         }
         this.config.selectedDiffusionSeeds.next(seeds);
       };
