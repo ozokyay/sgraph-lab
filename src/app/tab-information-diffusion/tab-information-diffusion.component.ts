@@ -137,9 +137,16 @@ export class TabInformationDiffusionComponent {
       let done = true;
       for (const n of this.seedNodes) {
         for (const [e, m] of this.graph!.nodes.get(n)!) {
-          if (!this.seedNodes.has(m)) {
-            done = false;
-            break;
+          if (this.diffusionModel == "SI") {
+            if (!this.seedNodes.has(m)) {
+              done = false;
+              break;
+            }
+          } else if (this.diffusionModel == "SCIR") {
+            if (this.nodeState.get(m) == "susceptible" || this.nodeState.get(m) == "contacted") {
+              done = false;
+              break;
+            }
           }
         }
       }
@@ -201,9 +208,6 @@ export class TabInformationDiffusionComponent {
           }
         }
       }
-
-      // TODO: Stop condition
-
     }
 
     for (const n of toAdd) {
@@ -216,7 +220,7 @@ export class TabInformationDiffusionComponent {
       const cluster = this.config.configuration.value.definition.graph.nodeDictionary.get(id)!.data as Cluster;
       if (cluster.parent == -1) {
         const [series, _] = this.clusterActive.get(cluster.id)!;
-        let count = series.data[0]?.y ?? 0;
+        let count = 0;
         for (const n of graph.nodes) {
           if (this.seedNodes.has(n)) {
             count++;

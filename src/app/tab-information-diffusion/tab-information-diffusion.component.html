@@ -1,17 +1,19 @@
-<mat-form-field class="large">
+<mat-form-field class="large" style="width: 100%;">
     <mat-label>Diffusion Model</mat-label>
-    <mat-select [(value)]="diffusionModel" [disabled]="running">
+    <mat-select style="width: 100%;" [(value)]="diffusionModel" [disabled]="running">
         <mat-option value="SI">Susceptible Infected</mat-option>
-        <mat-option value="SCIR">Susceptipe Contacted Infected Refractory</mat-option>
+        <mat-option value="SCIR">Susceptible Contacted Infected Refractory</mat-option>
     </mat-select>
 </mat-form-field>
-<br />
-<span>Activation Probability</span>
+<br>
+<span>Probability of Infection</span>
 <br>
 <mat-slider discrete min="0" max="1" step="0.01">
     <input matSliderThumb value="0.5" [(value)]="infectionProbability" [disabled]="running">
 </mat-slider>
 @if (diffusionModel == "SCIR") {
+    <br>
+    <span>Probability of Refractoriness</span>
     <br>
     <mat-slider discrete min="0" max="1" step="0.01">
         <input matSliderThumb value="0.5" [(value)]="refractoryProbability" [disabled]="running">
@@ -32,7 +34,7 @@
 <br><br>
 <span>Current Timestep: {{step}}</span>
 <br />
-<span>Total active nodes: {{seedNodes.size}}</span>
+<span>Total infected nodes: {{seedNodes.size}}</span>
 @for (c of clusters; track $index) {
     <br>
     <span>{{c[0]}}: {{c[1]}}</span>
