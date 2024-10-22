@@ -45,6 +45,7 @@ export class TabInformationDiffusionComponent {
   public contactedNodes: Set<Node> = new Set();
   public refractoryNodes: Set<Node> = new Set();
   public nodeState: Map<Node, NodeState> = new Map();
+  public contactedOrRefractoryNodes = 0;
   public step = 0;
   public running = false;
   public dirty = false;
@@ -113,6 +114,7 @@ export class TabInformationDiffusionComponent {
       this.seedNodes.add(n);
     }
     this.nodeState.clear();
+    this.contactedOrRefractoryNodes = 0;
 
     // Reset series
     this.totalActive = { data: [], xExtent: [0, 10], yExtent: [0, this.graph!.nodes.size] };
@@ -202,6 +204,7 @@ export class TabInformationDiffusionComponent {
                 toAdd.add(node);
               } else {
                 this.nodeState.set(node, "contacted");
+                this.contactedOrRefractoryNodes++;
               }
               break;
             }
@@ -212,6 +215,7 @@ export class TabInformationDiffusionComponent {
           } else if (Math.random() < this.infectionProbability) {
             this.nodeState.set(node, "infected");
             toAdd.add(node);
+            this.contactedOrRefractoryNodes--;
           }
         }
       }

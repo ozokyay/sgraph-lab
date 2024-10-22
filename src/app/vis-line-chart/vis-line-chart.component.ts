@@ -96,7 +96,9 @@ export class VisLineChartComponent implements AfterViewInit, OnChanges {
   legend!: d3.Selection<any, unknown, null, undefined>;
 
   // Margin and aspect ratio
+  @Input()
   margin = { top: 30, right: 10, bottom: 50, left: 50 };
+  
   width = 550 - this.margin.left - this.margin.right;
   height = 300 - this.margin.top - this.margin.bottom;
 

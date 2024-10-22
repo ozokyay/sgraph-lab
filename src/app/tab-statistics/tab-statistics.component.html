@@ -13,10 +13,10 @@
     <app-vis-line-chart [editMode]="false" [allowLogToggles]="false" [allowAxisScaling]="false" [series]="statistics.degreeDistribution" xLabel="Node Degree" yLabel="Node Count"></app-vis-line-chart>
     <br>
     <h2 class="mat-headline-small">Local Clustering Coefficient Distribution</h2>
-    <app-vis-line-chart [editMode]="false" [allowLogToggles]="false" [allowAxisScaling]="false" [series]="statistics.clusteringCoefficientDistribution" xLabel="Local Clustering Coefficient" yLabel="Node Count"></app-vis-line-chart>
+    <app-vis-line-chart [editMode]="false" [allowLogToggles]="false" [allowAxisScaling]="false" [series]="statistics.clusteringCoefficientDistribution" xLabel="Local Clustering Coefficient" yLabel="Node Count" [margin]="{ top: 30, right: 10, bottom: 50, left: 60 }"></app-vis-line-chart>
     <br>
     <h2 class="mat-headline-small">Average Local Clustering Coefficient by Degree</h2>
-    <app-vis-line-chart [editMode]="false" [allowLogToggles]="false" [allowAxisScaling]="false" [series]="statistics.clusteringCoefficientDistribution2" xLabel="Node Degree" yLabel="Avg. Local Clustering Coefficient" yFormat=".2f"></app-vis-line-chart>
+    <app-vis-line-chart [editMode]="false" [allowLogToggles]="false" [allowAxisScaling]="false" [series]="statistics.clusteringCoefficientDistribution2" xLabel="Node Degree" yLabel="Avg. Local Clustering Coefficient" yFormat=".2f" [margin]="{ top: 30, right: 10, bottom: 50, left: 60 }"></app-vis-line-chart>
     <br>
     <h2 class="mat-headline-small">Eigenvector Centrality Distribution</h2>
     <app-vis-line-chart [editMode]="false" [allowLogToggles]="false" [allowAxisScaling]="false" [series]="statistics.eigenvectorCentralityDistribution" xLabel="Eigenvector Centrality" yLabel="Node count"></app-vis-line-chart>

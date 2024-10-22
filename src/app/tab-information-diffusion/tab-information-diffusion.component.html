@@ -19,7 +19,7 @@
         <input matSliderThumb value="0.5" [(value)]="refractoryProbability" [disabled]="running">
     </mat-slider>
 }
-<app-vis-line-chart [showLegend]="true" [legendWidth]="150" legend1="Total active" legend2="In cluster" [series]="totalActive" [seriesList]="clusterActive" xLabel="Timestep" yLabel="Infected Nodes" [allowAxisScaling]="false" [allowLogToggles]="false" [editMode]="false"></app-vis-line-chart>
+<app-vis-line-chart [margin]="{ top: 30, right: 10, bottom: 50, left: 60 }" [showLegend]="true" [legendWidth]="150" legend1="Total active" legend2="In cluster" [series]="totalActive" [seriesList]="clusterActive" xLabel="Timestep" yLabel="Infected Nodes" [allowAxisScaling]="false" [allowLogToggles]="false" [editMode]="false"></app-vis-line-chart>
 <mat-form-field class="small">
     <mat-label>Timesteps per Second</mat-label>
     <input matNativeControl type="number" min="1" max="100000" [(ngModel)]="simulationSpeed" [disabled]="running"/>
@@ -34,6 +34,10 @@
 <br><br>
 <span>Current Timestep: {{step}}</span>
 <br />
+@if (diffusionModel == 'SCIR') {
+    <span>Total reached nodes: {{(contactedOrRefractoryNodes + seedNodes.size)}}</span>
+    <br>
+}
 <span>Total infected nodes: {{seedNodes.size}}</span>
 @for (c of clusters; track $index) {
     <br>
