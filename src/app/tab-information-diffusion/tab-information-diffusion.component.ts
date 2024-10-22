@@ -42,6 +42,8 @@ export class TabInformationDiffusionComponent {
   public clusterActive: Map<number, [Series, string]> = new Map();
   public clusters: [string, number][] = [];
   public seedNodes: Set<Node> = new Set();
+  public contactedNodes: Set<Node> = new Set();
+  public refractoryNodes: Set<Node> = new Set();
   public nodeState: Map<Node, NodeState> = new Map();
   public step = 0;
   public running = false;
@@ -76,6 +78,13 @@ export class TabInformationDiffusionComponent {
   public onPlay() {
     if (!this.dirty) {
       this.originalSeedNodes = new Set(this.seedNodes);
+      this.nodeState = new Map();
+      for (const n of this.graph!.nodes.keys()) {
+        this.nodeState.set(n, "susceptible");
+      }
+      for (const n of this.originalSeedNodes) {
+        this.nodeState.set(n, "infected");
+      }
       const entries = this.config.configuration.value.definition.graph.getNodes().map(n => [n.id, [{ data: [], xExtent: [0, 10], yExtent: [0, this.graph!.nodes.size] }, (n.data as Cluster).color]] as [number, [Series, string]]);
       this.clusterActive = new Map(entries);
     }
@@ -141,19 +150,19 @@ export class TabInformationDiffusionComponent {
     }
 
     // Propagate activation through network
-    const toAdd = new Set<Node>()
+    const toAdd = new Set<Node>() // Cannot modify while iterating
     if (this.diffusionModel == "SI") {
       for (const active of this.seedNodes) {
         const neighbors = this.graph!.nodes.get(active)!;
         for (const [e, n] of neighbors) {
           // a) Susceptible
           // b) Infected (in seedNodes)
-          if (!this.seedNodes.has(n) && !toAdd.has(n) && Math.random() < this.infectionProbability) {
+          if (!this.seedNodes.has(n) && Math.random() < this.infectionProbability) {
             toAdd.add(n);
           }
         }
       }
-    } else { // SCIR
+    } else if (this.diffusionModel == "SCIR") {
       // (1) When each susceptible agent meets an infected agent, the susceptible
       // agent is infected and becomes a spreader at a rate λ,
       // or else the susceptible agent enters the contacted state.
@@ -162,12 +171,38 @@ export class TabInformationDiffusionComponent {
       // spontaneously, or else the remainder contacted agents are infected
       // by one of infected neighbors at a rate λ.
 
-        // let state: NodeState = "susceptible";
-        // if (this.seedNodes.has(n)) {
-        //   state = "infected";
-        // } else {
-        //   state = this.nodeState.get(n)!; // contacted or refractory
-        // }
+      // 1. Infected + Susceptible -λ-> Infected/Contacted
+      // 2. Contacted -δ-> Refractory/Contacted
+      // 3. Infected + Contacted -λ-> Infected/Contacted
+
+      const oldStates = new Map<Node, NodeState>(this.nodeState);
+      for (const node of this.graph!.nodes.keys()) {
+        const state = oldStates.get(node)!;
+        if (state == "susceptible") {
+          const neighbors = this.graph!.nodes.get(node)!;
+          for (const [e, n] of neighbors) {
+            const neighborState = oldStates.get(n)!;
+            if (neighborState == "infected") {
+              if (Math.random() < this.infectionProbability) {
+                this.nodeState.set(node, "infected");
+                toAdd.add(node);
+              } else {
+                this.nodeState.set(node, "contacted");
+              }
+              break;
+            }
+          }
+        } else if (state == "contacted") {
+          if (Math.random() < this.refractoryProbability) {
+            this.nodeState.set(node, "refractory");
+          } else if (Math.random() < this.infectionProbability) {
+            this.nodeState.set(node, "infected");
+            toAdd.add(node);
+          }
+        }
+      }
+
+      // TODO: Stop condition
 
     }
 
