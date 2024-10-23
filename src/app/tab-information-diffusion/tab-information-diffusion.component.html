@@ -19,7 +19,7 @@
         <input matSliderThumb value="0.5" [(value)]="refractoryProbability" [disabled]="running">
     </mat-slider>
 }
-<app-vis-line-chart [margin]="{ top: 30, right: 10, bottom: 50, left: 60 }" [showLegend]="true" [legendWidth]="150" legend1="Total active" legend2="In cluster" [series]="totalActive" [seriesList]="clusterActive" xLabel="Timestep" yLabel="Infected Nodes" [allowAxisScaling]="false" [allowLogToggles]="false" [editMode]="false"></app-vis-line-chart>
+<app-vis-line-chart [margin]="{ top: 30, right: 10, bottom: 50, left: 60 }" [showLegend]="true" [legendWidth]="150" legend1="Total infected" legend2="In cluster" [series]="totalActive" [seriesList]="clusterActive" xLabel="Timestep" yLabel="Infected Nodes" [allowAxisScaling]="false" [allowLogToggles]="false" [editMode]="false"></app-vis-line-chart>
 <mat-form-field class="small">
     <mat-label>Timesteps per Second</mat-label>
     <input matNativeControl type="number" min="1" max="100000" [(ngModel)]="simulationSpeed" [disabled]="running"/>
