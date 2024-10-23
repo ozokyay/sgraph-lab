@@ -146,4 +146,9 @@ export class AppComponent implements OnInit, AfterViewInit {
   windowBeforeUnload(event: BeforeUnloadEvent) {
     return this.config.configuration.value.definition.graph.nodes.size == 0;
   }
+
+  @HostListener('pointerdown')
+  onClick() {
+    this.config.countClick();
+  }
 }

@@ -37,6 +37,7 @@ export class ConfigurationService {
   public forceDirectedLayout = new BehaviorSubject<EdgeList>({ nodes: [], edges: [] });
   public activeTab = new BehaviorSubject<number>(0);
   public history = new BehaviorSubject<GraphConfiguration[]>([structuredClone(this.configuration.value)]);
+  public clickCounter = 0;
 
   private abortMeasures: AbortController = new AbortController();
   private abortLayout: AbortController = new AbortController();
@@ -651,5 +652,10 @@ export class ConfigurationService {
     antiOverlap(100);
 
     // Layout finished
+  }
+
+  public countClick() {
+    this.clickCounter++;
+    console.log("clicks: " + this.clickCounter);
   }
 }
