@@ -269,7 +269,7 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
     }
 
     // Render convex hull
-    if (this.config.selectedCluster.value != undefined) {
+    if (this.config.selectedCluster.value != undefined && !this.config.hiddenClusters.value.has(this.config.selectedCluster.value.id)) {
       const cluster1 = this.config.configuration.value.instance.clusters.get(this.config.selectedCluster.value.id)?.nodes;
       if (cluster1 == undefined) {
         return;
