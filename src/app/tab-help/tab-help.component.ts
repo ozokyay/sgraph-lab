@@ -154,7 +154,7 @@ export class TabHelpComponent {
         this.tutorial.primaryVisLevel.next(2);
         this.tutorial.secondaryVisLevel.next(2);
         this.tutorial.update.next();
-        this.config.selectedCluster.next(this.config.configuration.value.definition.graph.getNodes().find(n => n.id == 3)!.data as Cluster);
+        this.config.selectedCluster.next(this.config.configuration.value.definition.graph.getNodes().find(n => n.id == 6)!.data as Cluster);
         break;
       }
 
