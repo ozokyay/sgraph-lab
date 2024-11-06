@@ -151,4 +151,10 @@ export class AppComponent implements OnInit, AfterViewInit {
   onClick() {
     this.config.countClick();
   }
+
+  @HostListener('pointerup')
+  onPointerUp() {
+    // Trigger subject in service
+    // Cancel drag action in NL2s
+  }
 }

@@ -217,6 +217,17 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
           this.config.selectedCluster.next(cluster);
         }
       };
+      gfx.onpointerdown = () => {
+        // If tool selected: Cancel canvas drag
+        // register as starting point
+        // Draw edge to current pos
+        // Wait for up on other node
+      };
+      gfx.onpointerup = () => {
+        // select edge
+        // reset starting point
+        // What if leaving without up event on node or in canvas?
+      };
       gfx.onrightclick = (e: MouseEvent) => {
         // Attributes
         // - Numerical (can later be converted to categorical)
@@ -234,12 +245,10 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
 
         // TODO
         // - SIR
+        // - ER
         // - Selectable expandable edges list with buttons?
         // - Extra assortativity edges
         // - Legend min/max node size, min/max edge width
-        // - Test cases: School, Social Media (Highlight strengths of program, correct order)
-        // - Online-Fragebogen
-        // - Ablauf (Instruktionen, Interview-Recording) => Test!
 
         // - Explain why no matrix mode for single level needed (higher levels very few nodes don't matter)
         // - Tooltips edges/matrix
@@ -791,6 +800,12 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       this.app.canvas.oncontextmenu = e => {
         e.preventDefault();
       }
+      // Up not fired outside -> global like click counter
+      // Should handle cancel
+      // Leave would be too error-prone
+      this.app.canvas.onpointerup = () => {
+        console.log("CANVAS POINTER UP");
+      };
       this.container.nativeElement.appendChild(this.app.canvas);
       this.stage = new PIXI.Container({
         isRenderGroup: true
