@@ -561,6 +561,9 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     // }
 
     // Render edges
+    // TODO: Want graphics for every single edge
+    // TODO: Handle click event to select/deselect
+    // Don't want to create/destroy in every animation frame -> pool?
     this.edgeGraphics?.clear();
     this.edgeGraphics2?.clear();
     for (const edge of graph.edges) {
@@ -583,24 +586,10 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       const sourcePos = Utility.addP(sourceGraphics.position, Utility.scalarMultiplyP(sourceRadius, Utility.normalizeP(Utility.subtractP(targetGraphics.position, sourceGraphics.position))));
       const targetPos = Utility.addP(targetGraphics.position, Utility.scalarMultiplyP(targetRadius, Utility.normalizeP(Utility.subtractP(sourceGraphics.position, targetGraphics.position))));
 
-      // 1. OK auto tab switch on selection (deselect on switch back)
-      // 2. OK highlight edges on tab select
-      // 3. OK highlight community in list and disable controls on tab select
-      // 4. highlight cluster on hover, zIndex (matrix + nl2 + nl1)
-      // 4.0 OK encode stuff in edges
-      // 4.1 Scaling (min radius or radius setting in layout options)
-      // 4.2 multi level (circle packing, pinning)
-      // 5. OK overlap handling
       // 6. dashed lines (effective edges, maybe prefer grey)
       // 7. keybinds
-      // 8. labels, legends
-      // 9. OK wildcard selection in matrix and nl2
-      // 10. better inf diff, better connections tab, better tabs, help tab
-      // 11. OK tables
+      // 8. labels on nodes
       // 12. attributes
-      // 13. data recording
-      // 14. OK walkthrough (from help tab)
-      // 15. tasks
       // 16. Labels in vis and hover for attributes, cluster color select (5 buttons), warning editing hidden edges
 
       // Problem: How to show edges on lower levels?
@@ -632,12 +621,6 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       // -> select first and second node OR select actual edge
       // -> both can have problems with overlap, can ignore for now
 
-      // Edge width better scale, node radius better scale (do not exaggerate miniscule differences, start medium)
-
-      // Then: Attributes, Tables, Walkthrough
-
-      // Transparency of unselected if there is an active selection
-      
       // Keep selected, fade out unselected from active selection
       const selected = this.config.selectedConnections.value.find(c => c == edge) != undefined;
       const sourceAlpha = source == this.config.selectedCluster.value ? 1 : sourceGraphics.alpha;
