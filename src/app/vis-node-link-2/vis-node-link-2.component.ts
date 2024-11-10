@@ -31,6 +31,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
   private nodeDict: Map<Node, [PIXI.Graphics, number]> = new Map();
   private edgeGraphics!: PIXI.Graphics;
   private edgeGraphics2!: PIXI.Graphics;
+  private draggingEdge!: PIXI.Graphics;
   private radiusScale!: d3.ScaleLinear<number, number>;
   private graph?: EdgeList = undefined;
   private abort: AbortController = new AbortController();
@@ -48,6 +49,11 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
   private currentLevel = 1;
   private speed = 1 / 500;
   private lastLevelTime = 0;
+  private lastFrameTime = 0;
+
+  public isDraggingEdge = false;
+  private draggingEdgeSourceNode?: Node;
+  private draggingEdgeSourcePos: Point = { x: 0, y: 0 };
 
   @Input()
   public transform = { value: new d3.ZoomTransform(1, 0, 0) };
@@ -69,6 +75,9 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
 
   @Input()
   public edgeRatio = true;
+
+  @Input()
+  public createEdges = true;
 
   @ViewChild('container')
   private container!: ElementRef;
@@ -149,6 +158,10 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         this.render(this.graph, this.abortRender.signal);
       }
     }));
+    this.subscriptions.push(this.config.pointerUp.subscribe(() => {
+      this.isDraggingEdge = false;
+      this.draggingEdge?.clear();
+    }));
   }
 
   private reset() {
@@ -218,15 +231,22 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         }
       };
       gfx.onpointerdown = () => {
-        // If tool selected: Cancel canvas drag
-        // register as starting point
-        // Draw edge to current pos
-        // Wait for up on other node
+        if (!this.createEdges) {
+          return;
+        }
+        this.isDraggingEdge = true;
+        this.draggingEdgeSourceNode = node;
+        this.draggingEdgeSourcePos = gfx.position; // Also need node for edge, use dict to lookup pos
       };
       gfx.onpointerup = () => {
-        // select edge
-        // reset starting point
-        // What if leaving without up event on node or in canvas?
+        if (this.isDraggingEdge && node != this.draggingEdgeSourceNode && gfx.alpha > 0 && this.draggingEdgeSourceNode != undefined) {
+          const selectedEdge = this.config.selectedConnections.value.find(e => e.source == this.draggingEdgeSourceNode && e.target == node || e.source == node && e.target == this.draggingEdgeSourceNode);
+          if (selectedEdge != undefined) {
+            return;
+          }
+          this.selectOneOne(node, this.draggingEdgeSourceNode);
+          this.isDraggingEdge = false;
+        }
       };
       gfx.onrightclick = (e: MouseEvent) => {
         // Attributes
@@ -350,6 +370,10 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     }
 
     // Select
+    this.selectOneOne(node, selectedNode);
+  }
+
+  private selectOneOne(node: Node, selectedNode: Node) {
     // Check graph
     const edges = this.config.configuration.value.definition.graph.nodes.get(selectedNode)!;
     const entry = edges.find(([e, v]) => v.id == node.id); // This could be handled by service or tab-cluster-list
@@ -800,12 +824,6 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       this.app.canvas.oncontextmenu = e => {
         e.preventDefault();
       }
-      // Up not fired outside -> global like click counter
-      // Should handle cancel
-      // Leave would be too error-prone
-      this.app.canvas.onpointerup = () => {
-        console.log("CANVAS POINTER UP");
-      };
       this.container.nativeElement.appendChild(this.app.canvas);
       this.stage = new PIXI.Container({
         isRenderGroup: true
@@ -813,8 +831,10 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       this.app.stage.addChild(this.stage);
       this.edgeGraphics = new PIXI.Graphics();
       this.edgeGraphics2 = new PIXI.Graphics({ zIndex: 2000 });
+      this.draggingEdge = new PIXI.Graphics();
       this.stage.addChild(this.edgeGraphics);
       this.stage.addChild(this.edgeGraphics2);
+      this.stage.addChild(this.draggingEdge);
       this.resize();
       this.init();
     })();
@@ -898,7 +918,31 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     this.rect = (this.app.canvas as any).getBoundingClientRect();
   }
 
-  public zoom(transform: d3.ZoomTransform) {
+  public mouseMove(e: MouseEvent) {
+    // Debounce on frame timestamp
+    if (this.app == undefined || this.app.ticker == undefined || this.app.ticker.lastTime <= this.lastFrameTime) {
+      return;
+    }
+    this.lastFrameTime = this.app.ticker.lastTime;
+    if (this.isDraggingEdge) {
+      const target = {
+        x: e.clientX - this.rect.x,
+        y: e.clientY - this.rect.y
+      };
+      [target.x, target.y] = this.transform.value.invert([target.x, target.y]);
+      target.x *= window.devicePixelRatio;
+      target.y *= window.devicePixelRatio;
+      this.draggingEdge.clear();
+      const black = { width: 3, color: "black" };
+      const yellow = { width: 6, color: "yellow" };
+      this.dashedLine(this.draggingEdge, this.draggingEdgeSourcePos, target, 24, 12);
+      this.draggingEdge.stroke(yellow);
+      this.dashedLine(this.draggingEdge, this.draggingEdgeSourcePos, target, 24, 12);
+      this.draggingEdge.stroke(black);
+    }
+  }
+
+  public zoom(transform: d3.ZoomTransform) { // pos + (offset * dpi / k) -> * k / dpi
     this.stage.scale = { x: transform.k, y: transform.k };
     this.stage.pivot = { x: -transform.x / transform.k * devicePixelRatio, y: -transform.y / transform.k * devicePixelRatio };
   }

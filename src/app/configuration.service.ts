@@ -1,5 +1,5 @@
 import { Injectable, SimpleChange } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, Subject } from 'rxjs';
 import { GraphConfiguration, GraphInstance, EmptyInstance, EmptyDefinition, EmptyMeasures, GraphMeasures } from './graph-configuration';
 import { AdjacencyList, Edge, EdgeList, Node, NodeData } from './graph';
 import { Cluster } from './cluster';
@@ -38,6 +38,7 @@ export class ConfigurationService {
   public activeTab = new BehaviorSubject<number>(0);
   public history = new BehaviorSubject<GraphConfiguration[]>([structuredClone(this.configuration.value)]);
   public clickCounter = 0;
+  public pointerUp = new Subject<void>();
 
   private abortMeasures: AbortController = new AbortController();
   private abortLayout: AbortController = new AbortController();

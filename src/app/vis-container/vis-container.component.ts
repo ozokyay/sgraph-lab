@@ -97,7 +97,7 @@ export class VisContainerComponent implements AfterViewInit {
   ngAfterViewInit() {
     this.width = this.container.nativeElement.clientWidth;
     this.height = this.container.nativeElement.clientHeight;
-    this.zoom.filter((e: any) => (!e.ctrlKey || e.type === 'wheel') && !e.button && !e.shiftKey)
+    this.zoom.filter((e: any) => (!e.ctrlKey || e.type === 'wheel') && !e.button && !e.shiftKey && !this.child2.isDraggingEdge) // Need cancel condition: Dragging edge (pointer down on gfx)
       .on("zoom", e => { this.transform = { value: e.transform } });
     d3.select(this.container.nativeElement)
       .call(this.zoom)
@@ -142,5 +142,9 @@ export class VisContainerComponent implements AfterViewInit {
     this.child3?.resize();
     this.width = this.container.nativeElement.clientWidth;
     this.height = this.container.nativeElement.clientHeight;
+  }
+
+  public mouseMove(e: MouseEvent) {
+    this.child2?.mouseMove(e);
   }
 }

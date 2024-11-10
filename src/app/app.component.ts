@@ -125,8 +125,8 @@ export class AppComponent implements OnInit, AfterViewInit {
     this.tutorial.tabs = this.tabsRef.nativeElement;
   }
 
-  @HostListener('document:mousemove')
-  onMouseMove() {
+  @HostListener('document:mousemove', ['$event'])
+  onMouseMove(event: MouseEvent) {
     if (this.dragging[0]) {
       this.containerPrimary.resize();
       this.containerSecondary.resize();
@@ -134,6 +134,8 @@ export class AppComponent implements OnInit, AfterViewInit {
     if (this.dragging[1]) {
       this.containerSecondary.resize();
     }
+    this.containerPrimary.mouseMove(event);
+    this.containerSecondary.mouseMove(event);
   }
 
   @HostListener('window:resize')
@@ -154,7 +156,6 @@ export class AppComponent implements OnInit, AfterViewInit {
 
   @HostListener('pointerup')
   onPointerUp() {
-    // Trigger subject in service
-    // Cancel drag action in NL2s
+    this.config.pointerUp.next();
   }
 }
