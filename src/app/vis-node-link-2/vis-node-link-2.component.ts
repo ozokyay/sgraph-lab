@@ -29,7 +29,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
   private width: number = 0;
   private height: number = 0;
   private nodeDict: Map<Node, [PIXI.Graphics, number]> = new Map();
-  private edgeGraphics!: PIXI.Graphics;
+  private edgeGraphics: PIXI.Graphics[] = [];
   private edgeGraphics2!: PIXI.Graphics;
   private draggingEdge!: PIXI.Graphics;
   private radiusScale!: d3.ScaleLinear<number, number>;
@@ -561,10 +561,11 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     // }
 
     // Render edges
-    // TODO: Want graphics for every single edge
     // TODO: Handle click event to select/deselect
-    // Don't want to create/destroy in every animation frame -> pool?
-    this.edgeGraphics?.clear();
+    for (const gfx of this.edgeGraphics) {
+      gfx.destroy();
+    }
+    this.edgeGraphics = [];
     this.edgeGraphics2?.clear();
     for (const edge of graph.edges) {
       const data = edge.data as ClusterConnection;
@@ -645,9 +646,17 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       const p2 = Utility.addP(sourcePos, Utility.scalarMultiplyP(-wSource / 2, perp));
       const p3 = Utility.addP(targetPos, Utility.scalarMultiplyP(-wTarget / 2, perp));
       const p4 = Utility.addP(targetPos, Utility.scalarMultiplyP(wTarget / 2, perp));
-      this.edgeGraphics.poly([p1, p2, p3, p4]);
-      this.edgeGraphics.fill({ color: "black", alpha: alpha });
-      this.edgeGraphics.stroke({ color: c, width: 6, alpha: alpha });
+
+      const gfx = new PIXI.Graphics();
+      gfx.poly([p1, p2, p3, p4]);
+      gfx.fill({ color: "black", alpha: alpha });
+      gfx.stroke({ color: c, width: 6, alpha: alpha });
+      gfx.hitArea = new PIXI.Rectangle(0, 0, 0, 0); // TODO: func to hookup click handler, ER, labels, SIR, colors, Mail Garcia
+      gfx.onclick = () => {
+        console.log("click edge");
+      };
+      this.edgeGraphics.push(gfx);
+      this.stage.addChild(gfx);
 
       if (selected) {
         this.directionIndicators(sourcePos, targetPos, alpha);
@@ -674,10 +683,14 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       const alpha = Math.min(sourceAlpha, targetAlpha);
       const black = { width: 3, color: "black", alpha: alpha };
       const yellow = { width: 6, color: "yellow", alpha: alpha };
-      this.dashedLine(this.edgeGraphics, sourcePos, targetPos, 24, 12);
-      this.edgeGraphics.stroke(yellow);
-      this.dashedLine(this.edgeGraphics, sourcePos, targetPos, 24, 12);
-      this.edgeGraphics.stroke(black);
+
+      const gfx = new PIXI.Graphics();
+      this.dashedLine(gfx, sourcePos, targetPos, 24, 12);
+      gfx.stroke(yellow);
+      this.dashedLine(gfx, sourcePos, targetPos, 24, 12);
+      gfx.stroke(black);
+      this.edgeGraphics.push(gfx);
+      this.stage.addChild(gfx);
       this.directionIndicators(sourcePos, targetPos, alpha);
     }
   }
@@ -812,10 +825,8 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         isRenderGroup: true
       });
       this.app.stage.addChild(this.stage);
-      this.edgeGraphics = new PIXI.Graphics();
       this.edgeGraphics2 = new PIXI.Graphics({ zIndex: 2000 });
       this.draggingEdge = new PIXI.Graphics();
-      this.stage.addChild(this.edgeGraphics);
       this.stage.addChild(this.edgeGraphics2);
       this.stage.addChild(this.draggingEdge);
       this.resize();
