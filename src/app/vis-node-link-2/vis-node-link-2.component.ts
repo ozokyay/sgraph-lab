@@ -642,16 +642,14 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         y: -dir.x
       };
       perp = Utility.normalizeP(perp);
-      const p1 = Utility.addP(sourcePos, Utility.scalarMultiplyP(wSource / 2, perp));
-      const p2 = Utility.addP(sourcePos, Utility.scalarMultiplyP(-wSource / 2, perp));
-      const p3 = Utility.addP(targetPos, Utility.scalarMultiplyP(-wTarget / 2, perp));
-      const p4 = Utility.addP(targetPos, Utility.scalarMultiplyP(wTarget / 2, perp));
-
+      const poly = this.enlargePolygon([sourcePos, sourcePos, targetPos, targetPos], perp, wSource, wTarget);
+      const poly2 = this.enlargePolygon([sourcePos, sourcePos, targetPos, targetPos], perp, 40, 40);
       const gfx = new PIXI.Graphics();
-      gfx.poly([p1, p2, p3, p4]);
+      gfx.poly(poly);
       gfx.fill({ color: "black", alpha: alpha });
       gfx.stroke({ color: c, width: 6, alpha: alpha });
-      gfx.hitArea = new PIXI.Rectangle(0, 0, 0, 0); // TODO: func to hookup click handler, ER, labels, SIR, colors, Mail Garcia
+      gfx.hitArea = new PIXI.Polygon(poly2); // TODO: func to hookup click handler, ER, labels, SIR, colors, Mail Garcia
+      gfx.interactive = true;
       gfx.onclick = () => {
         console.log("click edge");
       };
@@ -684,7 +682,19 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       const black = { width: 3, color: "black", alpha: alpha };
       const yellow = { width: 6, color: "yellow", alpha: alpha };
 
+      const dir = Utility.subtractP(targetPos, sourcePos);
+      let perp: Point = {
+        x: dir.y,
+        y: -dir.x
+      };
+      perp = Utility.normalizeP(perp);
       const gfx = new PIXI.Graphics();
+      const poly = this.enlargePolygon([sourcePos, sourcePos, targetPos, targetPos], perp, 40, 40);
+      gfx.hitArea = new PIXI.Polygon(poly);
+      gfx.interactive = true;
+      gfx.onclick = () => {
+        console.log("clicked edge");
+      };
       this.dashedLine(gfx, sourcePos, targetPos, 24, 12);
       gfx.stroke(yellow);
       this.dashedLine(gfx, sourcePos, targetPos, 24, 12);
@@ -693,6 +703,14 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       this.stage.addChild(gfx);
       this.directionIndicators(sourcePos, targetPos, alpha);
     }
+  }
+
+  private enlargePolygon([p1, p2, p3, p4]: [Point, Point, Point, Point], n: Point, w1: number, w2: number): [Point, Point, Point, Point] {
+    const q1 = Utility.addP(p1, Utility.scalarMultiplyP(w1 / 2, n));
+    const q2 = Utility.addP(p2, Utility.scalarMultiplyP(-w1 / 2, n));
+    const q3 = Utility.addP(p3, Utility.scalarMultiplyP(-w2 / 2, n));
+    const q4 = Utility.addP(p4, Utility.scalarMultiplyP(w2 / 2, n));
+    return [q1, q2, q3, q4];
   }
 
   private calculateBasePos(node: Node, level: number, upper: number, lower: number) {
