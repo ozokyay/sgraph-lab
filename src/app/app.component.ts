@@ -149,10 +149,10 @@ export class AppComponent implements OnInit, AfterViewInit {
     return this.config.configuration.value.definition.graph.nodes.size == 0;
   }
 
-  @HostListener('pointerdown')
-  onClick() {
-    this.config.countClick();
-  }
+  // @HostListener('pointerdown')
+  // onClick() {
+  //   this.config.countClick();
+  // }
 
   @HostListener('pointerup')
   onPointerUp() {
