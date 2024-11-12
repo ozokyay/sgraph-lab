@@ -240,11 +240,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       };
       gfx.onpointerup = () => {
         if (this.isDraggingEdge && node != this.draggingEdgeSourceNode && gfx.alpha > 0 && this.draggingEdgeSourceNode != undefined) {
-          const selectedEdge = this.config.selectedConnections.value.find(e => e.source == this.draggingEdgeSourceNode && e.target == node || e.source == node && e.target == this.draggingEdgeSourceNode);
-          if (selectedEdge != undefined) {
-            return;
-          }
-          this.selectOneOne(node, this.draggingEdgeSourceNode);
+          this.selectOneOne(node, this.draggingEdgeSourceNode, false, false);
           this.isDraggingEdge = false;
         }
       };
@@ -265,13 +261,14 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
 
         // TODO
         // - SIR
-        // - ER
+        // - ER with node and edge count
+        // - labels for clusters
+        // - Tooltips edges/matrix
         // - Selectable expandable edges list with buttons?
-        // - Extra assortativity edges
         // - Legend min/max node size, min/max edge width
 
         // - Explain why no matrix mode for single level needed (higher levels very few nodes don't matter)
-        // - Tooltips edges/matrix
+        // - Extra assortativity edges
         // - Attribute
 
         this.selectEdges(node, e.shiftKey);
@@ -356,24 +353,25 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     }
 
     // 1:1
+    this.selectOneOne(node, selectedNode, true, toggle);
+  }
 
+  private selectOneOne(node: Node, selectedNode: Node, deselect: boolean, toggle: boolean) {
     // Deselect
     const selectedEdge = this.config.selectedConnections.value.find(e => e.source == selectedNode && e.target == node || e.source == node && e.target == selectedNode);
     if (selectedEdge != undefined) {
-      if (toggle) {
-        Utility.swapEdge(selectedEdge);
-      } else {
-        this.config.selectedConnections.value.splice(this.config.selectedConnections.value.indexOf(selectedEdge), 1);
+      if (deselect) {
+        if (toggle) {
+          Utility.swapEdge(selectedEdge);
+        } else {
+          this.config.selectedConnections.value.splice(this.config.selectedConnections.value.indexOf(selectedEdge), 1);
+        }
+        this.config.selectedConnections.next(this.config.selectedConnections.value);
       }
-      this.config.selectedConnections.next(this.config.selectedConnections.value);
       return;
     }
 
     // Select
-    this.selectOneOne(node, selectedNode);
-  }
-
-  private selectOneOne(node: Node, selectedNode: Node) {
     // Check graph
     const edges = this.config.configuration.value.definition.graph.nodes.get(selectedNode)!;
     const entry = edges.find(([e, v]) => v.id == node.id); // This could be handled by service or tab-cluster-list
@@ -648,10 +646,13 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       gfx.poly(poly);
       gfx.fill({ color: "black", alpha: alpha });
       gfx.stroke({ color: c, width: 6, alpha: alpha });
-      gfx.hitArea = new PIXI.Polygon(poly2); // TODO: func to hookup click handler, ER, labels, SIR, colors, Mail Garcia
+      gfx.hitArea = new PIXI.Polygon(poly2);
       gfx.interactive = true;
       gfx.onclick = () => {
-        console.log("click edge");
+        this.selectOneOne(edge.target, edge.source, true, false);
+      };
+      gfx.onrightclick = () => {
+        this.selectOneOne(edge.target, edge.source, true, true);
       };
       this.edgeGraphics.push(gfx);
       this.stage.addChild(gfx);
@@ -693,7 +694,10 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       gfx.hitArea = new PIXI.Polygon(poly);
       gfx.interactive = true;
       gfx.onclick = () => {
-        console.log("clicked edge");
+        this.selectOneOne(edge.target, edge.source, true, false);
+      };
+      gfx.onrightclick = () => {
+        this.selectOneOne(edge.target, edge.source, true, true);
       };
       this.dashedLine(gfx, sourcePos, targetPos, 24, 12);
       gfx.stroke(yellow);
