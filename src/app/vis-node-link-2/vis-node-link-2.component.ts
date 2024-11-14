@@ -198,6 +198,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         continue;
       }
 
+      const cluster = node.data as Cluster;
       const gfx = new PIXI.Graphics();
       const radius = this.nodeSize ? this.radiusScale(measures.get(node.id)!.nodeCount) : (this.nodeRadiusRange[0] + this.nodeRadiusRange[1]) / 2;
       const alpha = 1;
@@ -223,7 +224,6 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       }
       gfx.onclick = () => {
         // Select cluster
-        const cluster = node.data as Cluster;
         if (this.config.selectedCluster.value == cluster) {
           this.config.selectedCluster.next(undefined);
         } else {
@@ -262,7 +262,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         // TODO
         // - SIR
         // - ER with node and edge count
-        // - labels for clusters
+        // - More symmetry matrix/NL
         // - Tooltips edges/matrix
         // - Selectable expandable edges list with buttons?
         // - Legend min/max node size, min/max edge width
@@ -275,6 +275,20 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       };
       this.nodeDict.set(node, [gfx, level]);
       this.stage.addChild(gfx);
+
+      // Label
+      // const label = new PIXI.Text();
+      // label.text = cluster.name;
+      // label.style.fill = "white";
+      // label.position = {
+      //   x: -label.width / 2,
+      //   y: -label.height / 2
+      // };
+      // const background = new PIXI.Graphics();
+      // background.rect(label.position.x, label.position.y, label.width, label.height);
+      // background.fill("black");
+      // gfx.addChild(background);
+      // gfx.addChild(label);
     }
 
     const extent = d3.extent(graph.edges.map(e => (e.data as ClusterConnection).edgeCount)) as [number, number];
