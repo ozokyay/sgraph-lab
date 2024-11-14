@@ -79,6 +79,9 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
   @Input()
   public createEdges = true;
 
+  @Input()
+  public labels = true;
+
   @ViewChild('container')
   private container!: ElementRef;
   @ViewChild('canvas')
@@ -161,6 +164,14 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
     this.subscriptions.push(this.config.pointerUp.subscribe(() => {
       this.isDraggingEdge = false;
       this.draggingEdge?.clear();
+    }));
+    this.subscriptions.push(this.config.history.subscribe(c => {
+      if (c.at(-1)?.message.startsWith("Rename")) {
+        if (this.graph != undefined && this.stage != undefined && this.graph.nodes.length > 0) {
+          this.createNodes(this.graph);
+          this.render(this.graph, this.abortRender.signal);
+        } 
+      }
     }));
   }
 
@@ -277,18 +288,20 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       this.stage.addChild(gfx);
 
       // Label
-      // const label = new PIXI.Text();
-      // label.text = cluster.name;
-      // label.style.fill = "white";
-      // label.position = {
-      //   x: -label.width / 2,
-      //   y: -label.height / 2
-      // };
-      // const background = new PIXI.Graphics();
-      // background.rect(label.position.x, label.position.y, label.width, label.height);
-      // background.fill("black");
-      // gfx.addChild(background);
-      // gfx.addChild(label);
+      if (this.labels) {
+        const label = new PIXI.Text();
+        label.text = cluster.name;
+        label.style.fill = "white";
+        label.position = {
+          x: -label.width / 2,
+          y: -label.height / 2
+        };
+        const background = new PIXI.Graphics();
+        background.rect(label.position.x, label.position.y, label.width, label.height);
+        background.fill("black");
+        gfx.addChild(background);
+        gfx.addChild(label);
+      }
     }
 
     const extent = d3.extent(graph.edges.map(e => (e.data as ClusterConnection).edgeCount)) as [number, number];
@@ -919,7 +932,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       }
     }
 
-    if (changes["nodeColor"] || changes["edgeColor"] || changes["nodeSize"] || changes["edgeRatio"]) {
+    if (changes["nodeColor"] || changes["edgeColor"] || changes["nodeSize"] || changes["edgeRatio"] || changes["labels"]) {
       if (this.config.configuration.value.instance.graph.nodes.length > 0 && this.graph != undefined) {
         this.createNodes(this.graph);
         this.render(this.graph, this.abortRender.signal);
