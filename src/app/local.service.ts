@@ -23,6 +23,23 @@ export class LocalService {
 
   constructor() { }
 
+  public static generateErdosRenyi(n: number, e: number): EdgeList {
+    const G: EdgeList = { nodes: [], edges: [] };
+    for (let i = 0; i < n; i++) {
+      G.nodes.push({ id: i });
+    }
+
+    // Bias disconnected nodes would be incorrect
+    for (let i = 0; i < e; i++) {
+      // Equal probability for all edges between non-neighbors
+
+      // Naive: List of possible pairs, choose e
+      // Smart: f: I -> (v1, v2), choose random 0 <= x < i and create f(x), update f
+    }
+
+    return G;
+  }
+
   public static generateChungLu(w: number[], selfLoops: boolean = false): EdgeList {
     const n: number = w.length;
     const G: EdgeList = { nodes: [], edges: [] };

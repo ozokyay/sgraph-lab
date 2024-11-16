@@ -8,6 +8,30 @@ export interface Generator {
     generate: () => EdgeList
 }
 
+export class ERGenerator implements Generator {
+    public name = "ER";
+    public nodeCount: number;
+    public edgeCount: number;
+    public extractGiantComponent: boolean;
+
+    // It's probably a good idea to force the caller to provide reasonable initialization
+    constructor(nodeCount: number, edgeCount: number, extractGiantComponent: boolean) {
+        this.nodeCount = nodeCount;
+        this.edgeCount = edgeCount;
+        this.extractGiantComponent = extractGiantComponent;
+    }
+
+    public generate(): EdgeList {
+        // Run generator
+        let g = LocalService.generateErdosRenyi(this.nodeCount, this.edgeCount);
+        if (this.extractGiantComponent) {
+            g = LocalService.extractGiantComponent(new AdjacencyList(g));
+        }
+
+        return g;
+    }
+}
+
 export class CLGenerator implements Generator {
     public name = "CL";
     public degreeDistribution: Series;
