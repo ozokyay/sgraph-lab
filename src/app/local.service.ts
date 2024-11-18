@@ -18,10 +18,7 @@ import { Utility } from './utility';
 })
 export class LocalService {
 
-
-  // Advantages: Faster and direct access to random state
-
-  constructor() { }
+  // Advantages over PythonService: Faster and direct access to random state
 
   public static generateErdosRenyi(n: number, e: number): EdgeList {
     const G: EdgeList = { nodes: [], edges: [] };
@@ -29,13 +26,21 @@ export class LocalService {
       G.nodes.push({ id: i });
     }
 
-    // Bias disconnected nodes would be incorrect
-    for (let i = 0; i < e; i++) {
-      // Equal probability for all edges between non-neighbors
-
-      // Naive: List of possible pairs, choose e
-      // Smart: f: I -> (v1, v2), choose random 0 <= x < i and create f(x), update f
+    const maxEdges = n * (n - 1) / 2;
+    const edges: Edge[] = [];
+    for (let i = 0; i < maxEdges; i++) {
+      for (let j = 0; j < i; j++) {
+        if (j == i) {
+          continue;
+        }
+        edges.push({
+          source: G.nodes[i],
+          target: G.nodes[j]
+        });
+      }
     }
+    Utility.shuffleArray(edges);
+    G.edges = edges.slice(e);
 
     return G;
   }
