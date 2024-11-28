@@ -24,6 +24,7 @@ export class ERGenerator implements Generator {
     public generate(): EdgeList {
         // Run generator
         let g = LocalService.generateErdosRenyi(this.nodeCount, this.edgeCount);
+        console.log(g);
         if (this.extractGiantComponent) {
             g = LocalService.extractGiantComponent(new AdjacencyList(g));
         }

@@ -26,9 +26,8 @@ export class LocalService {
       G.nodes.push({ id: i });
     }
 
-    const maxEdges = n * (n - 1) / 2;
     const edges: Edge[] = [];
-    for (let i = 0; i < maxEdges; i++) {
+    for (let i = 0; i < n; i++) {
       for (let j = 0; j < i; j++) {
         if (j == i) {
           continue;
@@ -40,7 +39,7 @@ export class LocalService {
       }
     }
     Utility.shuffleArray(edges);
-    G.edges = edges.slice(e);
+    G.edges = edges.slice(0, e);
 
     return G;
   }

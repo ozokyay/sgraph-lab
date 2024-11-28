@@ -7,6 +7,7 @@
   <mat-form-field>
     <mat-label>Graph Generator</mat-label>
     <mat-select [ngModel]="generator.name" (valueChange)="onChangeGenerator($event)" [disabled]="cluster.immutable">
+        <mat-option value="ER">Erdös-Renyi Model</mat-option>
         <mat-option value="CL">Chung-Lu Model</mat-option>
         <mat-option value="CM">Configuration Model</mat-option>
         <mat-option value="MG">Cluster Group</mat-option>
@@ -18,11 +19,15 @@
       <mat-label>Replication</mat-label>
       <input type="number" matInput [(ngModel)]="cluster.replication" value="1" min="1" oninput="this.value = Math.max(1, Math.round(this.value));" (change)="onChange()" [disabled]="cluster.immutable">
     </mat-form-field>
+  }
+  @if (cluster.generator.name == "CL" || cluster.generator.name == "CM") {
     <br>
     <mat-form-field>
       <mat-label>Desired node count</mat-label>
       <input matInput type="number" min="0" [value]="theoreticalNodeCount" (change)="onChangeNodeCount($event.target)" [disabled]="cluster.immutable">
     </mat-form-field>
+  }
+  @if (cluster.generator.name != "MG") {
     <br>
     <mat-slide-toggle [(ngModel)]="generator.extractGiantComponent" (change)="onChange()" [disabled]="cluster.immutable">
       Keep only largest connected component
@@ -34,7 +39,17 @@
   <br>
   <span>Resulting edge count: {{clusterMeasures?.edgeCount}}</span>
   <br>
-  @if (cluster.generator.name == "CL") {
+  @if (cluster.generator.name == "ER") {
+    <mat-form-field>
+      <mat-label>Node count</mat-label>
+      <input matInput type="number" min="0" [(ngModel)]="generator.nodeCount" [disabled]="cluster.immutable" (change)="onChange()">
+    </mat-form-field>
+    <br>
+    <mat-form-field>
+      <mat-label>Edge count</mat-label>
+      <input matInput type="number" min="0" [(ngModel)]="generator.edgeCount" [disabled]="cluster.immutable" (change)="onChange()">
+    </mat-form-field>
+  } @else if (cluster.generator.name == "CL") {
     <app-vis-line-chart [showLegend]="true" [series]="generator.degreeDistribution" [series2]="measuredDistribution" (seriesChange)="onChange()" [editMode]="!cluster.immutable" [allowAxisScaling]="!cluster.immutable" [allowLogToggles]="!cluster.immutable"></app-vis-line-chart>
   } @else if (cluster.generator.name == "CM") {
     <app-vis-line-chart [showLegend]="true" [series]="generator.degreeDistribution" [series2]="measuredDistribution" (seriesChange)="onChange()" [editMode]="!cluster.immutable" [allowAxisScaling]="!cluster.immutable" [allowLogToggles]="!cluster.immutable"></app-vis-line-chart>
@@ -47,5 +62,3 @@
 } @else {
   <p class="center-text">Select a cluster to edit</p>
 }
-
-<!-- Two columns: percent, cluster names, rest stays stacked -->

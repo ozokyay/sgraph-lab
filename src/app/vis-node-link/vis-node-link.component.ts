@@ -267,26 +267,27 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
       this.edgeGraphics.lineTo(target.renderPosition.x * this.edgeScale, target.renderPosition.y * this.edgeScale);
       this.edgeGraphics.stroke({width: 1, color: hover || diffusionSeeds ? 0xFF00FF : this.getNodeColor(edge.target, this.edgeColor), alpha: alpha });
     }
-
+    
     // Render convex hull
-    if (this.config.selectedCluster.value != undefined && !this.config.hiddenClusters.value.has(this.config.selectedCluster.value.id)) {
-      const cluster1 = this.config.configuration.value.instance.clusters.get(this.config.selectedCluster.value.id)?.nodes;
-      if (cluster1 == undefined) {
-        return;
-      }
-      const points: [number, number][] = cluster1.map(n => {
-        const data = n.data as NodeData;
-        return [data.renderPosition.x, data.renderPosition.y];
-      });
-      const hull = d3.polygonHull(points)!;
-      for (let i = 0; i < hull.length; i++) {
-        const point1 = hull[i];
-        const point2 = hull[i == hull.length - 1 ? 0 : (i + 1)];
-        this.edgeGraphics.moveTo(point1[0] * this.edgeScale, point1[1] * this.edgeScale);
-        this.edgeGraphics.lineTo(point2[0] * this.edgeScale, point2[1] * this.edgeScale);
-      }
-      this.edgeGraphics.stroke({ width: 4, color: 0x222222 });
-    }
+    // if (this.config.selectedCluster.value != undefined && !this.config.hiddenClusters.value.has(this.config.selectedCluster.value.id)) {
+    //   const cluster1 = this.config.configuration.value.instance.clusters.get(this.config.selectedCluster.value.id)?.nodes;
+    //   if (cluster1 == undefined) {
+    //     return;
+    //   }
+    //   const points: [number, number][] = cluster1.map(n => {
+    //     const data = n.data as NodeData;
+    //     return [data.renderPosition.x, data.renderPosition.y];
+    //   });
+    //   console.log(points); // Problem: Cannot start from 0 nodes, must fix
+    //   const hull = d3.polygonHull(points)!;
+    //   for (let i = 0; i < hull.length; i++) {
+    //     const point1 = hull[i];
+    //     const point2 = hull[i == hull.length - 1 ? 0 : (i + 1)];
+    //     this.edgeGraphics.moveTo(point1[0] * this.edgeScale, point1[1] * this.edgeScale);
+    //     this.edgeGraphics.lineTo(point2[0] * this.edgeScale, point2[1] * this.edgeScale);
+    //   }
+    //   this.edgeGraphics.stroke({ width: 4, color: 0x222222 });
+    // }
   }
 
   private getNodeCluster(node: Node): Cluster {

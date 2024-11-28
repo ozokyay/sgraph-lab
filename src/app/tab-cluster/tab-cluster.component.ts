@@ -8,7 +8,7 @@ import { FormsModule } from '@angular/forms';
 import { GraphMeasures } from '../graph-configuration';
 import { ConfigurationService } from '../configuration.service';
 import { Cluster } from '../cluster';
-import { CLGenerator, CMGenerator, MGGenerator } from '../generators';
+import { CLGenerator, CMGenerator, ERGenerator, MGGenerator } from '../generators';
 import { DegreesDefault, Series } from '../series';
 import { Utility } from '../utility';
 import { MatDividerModule } from '@angular/material/divider';
@@ -98,6 +98,9 @@ export class TabClusterComponent {
     let degreeDistribution: Series = oldGenerator.degreeDistribution || DegreesDefault;
     let extractGiantComponent: boolean = oldGenerator.extractGiantComponent || true;
     switch (generator) {
+      case "ER":
+        this.cluster!.generator = new ERGenerator(oldGenerator.nodeCount || 150, oldGenerator.edgeCount || 250, extractGiantComponent);
+        break;
       case "CL":
         this.cluster!.generator = new CLGenerator(degreeDistribution, extractGiantComponent);
         break;
@@ -173,6 +176,10 @@ export class TabClusterComponent {
       for (let i = 0; i < this.cluster.replication; i++) {
         const newChild = structuredClone(this.cluster);
         switch (newChild.generator.name) {
+          case "ER":
+            const er = newChild.generator as ERGenerator;
+            newChild.generator = new ERGenerator(er.nodeCount, er.edgeCount, er.extractGiantComponent);
+            break;
           case "CL":
             const cl = newChild.generator as CLGenerator;
             newChild.generator = new CLGenerator(cl.degreeDistribution, cl.extractGiantComponent);
@@ -210,6 +217,10 @@ export class TabClusterComponent {
         const node = this.config.configuration.value.definition.graph.nodeDictionary.get(child);
         const cluster = node?.data as Cluster;
         switch (this.cluster.generator.name) {
+          case "ER":
+            const er = this.cluster.generator as ERGenerator;
+            cluster.generator = new ERGenerator(er.nodeCount, er.edgeCount, er.extractGiantComponent);
+            break;
           case "CL":
             const cl = this.cluster.generator as CLGenerator;
             cluster.generator = new CLGenerator(structuredClone(cl.degreeDistribution), cl.extractGiantComponent);
