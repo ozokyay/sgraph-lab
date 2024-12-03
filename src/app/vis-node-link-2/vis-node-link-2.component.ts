@@ -272,7 +272,6 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
 
         // TODO
         // - SIR
-        // - ER with node and edge count
         // - More symmetry matrix/NL
         // - Tooltips edges/matrix
         // - Selectable expandable edges list with buttons?

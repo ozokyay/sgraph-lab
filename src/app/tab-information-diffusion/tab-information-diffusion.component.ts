@@ -12,8 +12,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { TutorialService } from '../tutorial.service';
 import { Cluster } from '../cluster';
-
-export type NodeState = "susceptible" | "contacted" | "infected" | "refractory";
+import { DiffusionModel, NodeState, SCIR, SI } from '../diffusion';
 
 @Component({
   selector: 'app-tab-information-diffusion',
@@ -41,10 +40,9 @@ export class TabInformationDiffusionComponent {
   public stepActive: Series = EmptySeries();
   public clusterActive: Map<number, [Series, string]> = new Map();
   public clusters: [string, number][] = [];
-  public seedNodes: Set<Node> = new Set();
-  public contactedNodes: Set<Node> = new Set();
-  public refractoryNodes: Set<Node> = new Set();
-  public nodeState: Map<Node, NodeState> = new Map();
+
+  public seedNodes: Node[] = [];
+
   public contactedOrRefractoryNodes = 0;
   public step = 0;
   public running = false;
@@ -52,27 +50,25 @@ export class TabInformationDiffusionComponent {
 
   private graph?: AdjacencyList;
   private originalSeedNodes: Set<Node> = new Set();
+  private model?: DiffusionModel;
   private intervalID = 0;
 
   constructor(private config: ConfigurationService, private tutorial: TutorialService) {
     config.configuration.subscribe(configuration => {
       this.graph = new AdjacencyList(configuration.instance.graph);
-      this.seedNodes.clear();
+      this.seedNodes = [];
       this.originalSeedNodes.clear();
       this.onPause();
       this.onReset(true);
     });
     config.selectedDiffusionSeeds.subscribe(seeds => {
-      this.seedNodes = seeds;
-    });
-    config.diffusionNodeStates.subscribe(states => {
-      this.nodeState = states;
+      this.seedNodes = [...seeds];
     });
     tutorial.playDiffusion.subscribe(() => {
       this.onPlay();
     });
     tutorial.stopDiffusion.subscribe(() => {
-      this.seedNodes.clear();
+      this.seedNodes = [];
       this.originalSeedNodes.clear();
       this.onPause();
       this.onReset(true);
@@ -82,15 +78,16 @@ export class TabInformationDiffusionComponent {
   public onPlay() {
     if (!this.dirty) {
       this.originalSeedNodes = new Set(this.seedNodes);
-      this.nodeState = new Map();
-      if (this.diffusionModel == "SCIR") {
-        for (const n of this.graph!.nodes.keys()) {
-          this.nodeState.set(n, "susceptible");
-        }
-        for (const n of this.originalSeedNodes) {
-          this.nodeState.set(n, "infected");
-        }
+
+      switch (this.diffusionModel) {
+        case 'SI':
+          this.model = new SI(this.graph!, this.seedNodes);
+          break;
+        case 'SCIR':
+          this.model = new SCIR(this.graph!, this.seedNodes);
+          break;
       }
+
       const entries = this.config.configuration.value.definition.graph.getNodes().map(n => [n.id, [{ data: [], xExtent: [0, 10], yExtent: [0, this.graph!.nodes.size] }, (n.data as Cluster).color]] as [number, [Series, string]]);
       this.clusterActive = new Map(entries);
     }
@@ -109,12 +106,11 @@ export class TabInformationDiffusionComponent {
     // Clear all node/edge highlights
     this.step = 0;
     this.dirty = false;
-    this.seedNodes.clear();
-    for (const n of this.originalSeedNodes) {
-      this.seedNodes.add(n);
-    }
-    this.nodeState.clear();
+    this.seedNodes = [...this.originalSeedNodes];
     this.contactedOrRefractoryNodes = 0;
+
+    // TODO: Not much to do, will just ignore old model
+    // publish new (reset) values to config
 
     // Reset series
     this.totalActive = { data: [], xExtent: [0, 10], yExtent: [0, this.graph!.nodes.size] };
@@ -131,98 +127,19 @@ export class TabInformationDiffusionComponent {
   }
 
   public onClear() {
-    this.seedNodes.clear();
+    // TODO: Must clear model
+
+    this.seedNodes = [];
     this.originalSeedNodes.clear();
     // Render
     this.config.selectedDiffusionSeeds.next(this.seedNodes);
   }
 
   private onTick() {
-    // Check stop condition
-    if (this.seedNodes.size == this.graph!.nodes.size) {
+    // Tick
+    if (!this.model!.tick()) {
       this.onPause();
       return;
-    } else {
-      let done = true;
-      for (const n of this.seedNodes) {
-        for (const [e, m] of this.graph!.nodes.get(n)!) {
-          if (this.diffusionModel == "SI") {
-            if (!this.seedNodes.has(m)) {
-              done = false;
-              break;
-            }
-          } else if (this.diffusionModel == "SCIR") {
-            if (this.nodeState.get(m) == "susceptible" || this.nodeState.get(m) == "contacted") {
-              done = false;
-              break;
-            }
-          }
-        }
-      }
-      if (done) {
-        this.onPause();
-        return;
-      }
-    }
-
-    // Propagate activation through network
-    const toAdd = new Set<Node>() // Cannot modify while iterating
-    if (this.diffusionModel == "SI") {
-      for (const active of this.seedNodes) {
-        const neighbors = this.graph!.nodes.get(active)!;
-        for (const [e, n] of neighbors) {
-          // a) Susceptible
-          // b) Infected (in seedNodes)
-          if (!this.seedNodes.has(n) && Math.random() < this.infectionProbability) {
-            toAdd.add(n);
-          }
-        }
-      }
-    } else if (this.diffusionModel == "SCIR") {
-      // (1) When each susceptible agent meets an infected agent, the susceptible
-      // agent is infected and becomes a spreader at a rate λ,
-      // or else the susceptible agent enters the contacted state.
-      // (2) Contacted agents lose their interests in sharing and spreading
-      // the information gradually, and become refractory at a rate δ
-      // spontaneously, or else the remainder contacted agents are infected
-      // by one of infected neighbors at a rate λ.
-
-      // 1. Infected + Susceptible -λ-> Infected/Contacted
-      // 2. Contacted -δ-> Refractory/Contacted
-      // 3. Infected + Contacted -λ-> Infected/Contacted
-
-      const oldStates = new Map<Node, NodeState>(this.nodeState);
-      for (const node of this.graph!.nodes.keys()) {
-        const state = oldStates.get(node)!;
-        if (state == "susceptible") {
-          const neighbors = this.graph!.nodes.get(node)!;
-          for (const [e, n] of neighbors) {
-            const neighborState = oldStates.get(n)!;
-            if (neighborState == "infected") {
-              if (Math.random() < this.infectionProbability) {
-                this.nodeState.set(node, "infected");
-                toAdd.add(node);
-              } else {
-                this.nodeState.set(node, "contacted");
-                this.contactedOrRefractoryNodes++;
-              }
-              break;
-            }
-          }
-        } else if (state == "contacted") {
-          if (Math.random() < this.refractoryProbability) {
-            this.nodeState.set(node, "refractory");
-          } else if (Math.random() < this.infectionProbability) {
-            this.nodeState.set(node, "infected");
-            toAdd.add(node);
-            this.contactedOrRefractoryNodes--;
-          }
-        }
-      }
-    }
-
-    for (const n of toAdd) {
-      this.seedNodes.add(n);
     }
 
     // Calculate per cluster
@@ -233,7 +150,7 @@ export class TabInformationDiffusionComponent {
         const [series, _] = this.clusterActive.get(cluster.id)!;
         let count = 0;
         for (const n of graph.nodes) {
-          if (this.seedNodes.has(n)) {
+          if (this.model!.nodeState.get(n) == "infected") {
             count++;
           }
         }
@@ -268,10 +185,7 @@ export class TabInformationDiffusionComponent {
     this.step++;
 
     // Render
-    if (this.diffusionModel == "SI") {
-      this.config.selectedDiffusionSeeds.next(this.seedNodes);
-    } else if (this.diffusionModel == "SCIR") {
-      this.config.diffusionNodeStates.next(this.nodeState);
-    }
+    this.config.selectedDiffusionSeeds.next(this.seedNodes);
+    this.config.diffusionNodeStates.next(this.model!.nodeState);
   }
 }
