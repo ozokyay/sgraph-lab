@@ -9,18 +9,14 @@ export interface DiffusionModel {
 
 export class SI implements DiffusionModel {
     public nodeState: Map<Node, NodeState> = new Map();
-    public infectionProbability = 0.1;
+    public infectionProbability;
 
     private graph: AdjacencyList;
 
-    constructor(graph: AdjacencyList, seeds: Node[]) {
+    constructor(graph: AdjacencyList, nodeState: Map<Node, NodeState>, infectionProbability: number) {
         this.graph = graph;
-        for (const n of this.graph!.nodes.keys()) {
-            this.nodeState.set(n, "susceptible");
-        }
-        for (const n of seeds) {
-            this.nodeState.set(n, "infected");
-        }
+        this.nodeState = nodeState;
+        this.infectionProbability = infectionProbability;
     }
 
     public tick(): boolean {
@@ -59,13 +55,15 @@ export class SI implements DiffusionModel {
     }
 }
 
-// export class SIR implements DiffusionModel{
+// export class SIR implements DiffusionModel{ // Can justify constant probability -> exp/geom distributio -> cdf time for some models
 
 // }
 
 // export class SIS implements DiffusionModel {
 
 // }
+
+// SIRS
 
 export class SCIR implements DiffusionModel {
     public nodeState: Map<Node, NodeState> = new Map();
@@ -75,24 +73,26 @@ export class SCIR implements DiffusionModel {
 
     private graph: AdjacencyList;
 
-    constructor(graph: AdjacencyList, seeds: Node[]) {
+    constructor(graph: AdjacencyList, nodeState: Map<Node, NodeState>, infectionProbability: number, refractoryProbability: number) {
         this.graph = graph;
-        for (const n of this.graph!.nodes.keys()) {
-            this.nodeState.set(n, "susceptible");
-        }
-        for (const n of seeds) {
-            this.nodeState.set(n, "infected");
-        }
+        this.nodeState = nodeState;
+        this.infectionProbability = infectionProbability;
+        this.refractoryProbability = refractoryProbability;
     }
 
     public tick(): boolean {
         let done = true;
         for (const [node, state] of this.nodeState) {
-            for (const [e, m] of this.graph!.nodes.get(node)!) {
-                if (this.nodeState.get(m) == "susceptible" || this.nodeState.get(m) == "contacted") {
-                    done = false;
-                    break;
+            if (state == "infected") {
+                for (const [e, m] of this.graph!.nodes.get(node)!) {
+                    if (this.nodeState.get(m) == "susceptible" || this.nodeState.get(m) == "contacted") {
+                        done = false;
+                        break;
+                    }
                 }
+            } else if (state == "contacted") {
+                done = false;
+                break;
             }
         }
         if (done) {

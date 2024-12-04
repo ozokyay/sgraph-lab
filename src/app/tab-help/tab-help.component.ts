@@ -271,8 +271,8 @@ export class TabHelpComponent {
         };
         this.config.activeTab.next(5);
         this.tutorial.primaryDiffusionMode.next(false);
-        this.config.selectedDiffusionSeeds.value.add(this.config.configuration.value.instance.graph.nodes[0]);
-        this.config.selectedDiffusionSeeds.next(this.config.selectedDiffusionSeeds.value);
+        this.config.diffusionNodeStates.value.set(this.config.configuration.value.instance.graph.nodes[0], "infected");
+        this.config.diffusionNodeStates.next(this.config.diffusionNodeStates.value);
         this.tutorial.playDiffusion.next();
         break;
       }

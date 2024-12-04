@@ -37,59 +37,92 @@ export class TabInformationDiffusionComponent {
 
   public simulationSpeed = 10;
   public totalActive: Series = EmptySeries();
-  public stepActive: Series = EmptySeries();
   public clusterActive: Map<number, [Series, string]> = new Map();
   public clusters: [string, number][] = [];
 
-  public seedNodes: Node[] = [];
-
+  public infectedNodes = 0;
   public contactedOrRefractoryNodes = 0;
   public step = 0;
   public running = false;
   public dirty = false;
 
   private graph?: AdjacencyList;
-  private originalSeedNodes: Set<Node> = new Set();
+  private originalNodeStates: Map<Node, NodeState> = new Map();
   private model?: DiffusionModel;
   private intervalID = 0;
 
   constructor(private config: ConfigurationService, private tutorial: TutorialService) {
     config.configuration.subscribe(configuration => {
       this.graph = new AdjacencyList(configuration.instance.graph);
-      this.seedNodes = [];
-      this.originalSeedNodes.clear();
+      this.originalNodeStates.clear();
       this.onPause();
       this.onReset(true);
+      // Might want to keep seeds in the future, but clear on changes for now
+      // Cannot clear because of inconsistent graph across tabs
+      // for (const n of this.graph!.nodes.keys()) {
+      //   this.originalNodeStates.set(n, "susceptible"); // Graph/state mismatch? -> Should clear diffusionNodeStates and publish to config? otherwise original will only get old again, full of old node states (susc)
+      // }
+      // this.infectedNodes = 0;
+
+      // But onclear breaks stuff due to graph mismatch across tabs
+      // Alternative coul be caching nodeStates here (but adds complexity)
+      
+      // Only issue are deleted clusters -> handle this case?
+
+      this.config.ignoreDiffusionNodeStates = true;
+      this.onClear(); // Causes NL to access old graph, fails to lookup old (removed) cluster id on new graph
+      // But must update config.diffNodes, otherwise user is editing outdated map
+      this.config.ignoreDiffusionNodeStates = false;
     });
-    config.selectedDiffusionSeeds.subscribe(seeds => {
-      this.seedNodes = [...seeds];
+    config.diffusionNodeStates.subscribe(states => {
+      if (!this.running) {
+        // Count infected
+        this.infectedNodes = [...states.values()].reduce((a, b) => a + (b == "infected" ? 1 : 0), 0);
+      }
     });
     tutorial.playDiffusion.subscribe(() => {
       this.onPlay();
     });
     tutorial.stopDiffusion.subscribe(() => {
-      this.seedNodes = [];
-      this.originalSeedNodes.clear();
       this.onPause();
       this.onReset(true);
+      // Cannot clear because of inconsistent graph across tabs
+      // for (const n of this.graph!.nodes.keys()) {
+      //   this.originalNodeStates.set(n, "susceptible");
+      // }
+      // this.infectedNodes = 0;
+
+      this.config.ignoreDiffusionNodeStates = true;
+      this.onClear();
+      this.config.ignoreDiffusionNodeStates = false;
     });
   }
 
   public onPlay() {
     if (!this.dirty) {
-      this.originalSeedNodes = new Set(this.seedNodes);
+      this.originalNodeStates = new Map(this.config.diffusionNodeStates.value);
 
       switch (this.diffusionModel) {
         case 'SI':
-          this.model = new SI(this.graph!, this.seedNodes);
+          this.model = new SI(this.graph!, this.config.diffusionNodeStates.value, this.infectionProbability);
           break;
         case 'SCIR':
-          this.model = new SCIR(this.graph!, this.seedNodes);
+          this.model = new SCIR(this.graph!, this.config.diffusionNodeStates.value, this.infectionProbability, this.refractoryProbability);
           break;
       }
 
       const entries = this.config.configuration.value.definition.graph.getNodes().map(n => [n.id, [{ data: [], xExtent: [0, 10], yExtent: [0, this.graph!.nodes.size] }, (n.data as Cluster).color]] as [number, [Series, string]]);
       this.clusterActive = new Map(entries);
+    } else {
+      switch (this.diffusionModel) {
+        case 'SI':
+          (this.model as SI).infectionProbability = this.infectionProbability;
+          break;
+        case 'SCIR':
+          (this.model as SCIR).infectionProbability = this.infectionProbability;
+          (this.model as SCIR).refractoryProbability = this.refractoryProbability;
+          break;
+      }
     }
     this.dirty = true;
     this.running = true;
@@ -106,33 +139,26 @@ export class TabInformationDiffusionComponent {
     // Clear all node/edge highlights
     this.step = 0;
     this.dirty = false;
-    this.seedNodes = [...this.originalSeedNodes];
     this.contactedOrRefractoryNodes = 0;
-
-    // TODO: Not much to do, will just ignore old model
-    // publish new (reset) values to config
 
     // Reset series
     this.totalActive = { data: [], xExtent: [0, 10], yExtent: [0, this.graph!.nodes.size] };
-    this.stepActive = { data: [], xExtent: [0, 10], yExtent: [0, this.graph!.nodes.size] };
     this.clusterActive = new Map();
     this.clusters = [];
 
     // Prevent event chaining
     if (!noSeedEvent) {
       // Render
-      this.config.selectedDiffusionSeeds.next(this.seedNodes);
-      this.config.diffusionNodeStates.next(this.nodeState);
+      this.config.diffusionNodeStates.next(this.originalNodeStates); // Don't need to copy because we copy on play
     }
   }
 
   public onClear() {
-    // TODO: Must clear model
-
-    this.seedNodes = [];
-    this.originalSeedNodes.clear();
+    for (const n of this.graph!.nodes.keys()) {
+      this.originalNodeStates.set(n, "susceptible");
+    }
     // Render
-    this.config.selectedDiffusionSeeds.next(this.seedNodes);
+    this.config.diffusionNodeStates.next(this.originalNodeStates); // Also don't need to copy, assuming we are always clean before clear
   }
 
   private onTick() {
@@ -143,6 +169,7 @@ export class TabInformationDiffusionComponent {
     }
 
     // Calculate per cluster
+    this.infectedNodes = 0;
     this.clusters = [];
     for (const [id, graph] of this.config.configuration.value.instance.clusters.entries()) {
       const cluster = this.config.configuration.value.definition.graph.nodeDictionary.get(id)!.data as Cluster;
@@ -154,6 +181,7 @@ export class TabInformationDiffusionComponent {
             count++;
           }
         }
+        this.infectedNodes += count;
         series.data.push({
           x: this.step,
           y: count
@@ -169,23 +197,16 @@ export class TabInformationDiffusionComponent {
     // Update series (extent in steps +1/3 free)
     this.totalActive.data.push({
       x: this.step,
-      y: this.seedNodes.size
-    });
-    this.stepActive.data.push({
-      x: this.step,
-      y: toAdd.size
+      y: this.infectedNodes
     });
     if (this.totalActive.xExtent[1] <= this.step) {
       this.totalActive.xExtent[1] = Math.round(1.5 * this.totalActive.xExtent[1]);
-      this.stepActive.xExtent[1] = Math.round(1.5 * this.stepActive.xExtent[1]);
     }
 
     this.totalActive = {...this.totalActive};
-    this.stepActive = {...this.stepActive};
     this.step++;
 
     // Render
-    this.config.selectedDiffusionSeeds.next(this.seedNodes);
     this.config.diffusionNodeStates.next(this.model!.nodeState);
   }
 }

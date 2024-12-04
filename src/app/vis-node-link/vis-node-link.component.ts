@@ -86,14 +86,8 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
         this.render(this.config.forceDirectedLayout.value, this.abort.signal);
       }
     }));
-    this.subscriptions.push(this.config.selectedDiffusionSeeds.subscribe(() => {
-      if (this.config.forceDirectedLayout.value.nodes.length > 0) {
-        this.createNodes(this.config.forceDirectedLayout.value);
-        this.render(this.config.forceDirectedLayout.value, this.abort.signal);
-      }
-    }));
     this.subscriptions.push(this.config.diffusionNodeStates.subscribe(() => {
-      if (this.config.forceDirectedLayout.value.nodes.length > 0) {
+      if (this.config.forceDirectedLayout.value.nodes.length > 0 && !this.config.ignoreDiffusionNodeStates) { // And not triggerd by diffusion due to config change (chaining), otherwise sampled/layout will be outdated -> flag
         this.createNodes(this.config.forceDirectedLayout.value);
         this.render(this.config.forceDirectedLayout.value, this.abort.signal);
       }
@@ -137,7 +131,7 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
       // Alpha: This node has selected incident edges
       // This does not only depend on cluster id, but must be from the correct edge bundle which makes things inefficient
       const anySelection = this.config.selectedConnections.value.length > 0;
-      const diffusionSeed = this.config.selectedDiffusionSeeds.value.has(node);
+      const diffusionSeed = this.config.diffusionNodeStates.value.get(node) == "infected";
       const state = this.config.diffusionNodeStates.value.get(node);
       const alpha = !this.edgeHighlight || !anySelection || selectedEdges.find(e => e.source == node || e.target == node) ? 1 : 0.2;
 
@@ -177,15 +171,16 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
         }
       }
       gfx.onclick = () => {
-        const seeds = this.config.selectedDiffusionSeeds.value;
-        if (seeds.has(node)) {
-          seeds.delete(node);
+        const seeds = this.config.diffusionNodeStates.value;
+        const state = seeds.get(node);
+        if (state == "infected") {
+          seeds.set(node, "susceptible");
           this.config.diffusionNodeStates.value.set(node, 'susceptible');
         } else {
-          seeds.add(node);
+          seeds.set(node, "infected");
           this.config.diffusionNodeStates.value.set(node, 'infected');
         }
-        this.config.selectedDiffusionSeeds.next(seeds);
+        this.config.diffusionNodeStates.next(seeds);
       };
       this.nodeDict.set(node, gfx);
       this.stage.addChild(gfx);
@@ -251,7 +246,9 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
       
       const hover = edge.source == this.hoveredNode || edge.target == this.hoveredNode;
       const selected = selectedEdges.indexOf(edge) != -1;
-      const diffusionSeeds = this.config.selectedDiffusionSeeds.value.has(edge.source) && this.config.selectedDiffusionSeeds.value.has(edge.target);
+      const seedSource = this.config.diffusionNodeStates.value.get(edge.source) == "infected";
+      const seedTarget = this.config.diffusionNodeStates.value.get(edge.target) == "infected";
+      const diffusionSeeds = seedSource && seedTarget;
 
       // Transparency of unselected if there is an active selection
       const alpha = !this.edgeHighlight || hover || !anySelection || selected ? 1 : 0.2;
@@ -269,25 +266,24 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
     }
     
     // Render convex hull
-    // if (this.config.selectedCluster.value != undefined && !this.config.hiddenClusters.value.has(this.config.selectedCluster.value.id)) {
-    //   const cluster1 = this.config.configuration.value.instance.clusters.get(this.config.selectedCluster.value.id)?.nodes;
-    //   if (cluster1 == undefined) {
-    //     return;
-    //   }
-    //   const points: [number, number][] = cluster1.map(n => {
-    //     const data = n.data as NodeData;
-    //     return [data.renderPosition.x, data.renderPosition.y];
-    //   });
-    //   console.log(points); // Problem: Cannot start from 0 nodes, must fix
-    //   const hull = d3.polygonHull(points)!;
-    //   for (let i = 0; i < hull.length; i++) {
-    //     const point1 = hull[i];
-    //     const point2 = hull[i == hull.length - 1 ? 0 : (i + 1)];
-    //     this.edgeGraphics.moveTo(point1[0] * this.edgeScale, point1[1] * this.edgeScale);
-    //     this.edgeGraphics.lineTo(point2[0] * this.edgeScale, point2[1] * this.edgeScale);
-    //   }
-    //   this.edgeGraphics.stroke({ width: 4, color: 0x222222 });
-    // }
+    if (this.config.selectedCluster.value != undefined && !this.config.hiddenClusters.value.has(this.config.selectedCluster.value.id)) {
+      const cluster1 = this.config.configuration.value.instance.clusters.get(this.config.selectedCluster.value.id)?.nodes;
+      if (cluster1 == undefined || cluster1.length < 3) {
+        return;
+      }
+      const points: [number, number][] = cluster1.map(n => {
+        const data = n.data as NodeData;
+        return [data.renderPosition.x, data.renderPosition.y];
+      });
+      const hull = d3.polygonHull(points)!;
+      for (let i = 0; i < hull.length; i++) {
+        const point1 = hull[i];
+        const point2 = hull[i == hull.length - 1 ? 0 : (i + 1)];
+        this.edgeGraphics.moveTo(point1[0] * this.edgeScale, point1[1] * this.edgeScale);
+        this.edgeGraphics.lineTo(point2[0] * this.edgeScale, point2[1] * this.edgeScale);
+      }
+      this.edgeGraphics.stroke({ width: 4, color: 0x222222 });
+    }
   }
 
   private getNodeCluster(node: Node): Cluster {

@@ -12,7 +12,7 @@ import { PythonService } from './python.service';
 import { Uniform10 } from './series';
 import { Point } from './point';
 import { ForceDirected } from './graphwagu/webgpu/force_directed';
-import { NodeState } from './tab-information-diffusion/tab-information-diffusion.component';
+import { NodeState } from './diffusion';
 
 @Injectable({
   providedIn: 'root'
@@ -29,7 +29,6 @@ export class ConfigurationService {
   public selectedCluster = new BehaviorSubject<Cluster | undefined>(undefined);
   public hiddenClusters = new BehaviorSubject<Set<number>>(new Set());
   public selectedConnections = new BehaviorSubject<Edge[]>([]);
-  public selectedDiffusionSeeds = new BehaviorSubject<Set<Node>>(new Set());
   public diffusionNodeStates = new BehaviorSubject<Map<Node, NodeState>>(new Map());
   public layoutSettings = new BehaviorSubject<LayoutSettings>(DefaultLayout);
   public sample = new BehaviorSubject<EdgeList>({ nodes: [], edges: [] });
@@ -37,6 +36,7 @@ export class ConfigurationService {
   public forceDirectedLayout = new BehaviorSubject<EdgeList>({ nodes: [], edges: [] });
   public activeTab = new BehaviorSubject<number>(0);
   public history = new BehaviorSubject<GraphConfiguration[]>([structuredClone(this.configuration.value)]);
+  public ignoreDiffusionNodeStates = false;
   public clickCounter = 0;
   public pointerUp = new Subject<void>();
 
@@ -69,7 +69,7 @@ export class ConfigurationService {
     // Must clear selection because no history
     this.selectedCluster.next(undefined);
     this.selectedConnections.next([]);
-    this.selectedDiffusionSeeds.next(new Set());
+    this.diffusionNodeStates.next(new Map());
   }
 
   public async update(message: string) {
