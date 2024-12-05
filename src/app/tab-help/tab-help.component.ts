@@ -31,7 +31,9 @@ export class TabHelpComponent {
 
   public startTutorial() {
     // Import example graph
+    this.config.ignoreChanges = true;
     this.config.clear();
+    this.config.ignoreChanges = false;
     const definition = Utility.parse(ExampleGraph);
     this.config.configuration.value.definition = definition;
     this.config.update("Import graph");
@@ -306,7 +308,9 @@ export class TabHelpComponent {
         };
         done = true;
         this.tutorial.highlightTabs = false;
+        this.config.ignoreChanges = true;
         this.config.clear();
+        this.config.ignoreChanges = false;
         this.config.update("Empty graph");
         this.config.activeTab.next(0);
         this.tutorial.primaryVisLevel.next(1);

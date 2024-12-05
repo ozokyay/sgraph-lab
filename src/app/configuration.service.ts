@@ -36,7 +36,7 @@ export class ConfigurationService {
   public forceDirectedLayout = new BehaviorSubject<EdgeList>({ nodes: [], edges: [] });
   public activeTab = new BehaviorSubject<number>(0);
   public history = new BehaviorSubject<GraphConfiguration[]>([structuredClone(this.configuration.value)]);
-  public ignoreDiffusionNodeStates = false;
+  public ignoreChanges = false;
   public clickCounter = 0;
   public pointerUp = new Subject<void>();
 

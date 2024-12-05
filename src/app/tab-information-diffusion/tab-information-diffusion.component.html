@@ -1,24 +1,36 @@
 <mat-form-field class="large" style="width: 100%;">
     <mat-label>Diffusion Model</mat-label>
-    <mat-select style="width: 100%;" [(value)]="diffusionModel" [disabled]="running">
+    <mat-select style="width: 100%;" [(value)]="diffusionModel" [disabled]="running || dirty">
         <mat-option value="SI">Susceptible Infected</mat-option>
+        <mat-option value="SIR">Susceptible Infected Removed</mat-option>
+        <mat-option value="SIS">Susceptible Infected Susceptible</mat-option>
+        <mat-option value="SIRS">Susceptible Infected Refractory Susceptible</mat-option>
         <mat-option value="SCIR">Susceptible Contacted Infected Refractory</mat-option>
     </mat-select>
 </mat-form-field>
 <br>
 <span>Probability of Infection</span>
 <br>
-<mat-slider discrete min="0" max="1" step="0.01">
-    <input matSliderThumb value="0.5" [(value)]="infectionProbability" [disabled]="running">
+<mat-slider discrete min="0" max="1" step="0.01" [disabled]="running">
+    <input matSliderThumb value="0.1" [(value)]="infectionProbability">
 </mat-slider>
-@if (diffusionModel == "SCIR") {
+@if (diffusionModel == "SIR" || diffusionModel == "SIRS" || diffusionModel == "SCIR") {
     <br>
     <span>Probability of Refractoriness</span>
     <br>
-    <mat-slider discrete min="0" max="1" step="0.01">
-        <input matSliderThumb value="0.5" [(value)]="refractoryProbability" [disabled]="running">
+    <mat-slider discrete min="0" max="1" step="0.01" [disabled]="running">
+        <input matSliderThumb value="0.1" [(value)]="refractoryProbability">
     </mat-slider>
 }
+@if (diffusionModel == "SIS" || diffusionModel == "SIRS") {
+    <br>
+    <span>Probability of Susceptibility</span>
+    <br>
+    <mat-slider discrete min="0" max="1" step="0.01" [disabled]="running">
+        <input matSliderThumb value="0.1" [(value)]="susceptibleProbability">
+    </mat-slider>
+}
+
 <app-vis-line-chart [margin]="{ top: 30, right: 10, bottom: 50, left: 60 }" [showLegend]="true" [legendWidth]="150" legend1="Total infected" legend2="In cluster" [series]="totalActive" [seriesList]="clusterActive" xLabel="Timestep" yLabel="Infected Nodes" [allowAxisScaling]="false" [allowLogToggles]="false" [editMode]="false"></app-vis-line-chart>
 <mat-form-field class="small">
     <mat-label>Timesteps per Second</mat-label>
@@ -34,10 +46,8 @@
 <br><br>
 <span>Current Timestep: {{step}}</span>
 <br />
-@if (diffusionModel == 'SCIR') {
-    <span>Total reached nodes: {{(contactedOrRefractoryNodes + infectedNodes)}}</span>
-    <br>
-}
+<span>Total reached nodes: {{(reachedNodes)}}</span>
+<br>
 <span>Total infected nodes: {{infectedNodes}}</span>
 @for (c of clusters; track $index) {
     <br>

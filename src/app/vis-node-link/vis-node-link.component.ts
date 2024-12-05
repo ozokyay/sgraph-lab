@@ -76,18 +76,18 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
       this.render(graph, this.abort.signal);
     }));
     this.subscriptions.push(this.config.selectedCluster.subscribe(c => {
-      if (this.config.forceDirectedLayout.value.nodes.length > 0) {
+      if (this.config.forceDirectedLayout.value.nodes.length > 0 && !this.config.ignoreChanges) {
         this.render(this.config.forceDirectedLayout.value, this.abort.signal);
       }
     }));
     this.subscriptions.push(this.config.selectedConnections.subscribe(() => {
-      if (this.config.forceDirectedLayout.value.nodes.length > 0) {
+      if (this.config.forceDirectedLayout.value.nodes.length > 0 && !this.config.ignoreChanges) {
         this.createNodes(this.config.forceDirectedLayout.value);
         this.render(this.config.forceDirectedLayout.value, this.abort.signal);
       }
     }));
     this.subscriptions.push(this.config.diffusionNodeStates.subscribe(() => {
-      if (this.config.forceDirectedLayout.value.nodes.length > 0 && !this.config.ignoreDiffusionNodeStates) { // And not triggerd by diffusion due to config change (chaining), otherwise sampled/layout will be outdated -> flag
+      if (this.config.forceDirectedLayout.value.nodes.length > 0 && !this.config.ignoreChanges) { // And not triggerd by diffusion due to config change (chaining), otherwise sampled/layout will be outdated -> flag
         this.createNodes(this.config.forceDirectedLayout.value);
         this.render(this.config.forceDirectedLayout.value, this.abort.signal);
       }
