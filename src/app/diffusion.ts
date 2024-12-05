@@ -4,14 +4,14 @@ export type NodeState = "susceptible" | "contacted" | "infected" | "refractory";
 
 export interface DiffusionModel {
     nodeState: Map<Node, NodeState>,
-    reachedNodeCount: number,
+    reachedNodes: Set<Node>,
     tick(): boolean
 }
 
 export class SI implements DiffusionModel {
     public nodeState: Map<Node, NodeState> = new Map();
     public infectionProbability;
-    public reachedNodeCount = 0;
+    public reachedNodes: Set<Node> = new Set();
 
     private graph: AdjacencyList;
 
@@ -44,7 +44,6 @@ export class SI implements DiffusionModel {
                 for (const [e, n] of neighbors) {
                     if (this.nodeState.get(n) == "susceptible" && Math.random() < this.infectionProbability) {
                         toAdd.push(n);
-                        this.reachedNodeCount++;
                     }
                 }
             }
@@ -52,6 +51,7 @@ export class SI implements DiffusionModel {
 
         for (const node of toAdd) {
             this.nodeState.set(node, "infected");
+            this.reachedNodes.add(node);
         }
 
         return true;
@@ -63,7 +63,7 @@ export class SIR implements DiffusionModel{
     public nodeState: Map<Node, NodeState>;
     public infectionProbability = 0.3;
     public refractoryProbability = 0.5;
-    public reachedNodeCount = 0; // Will have to update this
+    public reachedNodes: Set<Node> = new Set();
 
     private graph: AdjacencyList;
 
@@ -96,7 +96,7 @@ export class SIR implements DiffusionModel{
               if (neighborState == "infected") {
                 if (Math.random() < this.infectionProbability) {
                   this.nodeState.set(node, "infected");
-                  this.reachedNodeCount++;
+                  this.reachedNodes.add(node);
                   break;
                 }
               }
@@ -117,7 +117,6 @@ export class SIS implements DiffusionModel {
     public infectionProbability = 0.3;
     public susceptibleProbability = 0.5;
     public reachedNodes: Set<Node> = new Set();
-    public reachedNodeCount = 0;
 
     private graph: AdjacencyList;
 
@@ -151,7 +150,6 @@ export class SIS implements DiffusionModel {
                 if (Math.random() < this.infectionProbability) {
                   this.nodeState.set(node, "infected");
                   this.reachedNodes.add(node);
-                  this.reachedNodeCount = this.reachedNodes.size;
                   break;
                 }
               }
@@ -173,7 +171,6 @@ export class SIRS implements DiffusionModel {
     public refractoryProbability = 0.3;
     public susceptibleProbability = 0.2;
     public reachedNodes: Set<Node> = new Set();
-    public reachedNodeCount = 0;
 
     private graph: AdjacencyList;
 
@@ -208,7 +205,6 @@ export class SIRS implements DiffusionModel {
                         if (Math.random() < this.infectionProbability) {
                             this.nodeState.set(node, "infected");
                             this.reachedNodes.add(node);
-                            this.reachedNodeCount = this.reachedNodes.size;
                             break;
                         }
                     }
@@ -232,7 +228,7 @@ export class SCIR implements DiffusionModel {
     public nodeState: Map<Node, NodeState> = new Map();
     public infectionProbability = 0.3;
     public refractoryProbability = 0.5;
-    public reachedNodeCount = 0;
+    public reachedNodes: Set<Node> = new Set();
 
     private graph: AdjacencyList;
 
@@ -275,7 +271,7 @@ export class SCIR implements DiffusionModel {
                 } else {
                   this.nodeState.set(node, "contacted");
                 }
-                this.reachedNodeCount++;
+                this.reachedNodes.add(node);
                 break;
               }
             }

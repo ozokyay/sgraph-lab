@@ -78,9 +78,17 @@ export class TabInformationDiffusionComponent {
     });
     config.diffusionNodeStates.subscribe(states => {
       if (!this.running) {
-        // Count infected
-        this.infectedNodes = [...states.values()].reduce((a, b) => a + (b == "infected" ? 1 : 0), 0);
-        this.reachedNodes = this.dirty ? this.model!.reachedNodeCount : this.infectedNodes; // Incorrect: Manual seeds when paused
+        this.infectedNodes = 0;
+        // Count
+        for (const [node, state] of states) {
+          if (state == "infected") {
+            this.infectedNodes++;
+          }
+          if (this.dirty && state != "susceptible") {
+            this.model!.reachedNodes.add(node);
+          }
+        }
+        this.reachedNodes = this.dirty ? this.model!.reachedNodes.size : this.infectedNodes;
       }
     });
     tutorial.playDiffusion.subscribe(() => {
@@ -124,8 +132,13 @@ export class TabInformationDiffusionComponent {
           break;
       }
 
-      // Must set reached node count
-      this.model!.reachedNodeCount = this.infectedNodes; // Overcounts
+      // Not dirty, so currrently no uninfected reached
+      // Must add all infected as reached
+      for (const [node, state] of this.model.nodeState) {
+        if (state == "infected") {
+          this.model.reachedNodes.add(node);
+        }
+      }
 
       const entries = this.config.configuration.value.definition.graph.getNodes().map(n => [n.id, [{ data: [], xExtent: [0, 10], yExtent: [0, this.graph!.nodes.size] }, (n.data as Cluster).color]] as [number, [Series, string]]);
       this.clusterActive = new Map(entries);
@@ -153,6 +166,7 @@ export class TabInformationDiffusionComponent {
           break;
       }
     }
+
     this.dirty = true;
     this.running = true;
 
@@ -198,7 +212,7 @@ export class TabInformationDiffusionComponent {
     }
 
     // Calculate per cluster
-    this.reachedNodes = this.model!.reachedNodeCount;
+    this.reachedNodes = this.model!.reachedNodes.size;
     this.infectedNodes = 0;
     this.clusters = [];
     for (const [id, graph] of this.config.configuration.value.instance.clusters.entries()) {
