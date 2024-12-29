@@ -90,7 +90,7 @@ export class VisContainerComponent implements AfterViewInit {
   constructor(public tutorial: TutorialService) {
     tutorial.update.subscribe(() => {
       this.visLevel.level = this.level;
-      this.visLevel.levelText = this.level == 0 ? "R" : this.level.toString();
+      this.visLevel.levelText = this.level == 0 ? "N" : this.level.toString();
     });
   }
   

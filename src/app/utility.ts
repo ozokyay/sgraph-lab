@@ -532,7 +532,7 @@ export class Utility {
         immutable: true
       };
   
-      const hRange: [number, number] = [0, 369];
+      const hRange: [number, number] = [0, 360];
       const cRange: [number, number] = [10 / 100 * 0.4, 45 / 100 * 0.4];
       const lRange: [number, number] = [96, 57];
       const hFrac = 1;
