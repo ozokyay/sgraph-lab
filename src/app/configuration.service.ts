@@ -595,7 +595,7 @@ export class ConfigurationService {
     await layout.runForces(
       nodeDataBuffer, edgeDataBuffer,
       nodeLength, edgeLength,
-      0.5, 0.05 + Math.log(1 + layoutSettings.gravity / 100), layoutSettings.iterations, layoutSettings.gravity,
+      0.5, 0.05 + layoutSettings.gravity / 100, layoutSettings.iterations, layoutSettings.gravity,
       sourceEdgeDataBuffer, targetEdgeDataBuffer, frame, signal
     );
 
