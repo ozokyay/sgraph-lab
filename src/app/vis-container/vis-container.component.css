@@ -25,3 +25,7 @@ mat-button-toggle {
 .ignore-pointer {
     pointer-events: none;
 }
+
+.hidden {
+    display: none;
+}
