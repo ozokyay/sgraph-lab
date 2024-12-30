@@ -13,7 +13,7 @@ export interface GraphicsSettings {
 
 export const DefaultLayout: LayoutSettings = {
     sampling: 1,
-    gravity: 0.1,
+    gravity: 1,
     iterations: 100
 }
 

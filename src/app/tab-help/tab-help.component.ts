@@ -54,7 +54,7 @@ export class TabHelpComponent {
         };
         data = {
           title: "Welcome",
-          text: "This tutorial will guide you through the steps for building a graph with Network Builder.",
+          text: "This tutorial will guide you through the steps for building a graph with CluNeD.",
           position: pos
         };
         this.tutorial.primaryVisLevel.next(1);
