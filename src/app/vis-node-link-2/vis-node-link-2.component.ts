@@ -524,6 +524,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
           return abs;
       };
   
+      const min = Math.atan(2 * this.nodeRadiusRange[1] / radius);
       let moved;
       let it = 0;
       do
@@ -540,7 +541,8 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
             const b = anglesList[j];
             const d = dist(a[1], b[1]);
             // console.log(`c1: ${a[0]} c2: ${b[0]} a: ${a[1]} b: ${b[1]} d: ${d}`);
-            const min = 0.3 * 1000 / radius;
+            // const min = 0.3 * 1000 / radius;
+
             if (d < min) {
               let ax = a[1];
               let bx = b[1];
@@ -551,8 +553,11 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
                   bx -= 2 * Math.PI;
               }
               let direction = Math.sign(ax - bx);
-              a[2] += Math.min(1 / d, 0.1 * 1000 / radius) * direction; // Maybe want 1 / (100 * d)
-              b[2] += Math.min(1 / d, 0.1 * 1000 / radius) * -direction;
+              // a[2] += Math.min(1 / d, 0.1 * 1000 / radius) * direction; // Maybe want 1 / (100 * d)
+              // b[2] += Math.min(1 / d, 0.1 * 1000 / radius) * -direction;
+              a[2] += 0.2 * min * direction; // Maybe want 1 / (100 * d)
+              b[2] += 0.2 * min * -direction;
+
               // console.log(`${a[1]}, ${b[1]} : ${a[2]}, ${b[2]} : ${d}`);
               moved = true;
             }
@@ -565,8 +570,8 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
           angle[1] = mod(angle[1] + angle[2], 2 * Math.PI);
           angle[2] = 0;
         }
-      } while (moved && it < 100);
-      // console.log("it" + it);
+      } while (moved && it < 200);
+      // console.log("Egocentric iterations: " + it);
 
       // Circle lerp
       for (const [gfx, angle, _] of anglesList) {
