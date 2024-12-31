@@ -681,7 +681,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
       gfx.fill({ color: "black", alpha: alpha });
       gfx.stroke({ color: c, width: 6, alpha: alpha });
       gfx.hitArea = new PIXI.Polygon(poly2);
-      gfx.interactive = true;
+      gfx.interactive = alpha > 0;
       gfx.onclick = () => {
         this.selectOneOne(edge.target, edge.source, true, false);
       };
