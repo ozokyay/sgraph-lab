@@ -206,6 +206,9 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
     if (this.labels) {
       for (const node of this.config.configuration.value.definition.graph.nodes.keys()) {
         const cluster = node.data as Cluster;
+        if (cluster.children.length > 0) {
+          continue;
+        }
         const label = new PIXI.Text();
         label.text = cluster.name;
         label.style.fill = "white";
