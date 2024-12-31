@@ -513,8 +513,11 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
         }
       }
 
-      let radius = this.nodeRadiusRange[1] * (1 / Math.tan(Math.PI / anglesList.length));
+      // let radius = this.nodeRadiusRange[1] * (1 / Math.tan(Math.PI / anglesList.length));
+
+      let radius = this.nodeRadiusRange[1] * (1 / Math.sin(Math.PI / anglesList.length) - 1) + this.nodeRadiusRange[1];
       radius = Math.max(1000, radius);
+
       const mod = (a: number, n: number) => a - Math.floor(a / n) * n;
       const dist = (a: number, b: number) => {
         const abs = Math.abs(a - b);
@@ -524,7 +527,7 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
           return abs;
       };
   
-      const min = Math.atan(2 * this.nodeRadiusRange[1] / radius);
+      const min = 2 * Math.asin(this.nodeRadiusRange[1] / radius);
       let moved;
       let it = 0;
       do
@@ -555,8 +558,8 @@ export class VisNodeLink2Component implements AfterViewInit, OnChanges, OnDestro
               let direction = Math.sign(ax - bx);
               // a[2] += Math.min(1 / d, 0.1 * 1000 / radius) * direction; // Maybe want 1 / (100 * d)
               // b[2] += Math.min(1 / d, 0.1 * 1000 / radius) * -direction;
-              a[2] += 0.2 * min * direction; // Maybe want 1 / (100 * d)
-              b[2] += 0.2 * min * -direction;
+              a[2] += 0.5 * (min - d) * direction; // Maybe want 1 / (100 * d)
+              b[2] += 0.5 * (min - d) * -direction;
 
               // console.log(`${a[1]}, ${b[1]} : ${a[2]}, ${b[2]} : ${d}`);
               moved = true;
