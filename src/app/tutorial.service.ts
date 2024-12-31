@@ -14,6 +14,7 @@ export class TutorialService {
   public start = new Subject<void>();
   public primaryVisLevel = new Subject<number>();
   public secondaryVisLevel = new Subject<number>();
+  public secondaryVisType = new Subject<"matrix" | "node-link">();
   public primaryCircular = new Subject<boolean>();
   public primaryDiffusionMode = new Subject<boolean>();
   public update = new Subject<void>();

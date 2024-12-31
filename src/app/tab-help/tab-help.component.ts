@@ -83,8 +83,8 @@ export class TabHelpComponent {
           y: rect.top + 300
         };
         data = {
-          title: "Graph Visualizations",
-          text: "There are two views: The primary in the center and the secondary in the top left-hand corner.",
+          title: "Network Visualizations",
+          text: "There are two views: The primary view in the center and the secondary view in the top left corner.",
           position: pos
         };
         this.tutorial.highlightClusterList = false;
@@ -101,7 +101,7 @@ export class TabHelpComponent {
         };
         data = {
           title: "Adjacency Matrix",
-          text: "The matrix provides an overlap-free visualization of the cluster connections all the time, but it is disconnected from the resulting graph and doesn't show the clusters themselves.",
+          text: "The matrix provides an overlap-free visualization of the cluster connections all the time, which is especially useful when editing connections across levels in the cluster hierarchy.",
           position: pos
         };
         this.tutorial.highlightPrimaryVis = false;
@@ -116,7 +116,7 @@ export class TabHelpComponent {
         };
         data = {
           title: "Node-Link Diagram",
-          text: "The node link diagram shows clusters as nodes and connections between them as edges. By default, force-directed layout is used to position the nodes.",
+          text: "The node link diagram shows clusters as nodes and connections between them as edges.",
           position: pos
         };
         this.tutorial.highlightPrimaryVis = true;
@@ -132,28 +132,30 @@ export class TabHelpComponent {
         };
         data = {
           title: "Levels",
-          text: "Each view can independently show information about the graph on a cluster level. The node-link diagram can also show the final result level R.",
+          text: "Each view can independently show information about the graph at a depth in the cluster tree. The node-link diagram can also show the node level N.",
           position: pos
         };
         this.tutorial.highlightPrimaryVis = false;
         this.tutorial.highlightPrimaryLevelVis = true;
         this.tutorial.primaryVisLevel.next(0);
+        this.tutorial.secondaryVisLevel.next(2);
+        this.tutorial.secondaryVisType.next("node-link");
         this.tutorial.update.next();
         break;
       }
 
       case 6: {
+        const rect = this.tutorial.visSecondary.getBoundingClientRect();
         const pos = {
-          x: -1,
-          y: -1
+          x: rect.right,
+          y: rect.top + 100
         };
         data = {
           title: "Node-Link Diagram",
-          text: "You can click on a cluster in the list or node-link diagram to select it.",
+          text: "You can click on a cluster in the list or in the node-link diagram at cluster level to select it.",
           position: pos
         };
         this.tutorial.highlightPrimaryLevelVis = false;
-        this.tutorial.primaryVisLevel.next(2);
         this.tutorial.secondaryVisLevel.next(2);
         this.tutorial.update.next();
         this.config.selectedCluster.next(this.config.configuration.value.definition.graph.getNodes().find(n => n.id == 6)!.data as Cluster);
@@ -171,6 +173,7 @@ export class TabHelpComponent {
           text: "There are different options for highlighting certain parts or encoding variables in the visualization. The egocentric layout is particiularly useful when inspecting or editing a cluster's connections to other cluster because it prevents overlap and hides other edges.",
           position: pos
         };
+        this.tutorial.primaryVisLevel.next(2);
         this.tutorial.highlightPrimaryOptions = true;
         this.tutorial.primaryCircular.next(true);
         break;
@@ -184,9 +187,10 @@ export class TabHelpComponent {
         };
         data = {
           title: "Cluster Properties",
-          text: "In this tab, you configure a cluster. It can directly refer to a cluster in the final graph which is created from a generator, or it can be a group that has child clusters. The replication factor determines how many instances are created from this definition.",
+          text: "In this tab, you configure a cluster. It can directly refer to a cluster in the final network which is created from a generator, or it can be a group with child clusters. The replication factor determines how many instances are created from this definition. If the generator is set to 'Cluster Group', children must be added in the cluster tree.",
           position: pos
         };
+        this.tutorial.secondaryVisType.next("matrix");
         this.tutorial.highlightPrimaryOptions = false;
         this.tutorial.highlightTabs = true;
         this.config.activeTab.next(1);
@@ -201,7 +205,7 @@ export class TabHelpComponent {
         };
         data = {
           title: "Cluster Properties",
-          text: "The generator takes a distribution of node degrees a its input. You can generate a distribution or edit the points manually.",
+          text: "There are different graph generators to choose from. The configuration model and Chung-Lu model take a distribution of node degress as input. You can generate a distribution with the curve generator, draw it in the line chart, or define in the list of data points.",
           position: pos
         };
         break;
@@ -252,7 +256,7 @@ export class TabHelpComponent {
         };
         data = {
           title: "Layout Settings",
-          text: "Layout settings allow you to tune the force-directed layout algorithm. For example, you can use sampling to reduce clutter and improve performance.",
+          text: "Layout settings allow you to tune the force-directed layout algorithm. For example, you can use sampling for better performance or increase the gravity to pull clusters closer together.",
           position: pos
         };
         this.tutorial.primaryVisLevel.next(0);
@@ -268,7 +272,7 @@ export class TabHelpComponent {
         };
         data = {
           title: "Diffusion Model",
-          text: "You can select seed nodes and simulate how information spreads through your graph.",
+          text: "You can select seed nodes and simulate how information spreads through your graph with different epidemic models.",
           position: pos
         };
         this.config.activeTab.next(5);
@@ -303,7 +307,7 @@ export class TabHelpComponent {
         };
         data = {
           title: "Done",
-          text: "Now you know how to build networks with Network Builder!",
+          text: "Now you know how to build networks with CluNeD!",
           position: pos
         };
         done = true;

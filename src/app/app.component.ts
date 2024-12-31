@@ -104,6 +104,9 @@ export class AppComponent implements OnInit, AfterViewInit {
       this.containerPrimary.toggleNodeColor.checked = b;
       this.containerPrimary.toggleEdgeColor.checked = b;
     });
+    this.tutorial.secondaryVisType.subscribe(t => {
+      this.containerSecondary.visualization = t;
+    });
   }
 
   public onSelectedTabChange(index: number) {

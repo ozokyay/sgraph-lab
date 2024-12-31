@@ -7,37 +7,36 @@
 <mat-divider></mat-divider>
 <br>
 <h2 class="mat-headline-medium">Overview</h2>
-<p>This tool allows you to create a clustered graph with lots of control over it's structure. You configure generators to generate clusters from given node degree distributions. Then, you configure how these clusters are interconnected. You can make use of cluster groups and replication to quickly build a hierarchical structure of many clusters. You can also specifiy the distribution of numerical node attributes on the graph and view various graph measures. Finally, you can simulate an information diffusion process on the graph and export the graph or the configuration that generates it.</p>
+<p>This tool allows you to create a clustered network with lots of control over its structure. You configure generators to generate clusters from edge counts or node degree distributions. Then, you configure how these clusters are interconnected. You can make use of cluster groups and replication to quickly build a hierarchical structure of many clusters. Various graph statistics help you gain insight into network properties. Finally, you can simulate an information diffusion process on the graph and export the graph or the configuration that generates it.</p>
 <br>
 <button mat-raised-button class="center-margin" (click)="startTutorial()">Begin Tutorial</button>
 <br>
-<h2 class="mat-headline-medium">User Interface</h2>
-<h3 class="mat-title-medium">Cluster List</h3>
-<p>The cluster list provides an overview of the clusters. It allows to browse the hierarchical structure and to select, to add and to delete clusters.</p>
-<h3 class="mat-title-medium">Graph Visualizations</h3>
+<h2 class="mat-headline-medium">User interface</h2>
+<h3 class="mat-title-medium">Cluster list</h3>
+<p>The cluster list provides an overview of the clusters. It allows to browse the hierarchical structure and to select, to add and to delete clusters. You can also set the visibility of clusters.</p>
+<h3 class="mat-title-medium">Network visualizations</h3>
 <p>
-    There are two visualizations for the connections between clusters: The adjacency matrix and the node-link diagram. These visualizations can show different levels of the cluster hierarchy. The node-link diagram can show the additional result level "R", i.e. the graph resulting from the cluster structure. In the matrix, the diagonal shows the edge count within a cluster.
+    There are two visualizations for the connections between clusters: The node-link diagram and the adjacency matrix. These visualizations can show different levels of the cluster hierarchy. The node-link diagram can show the network at the node level "N". In the matrix, cells show the edge counts of connections between clusters. Cells on the diagonal show the edge count within a cluster.
 </p>
 <p>
-    There are additional options for the node-link diagram: Circular layout arranges all nodes around the currently focused cluster and hides connections between the other clusters. This allows for overlap-free editing of the connections. Node coloring and edge coloring apply the cluster color on the result level. Node size scales the node radius with the cluster size or with the node degree on the result level. Highlighting selected edges fades out other edges to aid with identifying selected edges on the result level. Node ratio narrows one end of an edge to represent the ratio of nodes eligible for the connection from each cluster.
+    The toolbar in the upper left corner provides options to configure the node-link diagram.
 </p>
+<ul>
+    <li>The node radius can be scaled with the cluster size or with the node degree at the result level.</li>
+    <li>Cluster labels can be shown in the visualization.</li>
+    <li>Egocentric layout arranges all nodes around the currently selected cluster and hides connections between the other clusters (cluster level only).</li>
+    <li>The ratio of the node fractions of cluster connections can be encoded in the widths of edge endpoints (cluster level only).</li>
+    <li>Node coloring and edge coloring apply the cluster color to nodes and edges (node level only).</li>
+</ul>
 <h3 class="mat-title-medium">Tabs</h3>
-<p>Cluster Properties: Configure a generator or group that defines a cluster. Replication factors higher than 1 create copies of the cluster definition.</p>
-<p>Cluster Connections: Configure each of the selected connections by setting edge count, node ratio, degree assortativity and degree distributions.</p>
-<p>Graph Measures: Measures of the selected cluster or whole graph.</p>
-<p>Layout Settings: Tuning the force-directed layout of the resulting graph. Sampling helps with performance and overlap, higher gravity leads to more equally-spaced nodes, additoinaly layout iterations can help with unfolding.</p>
-<p>Diffusion Simulation: simulate information diffusion processes with manually placed seed nodes.</p>
-<p>Import/Export: Import or export a configuration or export the resulting graph.</p>
+<p>Cluster Properties: Configure a generator or group that defines a cluster. Replication factors higher than 1 create more instances with the same parameters. Degree distributions can be generated with a curve generator, drawn in the line chart, and by editing the list of points.</p>
+<p>Cluster Connections: Configure the selected connections by setting edge count, node sampling fractions, degree assortativity and degree distributions.</p>
+<p>Graph Measures: Measures of the selected cluster or entire graph.</p>
+<p>Layout Settings: Tuning the force-directed layout of the resulting graph. Sampling helps with performance and overlap, higher gravity leads to more equally-spaced nodes and prevents stretching of sparse clusters, and more layout iterations can help with unfolding of large networks.</p>
+<p>Diffusion Simulation: Simulate information diffusion processes with manually placed seed nodes.</p>
+<p>Import/Export: Import or export a configuration or export the graph.</p>
 <h2 class="mat-headline-medium">Controls</h2>
-<h3 class="mat-title-medium">Adjacency Matrix</h3>
-<p>
-    Shift + Scroll: Go through levels
-    <br>
-    Click: Select connection (on diagonal to select all)
-    <br>
-    Shift + Click: Toggle connection direction
-</p>
-<h3 class="mat-title-medium">Node-Link Diagram</h3>
+<h3 class="mat-title-medium">Node-Link diagram</h3>
 <p>
     Shift + Scroll: Go through levels
     <br>
@@ -56,4 +55,20 @@
     Click on edge: Toggle selection
     <br>
     Right-click on edge: Swap connection endpoints
+</p>
+<h3 class="mat-title-medium">Adjacency matrix</h3>
+<p>
+    Shift + Scroll: Go through levels
+    <br>
+    Click: Select connection (on diagonal to select all)
+    <br>
+    Shift + Click: Toggle connection direction
+</p>
+<h3 class="mat-title-medium">Line Chart</h3>
+<p>
+    Click: Create point or set point position
+    <br>
+    Right-click: Delete a point
+    <br>
+    Drag: Move a point
 </p>
