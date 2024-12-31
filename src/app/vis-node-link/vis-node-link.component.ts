@@ -32,6 +32,7 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
   private hoveredNode?: Node;
   private edgeGraphics!: PIXI.Graphics;
   private abort: AbortController = new AbortController();
+  private labelGfx: Map<number, PIXI.Graphics> = new Map();
   private centroidLerp: number = 1;
   private centroidLerpTargetTime: number = 0;
   private centroidLerpTransitionTime: number = 500;
@@ -55,6 +56,9 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
 
   @Input()
   public edgeHighlight = false;
+
+  @Input()
+  public labels = true;
 
   @Input()
   public transform = { value: new d3.ZoomTransform(1, 0, 0) };
@@ -98,6 +102,14 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
         this.render(this.config.forceDirectedLayout.value, this.abort.signal);
       }
     }));
+    this.subscriptions.push(this.config.history.subscribe(c => {
+      if (c.at(-1)?.message.startsWith("Rename")) {
+        if (this.config.forceDirectedLayout.value.nodes.length > 0) {
+          this.createNodes(this.config.forceDirectedLayout.value);
+          this.render(this.config.forceDirectedLayout.value, this.abort.signal);
+        } 
+      }
+    }));
   }
 
   private createNodes(graph: EdgeList) {
@@ -106,6 +118,11 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
       gfx.destroy();
     }
     this.nodeDict.clear();
+    for (const gfx of this.labelGfx.values()) {
+      this.stage.removeChild(gfx);
+      gfx.destroy();
+    }
+    this.labelGfx.clear();
     this.hoveredNode = undefined;
 
     const degrees = this.config.measures.value.globalMeasures.degrees;
@@ -185,6 +202,26 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
       this.nodeDict.set(node, gfx);
       this.stage.addChild(gfx);
     }
+
+    if (this.labels) {
+      for (const node of this.config.configuration.value.definition.graph.nodes.keys()) {
+        const cluster = node.data as Cluster;
+        const label = new PIXI.Text();
+        label.text = cluster.name;
+        label.style.fill = "white";
+        label.position = {
+          x: -label.width / 2,
+          y: -label.height / 2
+        };
+        const background = new PIXI.Graphics();
+        background.zIndex = 10000;
+        background.rect(label.position.x, label.position.y, label.width, label.height);
+        background.fill("black");
+        background.addChild(label);
+        this.labelGfx.set(node.id, background);
+        this.stage.addChild(background);
+      }
+    }
   }
 
   private render(graph: EdgeList, signal: AbortSignal, timestamp?: number) {
@@ -213,6 +250,18 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
                             .filter(([k, v]) => this.config.selectedConnections.value.indexOf(k) != -1)
                             .flatMap(([k, v]) => v);
 
+    // Label
+    if (this.labels) {
+      for (const [id, centroid] of this.config.centroids.value) {
+        const g = this.labelGfx.get(id);
+        if (g != undefined) {
+          g.position = {
+            x: centroid.x * this.edgeScale,
+            y: centroid.y * this.edgeScale
+          };
+        }
+      }
+    }
 
     // Set node positions
     // Lerp for possible cluster aggregation
@@ -372,7 +421,7 @@ export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy
         this.zoom(this.transform.value);
       }
     }
-    if ((changes["nodeColor"] || changes["edgeColor"] || changes["nodeSize"] || changes["edgeHighlight"])) {
+    if ((changes["nodeColor"] || changes["edgeColor"] || changes["nodeSize"] || changes["edgeHighlight"] || changes["labels"])) {
       if (this.stage != undefined && this.config.forceDirectedLayout.value.nodes.length > 0) {
         this.createNodes(this.config.forceDirectedLayout.value);
         this.render(this.config.forceDirectedLayout.value, this.abort.signal);
