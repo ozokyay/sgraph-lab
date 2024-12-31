@@ -88,6 +88,10 @@ export class VisContainerComponent implements AfterViewInit {
   public toggleEdgeColor!: MatButtonToggle;
 
   constructor(public tutorial: TutorialService) {
+    tutorial.start.subscribe(() => {
+      this.transform = { value: new d3.ZoomTransform(1, 0, 0) };
+      this.initZoom();
+    });
     tutorial.update.subscribe(() => {
       this.visLevel.level = this.level;
       this.visLevel.levelText = this.level == 0 ? "N" : this.level.toString();
@@ -97,6 +101,10 @@ export class VisContainerComponent implements AfterViewInit {
   ngAfterViewInit() {
     this.width = this.container.nativeElement.clientWidth;
     this.height = this.container.nativeElement.clientHeight;
+    this.initZoom();
+  }
+
+  private initZoom() {
     this.zoom.filter((e: any) => (!e.ctrlKey || e.type === 'wheel') && !e.button && !e.shiftKey && !this.child2?.isDraggingEdge)
       .on("zoom", e => { this.transform = { value: e.transform } });
     d3.select(this.container.nativeElement)

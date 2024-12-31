@@ -145,10 +145,10 @@ export class TabHelpComponent {
       }
 
       case 6: {
-        const rect = this.tutorial.visSecondary.getBoundingClientRect();
+        const rect = this.tutorial.visPrimary.getBoundingClientRect();
         const pos = {
-          x: rect.right,
-          y: rect.top + 100
+          x: rect.left + 50,
+          y: rect.top + 300
         };
         data = {
           title: "Node-Link Diagram",
