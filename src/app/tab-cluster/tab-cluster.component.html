@@ -1,6 +1,6 @@
 @if (cluster) {
   <mat-form-field>
-    <mat-label>Cluster name</mat-label>
+    <mat-label>Community name</mat-label>
     <input matInput placeholder="Enter a name" [(ngModel)]="cluster.name" (change)="onChangeName()">
   </mat-form-field>
   <br>
@@ -10,7 +10,7 @@
         <mat-option value="ER">Erdös-Renyi Model</mat-option>
         <mat-option value="CL">Chung-Lu Model</mat-option>
         <mat-option value="CM">Configuration Model</mat-option>
-        <mat-option value="MG">Cluster Group</mat-option>
+        <mat-option value="MG">Community Group</mat-option>
     </mat-select>
   </mat-form-field>
   @if (cluster.generator.name != "MG") {
@@ -54,11 +54,11 @@
   } @else if (cluster.generator.name == "CM") {
     <app-vis-line-chart [showLegend]="true" [series]="generator.degreeDistribution" [series2]="measuredDistribution" (seriesChange)="onChange()" [editMode]="!cluster.immutable" [allowAxisScaling]="!cluster.immutable" [allowLogToggles]="!cluster.immutable"></app-vis-line-chart>
   } @else if (cluster.generator.name == "MG") {
-    <span>Add child clusters in the cluster list</span>
+    <span>Add child communities in the community list</span>
     <br>
   } @else {
     <span>unknown</span>
   }
 } @else {
-  <p class="center-text">Select a cluster to edit</p>
+  <p class="center-text">Select a community to edit</p>
 }

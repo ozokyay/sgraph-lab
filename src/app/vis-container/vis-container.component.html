@@ -45,8 +45,8 @@
             </app-vis-node-link-2>
         }
         <mat-button-toggle-group multiple hideMultipleSelectionIndicator class="button-toggles" [class.highlight-border]="tutorial.highlightPrimaryOptions">
-            <mat-button-toggle #toggleNodeSize matTooltip="Scale nodes with degree / cluster size"><img src="assets/node_radius.png" width="32px" height="32px"></mat-button-toggle>
-            <mat-button-toggle #toggleLabels matTooltip="Show cluster names on nodes"><img src="assets/node_label.png" width="32px" height="32px"></mat-button-toggle>
+            <mat-button-toggle #toggleNodeSize matTooltip="Scale nodes with degree / community size"><img src="assets/node_radius.png" width="32px" height="32px"></mat-button-toggle>
+            <mat-button-toggle #toggleLabels matTooltip="Show community names on nodes"><img src="assets/node_label.png" width="32px" height="32px"></mat-button-toggle>
         
             <mat-button-toggle #toggleCircular [class.hidden]="level == 0" [matTooltip]="level != 0 ? 'Egocentric layout' : 'Egocentric layout (only on higher levels)'"><img src="assets/circular.png" width="32px" height="32px"></mat-button-toggle>
             <mat-button-toggle #toggleEdgeRatio [class.hidden]="level == 0" [matTooltip]="level != 0 ? ' Show node ratio on edges' : ' Show node ratio on edges (only on higher levels)'" checked><img src="assets/wedge.png" width="32px" height="32px"></mat-button-toggle>

@@ -54,7 +54,7 @@ export class TabHelpComponent {
         };
         data = {
           title: "Welcome",
-          text: "This tutorial will guide you through the steps for building a graph with CluNeD.",
+          text: "This tutorial will guide you through the steps for building a network with CluNeD.",
           position: pos
         };
         this.tutorial.primaryVisLevel.next(1);
@@ -68,8 +68,8 @@ export class TabHelpComponent {
           y: rect.top + 150
         };
         data = {
-          title: "Cluster List",
-          text: "The cluster list allows you to add and remove clusters. Clusters can have child clusters.",
+          title: "Community List",
+          text: "The community list allows you to add and remove communities. Communities can have child communities.",
           position: pos
         };
         this.tutorial.highlightClusterList = true;
@@ -101,7 +101,7 @@ export class TabHelpComponent {
         };
         data = {
           title: "Adjacency Matrix",
-          text: "The matrix provides an overlap-free visualization of the cluster connections all the time, which is especially useful when editing connections across levels in the cluster hierarchy.",
+          text: "The matrix provides an overlap-free visualization of the community connections all the time, which is especially useful when editing connections across levels in the community hierarchy.",
           position: pos
         };
         this.tutorial.highlightPrimaryVis = false;
@@ -116,7 +116,7 @@ export class TabHelpComponent {
         };
         data = {
           title: "Node-Link Diagram",
-          text: "The node link diagram shows clusters as nodes and connections between them as edges.",
+          text: "The node link diagram shows communities as nodes and connections between them as edges.",
           position: pos
         };
         this.tutorial.highlightPrimaryVis = true;
@@ -132,7 +132,7 @@ export class TabHelpComponent {
         };
         data = {
           title: "Levels",
-          text: "Each view can independently show information about the graph at a depth in the cluster tree. The node-link diagram can also show the node level N.",
+          text: "Each view can independently show information about the graph at a depth in the community tree. The node-link diagram can also show the node level N.",
           position: pos
         };
         this.tutorial.highlightPrimaryVis = false;
@@ -152,7 +152,7 @@ export class TabHelpComponent {
         };
         data = {
           title: "Node-Link Diagram",
-          text: "You can click on a cluster in the list or in the node-link diagram at cluster level to select it.",
+          text: "You can click on a community in the list or in the node-link diagram at community level to select it.",
           position: pos
         };
         this.tutorial.highlightPrimaryLevelVis = false;
@@ -170,7 +170,7 @@ export class TabHelpComponent {
         };
         data = {
           title: "Node-Link Diagram",
-          text: "There are different options for highlighting certain parts or encoding variables in the visualization. The egocentric layout is particiularly useful when inspecting or editing a cluster's connections to other cluster because it prevents overlap and hides other edges.",
+          text: "There are different options for highlighting certain parts or encoding variables in the visualization. The egocentric layout is particiularly useful when inspecting or editing a community's connections to other community because it prevents overlap and hides other edges.",
           position: pos
         };
         this.tutorial.primaryVisLevel.next(2);
@@ -186,8 +186,8 @@ export class TabHelpComponent {
           y: rect.top + 200
         };
         data = {
-          title: "Cluster Properties",
-          text: "In this tab, you configure a cluster. It can directly refer to a cluster in the final network which is created from a generator, or it can be a group with child clusters. The replication factor determines how many instances are created from this definition. If the generator is set to 'Cluster Group', children must be added in the cluster tree.",
+          title: "Community Properties",
+          text: "In this tab, you configure a community. It can directly refer to a community in the final network which is created from a generator, or it can be a group with child communities. The replication factor determines how many instances are created from this definition. If the generator is set to 'Community Group', children must be added in the community tree.",
           position: pos
         };
         this.tutorial.secondaryVisType.next("matrix");
@@ -204,7 +204,7 @@ export class TabHelpComponent {
           y: rect.top + 200
         };
         data = {
-          title: "Cluster Properties",
+          title: "Community Properties",
           text: "There are different graph generators to choose from. The configuration model and Chung-Lu model take a distribution of node degress as input. You can generate a distribution with the curve generator, draw it in the line chart, or define in the list of data points.",
           position: pos
         };
@@ -218,7 +218,7 @@ export class TabHelpComponent {
           y: rect.top + 200
         };
         data = {
-          title: "Cluster Connections",
+          title: "Community Connections",
           text: "After selecting connections from the matrix or node-link diagram, you can configure them in this tab.",
           position: pos
         };
@@ -256,7 +256,7 @@ export class TabHelpComponent {
         };
         data = {
           title: "Layout Settings",
-          text: "Layout settings allow you to tune the force-directed layout algorithm. For example, you can use sampling for better performance or increase the gravity to pull clusters closer together.",
+          text: "Layout settings allow you to tune the force-directed layout algorithm. For example, you can use sampling for better performance or increase the gravity to pull communities closer together.",
           position: pos
         };
         this.tutorial.primaryVisLevel.next(0);
