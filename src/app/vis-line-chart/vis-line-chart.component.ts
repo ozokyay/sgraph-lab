@@ -74,6 +74,9 @@ export class VisLineChartComponent implements AfterViewInit, OnChanges {
   @Input()
   editMode = true;
 
+  @Input()
+  lineColor = "steelblue";
+
   @ViewChild('svg')
   container!: ElementRef;
 
@@ -368,7 +371,7 @@ export class VisLineChartComponent implements AfterViewInit, OnChanges {
     }
     dataLine.attr("class", "line")
       .attr("fill", "none")
-      .attr("stroke", "steelblue")
+      .attr("stroke", this.lineColor)
       .attr("stroke-width", 2)
       .attr("d", line)
     
