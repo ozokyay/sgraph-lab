@@ -9,7 +9,7 @@ import { MatTreeNestedDataSource, MatTreeModule } from '@angular/material/tree';
 import { MatIconModule } from '@angular/material/icon';
 import { NgClass, NgFor } from '@angular/common';
 import { Node } from '../graph';
-import { CLGenerator, MGGenerator } from '../generators';
+import { CLGenerator, CMGenerator, MGGenerator } from '../generators';
 import { Utility } from '../utility';
 import { TutorialService } from '../tutorial.service';
 
@@ -118,7 +118,7 @@ export class TabClusterListComponent {
       parent: parent !== undefined ? parent.id : -1,
       color: "black",
       name: parent === undefined ? "Comm. " + this.numberToLetters(sIndex + 1) : parent.name + "." + (sIndex + 1),
-      generator: new CLGenerator(structuredClone(DegreesDefault), true),
+      generator: new CMGenerator(structuredClone(DegreesDefault), true),
       children: [],
       changeUUID: crypto.randomUUID(),
       siblingIndex: sIndex,
