@@ -23,7 +23,7 @@
             </div>
         </mat-slide-toggle>
         @if (degreeDistributionSource != undefined) {
-            <app-vis-line-chart [showLegend]="true" [legendWidth]="130" legend1="Selection" legend2="Cluster" yLabel="Node frequency" [(series)]="degreeDistributionSource" [series2]="actualDistributionSource" [allowAxisScaling]="false" (seriesChange)="onChange()"></app-vis-line-chart>
+            <app-vis-line-chart [showLegend]="true" [legendWidth]="134" legend1="Selection" legend2="Community" yLabel="Node frequency" [(series)]="degreeDistributionSource" [series2]="actualDistributionSource" [allowAxisScaling]="false" (seriesChange)="onChange()"></app-vis-line-chart>
         }
         <br>
         <mat-slide-toggle class="vertical-item" [checked]="degreeDistributionTarget != undefined" (change)="onChangeDistributionTarget($event.checked)">
@@ -32,7 +32,7 @@
             </div>
         </mat-slide-toggle>
         @if (degreeDistributionTarget != undefined) {
-            <app-vis-line-chart [showLegend]="true" [legendWidth]="130" legend1="Selection" legend2="Cluster" yLabel="Node frequency" [(series)]="degreeDistributionTarget" [series2]="actualDistributionTarget" [allowAxisScaling]="false" (seriesChange)="onChange()"></app-vis-line-chart>
+            <app-vis-line-chart [showLegend]="true" [legendWidth]="134" legend1="Selection" legend2="Community" yLabel="Node frequency" [(series)]="degreeDistributionTarget" [series2]="actualDistributionTarget" [allowAxisScaling]="false" (seriesChange)="onChange()"></app-vis-line-chart>
         }
         <br><br>
         <table>
