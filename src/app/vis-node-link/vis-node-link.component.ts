@@ -1,4 +1,4 @@
-import { Component, ElementRef, ViewChild, AfterViewInit, OnDestroy, HostListener } from '@angular/core';
+import { Component, ElementRef, ViewChild, AfterViewInit, OnDestroy, Input, OnChanges, SimpleChanges, EventEmitter, Output } from '@angular/core';
 import { ConfigurationService } from '../configuration.service';
 import { ForceDirected } from '../graphwagu/webgpu/force_directed';
 import { EdgeData, EdgeList, Node, NodeData } from '../graph';
@@ -7,6 +7,8 @@ import * as d3 from 'd3';
 import { Utility } from '../utility';
 import Rand from 'rand-seed';
 import { Cluster } from '../cluster';
+import { Point } from '../point';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-vis-node-link',
@@ -15,7 +17,7 @@ import { Cluster } from '../cluster';
   templateUrl: './vis-node-link.component.html',
   styleUrl: './vis-node-link.component.css'
 })
-export class VisNodeLinkComponent {
+export class VisNodeLinkComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   private edgeScale = 500;
   private nodeRadius = 3;
@@ -26,356 +28,437 @@ export class VisNodeLinkComponent {
   private rect!: DOMRect;
   private width: number = 0;
   private height: number = 0;
-  private transform = new d3.ZoomTransform(1, 0, 0);
-  private zoom = d3.zoom();
   private nodeDict: Map<Node, PIXI.Graphics> = new Map();
-  private edgeGraphics?: PIXI.Graphics = undefined;
-  private graph?: EdgeList = undefined;
+  private hoveredNode?: Node;
+  private edgeGraphics!: PIXI.Graphics;
   private abort: AbortController = new AbortController();
+  private labelGfx: Map<number, PIXI.Graphics> = new Map();
+  private centroidLerp: number = 1;
+  private centroidLerpTargetTime: number = 0;
+  private centroidLerpTransitionTime: number = 500;
+  private lastRenderTime: number = 0;
+  private dragging = false;
+  private dragTimeout = -1;
+
+  private subscriptions: Subscription[] = [];
+
+  @Input()
+  public combineClusters = true;
+
+  @Input()
+  public nodeColor = true;
+
+  @Input()
+  public edgeColor = true;
+
+  @Input()
+  public nodeSize = false;
+
+  @Input()
+  public edgeHighlight = false;
+
+  @Input()
+  public labels = true;
+
+  @Input()
+  public transform = { value: new d3.ZoomTransform(1, 0, 0) };
 
   @ViewChild('container')
   private container!: ElementRef;
   @ViewChild('tooltip')
   private tooltip!: ElementRef;
 
-  private device?: GPUDevice = undefined;
-  private layout?: ForceDirected = undefined;
+  constructor(public config: ConfigurationService) {}
 
-  constructor(private config: ConfigurationService) {
-    this.initWebGPU();
-    config.configuration.subscribe(async config => {
-      if (this.layout == undefined) {
-        if (config.instance.graph.nodes.length > 0) {
-          console.log("Layout initialization failed.");
-        }
-        return;
-      }
-
+  private init() {
+    this.subscriptions.push(this.config.sample.subscribe(graph => {
       this.abort.abort();
       this.abort = new AbortController();
-      this.graph = this.prepare(config.instance.graph);
-      await this.runLayout(this.graph, this.abort.signal);
-    });
-    config.layoutSettings.subscribe(async () => {
-      if (config.configuration.value.instance.graph.nodes.length > 0) {
-        this.abort.abort();
-        this.abort = new AbortController();
-        this.graph = this.prepare(config.configuration.value.instance.graph);
-        await this.runLayout(config.configuration.value.instance.graph, this.abort.signal);
+      this.createNodes(graph);
+    }));
+    this.subscriptions.push(this.config.forceDirectedLayout.subscribe(graph => {
+      this.render(graph, this.abort.signal);
+    }));
+    this.subscriptions.push(this.config.selectedCluster.subscribe(c => {
+      if (this.config.forceDirectedLayout.value.nodes.length > 0 && !this.config.ignoreChanges) {
+        this.render(this.config.forceDirectedLayout.value, this.abort.signal);
       }
-    });
-    config.graphicsSettings.subscribe(() => {
-      if (config.configuration.value.instance.graph.nodes.length > 0 && this.graph != undefined) {
-        this.createNodes(this.graph);
-        this.render(this.graph);
+    }));
+    this.subscriptions.push(this.config.selectedConnections.subscribe(() => {
+      if (this.config.forceDirectedLayout.value.nodes.length > 0 && !this.config.ignoreChanges) {
+        this.createNodes(this.config.forceDirectedLayout.value);
+        this.render(this.config.forceDirectedLayout.value, this.abort.signal);
       }
-    });
-    config.selectedDiffusionSeeds.subscribe(() => {
-      if (this.graph != undefined && this.graph.nodes.length > 0) {
-        this.createNodes(this.graph);
-        this.render(this.graph);
+    }));
+    this.subscriptions.push(this.config.diffusionNodeStates.subscribe(() => {
+      if (this.config.forceDirectedLayout.value.nodes.length > 0 && !this.config.ignoreChanges) { // And not triggerd by diffusion due to config change (chaining), otherwise sampled/layout will be outdated -> flag
+        this.createNodes(this.config.forceDirectedLayout.value);
+        this.render(this.config.forceDirectedLayout.value, this.abort.signal);
       }
-    });
-  }
-
-  private async initWebGPU() {
-    if (!navigator.gpu) {
-      alert("NetworkBuilder requires WebGPU. You may be using an incompatible Browser.");
-      return;
-    }
-    const adapter = (await navigator.gpu.requestAdapter({ powerPreference: "high-performance" }))!;
-    if (!adapter) {
-      alert("NetworkBuilder requires WebGPU. You may be using an incompatible Browser.");
-      return;
-    }
-    this.device = await adapter.requestDevice({
-      requiredLimits: {
-          "maxStorageBufferBindingSize": adapter.limits.maxStorageBufferBindingSize,
-          "maxComputeWorkgroupsPerDimension": adapter.limits.maxComputeWorkgroupsPerDimension
+    }));
+    this.subscriptions.push(this.config.hiddenClusters.subscribe(cs => {
+      if (this.config.forceDirectedLayout.value.nodes.length > 0) {
+        this.createNodes(this.config.forceDirectedLayout.value);
+        this.render(this.config.forceDirectedLayout.value, this.abort.signal);
       }
-    });
-    this.layout = new ForceDirected(this.device);
-    console.log("Layout intialized.");
-  }
-
-  private prepare(graph: EdgeList): EdgeList {
-    // Prepare stage
-    this.stage?.destroy(true);
-    this.stage = new PIXI.Container({
-      isRenderGroup: true
-    });
-    this.app.stage.addChild(this.stage);
-
-    // Prepare graph
-    const settings = this.config.layoutSettings.value;
-    Utility.rand = new Rand(this.config.configuration.value.definition.seed.toString());
-    if (settings.sampling < 1) {
-      graph = Utility.sampleRandomEdges(graph, settings.sampling * graph.edges.length);
-    }
-
-    // Prepare nodes
-    this.createNodes(graph);
-
-    return graph;
+    }));
+    this.subscriptions.push(this.config.history.subscribe(c => {
+      if (c.at(-1)?.message.startsWith("Rename")) {
+        if (this.config.forceDirectedLayout.value.nodes.length > 0) {
+          this.createNodes(this.config.forceDirectedLayout.value);
+          this.render(this.config.forceDirectedLayout.value, this.abort.signal);
+        } 
+      }
+    }));
   }
 
   private createNodes(graph: EdgeList) {
     for (const gfx of this.nodeDict.values()) {
+      this.stage.removeChild(gfx);
       gfx.destroy();
     }
     this.nodeDict.clear();
+    for (const gfx of this.labelGfx.values()) {
+      this.stage.removeChild(gfx);
+      gfx.destroy();
+    }
+    this.labelGfx.clear();
+    this.hoveredNode = undefined;
 
     const degrees = this.config.measures.value.globalMeasures.degrees;
     const degreesExtent = d3.extent(degrees.values()) as [number, number];
     const radiusScale = d3.scaleLinear().domain(degreesExtent).range(this.nodeRadiusRange);
+
+    const selectedEdges = [...this.config.configuration.value.instance.connections.entries()]
+                              .filter(([k, v]) => this.config.selectedConnections.value.indexOf(k) != -1)
+                              .flatMap(([k, v]) => v);
+
     for (const node of graph.nodes) {
+      const cluster = this.getNodeCluster(node);
+      if (this.config.hiddenClusters.value.has(cluster.id)) {
+        continue;
+      }
       const gfx = new PIXI.Graphics({ zIndex: 1 });
       let radius = this.nodeRadius;
-      if (this.config.graphicsSettings.value.nodeRadius) {
+      if (this.nodeSize) {
         radius = radiusScale(degrees.get(node)!);
       }
       gfx.circle(0, 0, radius);
-      gfx.stroke({ width: 4, color: 'black' });
-      gfx.fill({ color: this.getNodeColor(node, this.config.graphicsSettings.value.nodeColoring) });
+
+      // Alpha: This node has selected incident edges
+      // This does not only depend on cluster id, but must be from the correct edge bundle which makes things inefficient
+      const anySelection = this.config.selectedConnections.value.length > 0;
+      const diffusionSeed = this.config.diffusionNodeStates.value.get(node) == "infected";
+      const state = this.config.diffusionNodeStates.value.get(node);
+      const alpha = !this.edgeHighlight || !anySelection || selectedEdges.find(e => e.source == node || e.target == node) ? 1 : 0.2;
+
+      // Node color for diffusion simulation
+      let col: PIXI.ColorSource;
+      if (diffusionSeed) { // implicit || state == 'infected'
+        col = 0xFF00FF;
+      } else if (state == 'contacted') {
+        col = 0xFFFF00;
+      } else if (state == 'refractory') {
+        col = 0xFFFFFF;
+      } else {
+        col = this.getNodeColor(node, this.nodeColor);
+      }
+
+      gfx.stroke({ width: 3, color: 'black', alpha: alpha });
+      gfx.fill({ color: col, alpha: alpha });
       gfx.interactive = true;
-      gfx.onmouseenter = () => {
+      gfx.onpointerenter = () => {
         gfx.tint = 0x9A9A9A;
+        this.hoveredNode = node;
+        if (!this.dragging) {
+          this.render(graph, this.abort.signal);
+        }
+      }
+      gfx.onpointermove = e => {
+        if (!this.dragging) {
+          this.showTooltip(e.client, cluster.name);
+        }
       };
-      gfx.onmouseleave = () => {
+      gfx.onpointerleave = () => {
+        this.hideTooltip();
         gfx.tint = 0xFFFFFF;
+        this.hoveredNode = undefined;
+        if (!this.dragging) {
+          this.render(graph, this.abort.signal); 
+        }
       }
       gfx.onclick = () => {
-        const seeds = this.config.selectedDiffusionSeeds.value;
-        if (seeds.has(node)) {
-          seeds.delete(node);
+        const seeds = this.config.diffusionNodeStates.value;
+        const state = seeds.get(node);
+        if (state == "infected") {
+          seeds.set(node, "susceptible");
+          this.config.diffusionNodeStates.value.set(node, 'susceptible');
         } else {
-          seeds.add(node);
+          seeds.set(node, "infected");
+          this.config.diffusionNodeStates.value.set(node, 'infected');
         }
-        this.config.selectedDiffusionSeeds.next(seeds);
+        this.config.diffusionNodeStates.next(seeds);
       };
       this.nodeDict.set(node, gfx);
       this.stage.addChild(gfx);
     }
-  }
 
-  private async runLayout(graph: EdgeList, signal: AbortSignal) {
-    if (this.device == undefined || this.layout == undefined) {
-      console.log("WebGPU initialization failed.");
-      return;
-    }
-
-    if (graph.nodes.length == 0) {
-      this.render(graph);
-      return;
-    }
-
-    const nodeData: Array<number> = [];
-    const edgeData: Array<number> = [];
-    const sourceEdges: Array<number> = [];
-    const targetEdges: Array<number> = [];
-
-    for (let i = 0; i < graph.nodes.length; i++) {
-      const node = graph.nodes[i];
-      const data = node.data as NodeData;
-      if (data.layoutPosition.x == 0 && data.layoutPosition.y == 0) {
-        data.layoutPosition = {
-          x: Utility.rand.next() - 0.5,
-          y: Utility.rand.next() - 0.5
+    if (this.labels) {
+      for (const node of this.config.configuration.value.definition.graph.nodes.keys()) {
+        const cluster = node.data as Cluster;
+        if (cluster.children.length > 0) {
+          continue;
         }
-      }
-      nodeData.push(0.0, data.layoutPosition.x, data.layoutPosition.y, 1.0);
-    }
-    for (let i = 0; i < graph.edges.length; i++) {
-      const source = graph.edges[i].source;
-      const target = graph.edges[i].target;
-      edgeData.push(source.id, target.id);
-    }
-
-    graph.edges.sort(function (a, b) { return (a.source.id > b.source.id) ? 1 : ((b.source.id > a.source.id) ? -1 : 0); });
-    for (let i = 0; i < graph.edges.length; i++) {
-      const source = graph.edges[i].source;
-      const target = graph.edges[i].target;
-      sourceEdges.push(source.id, target.id);
-    }
-    graph.edges.sort(function (a, b) { return (a.target.id > b.target.id) ? 1 : ((b.target.id > a.target.id) ? -1 : 0); });
-    for (let i = 0; i < graph.edges.length; i++) {
-      const source = graph.edges[i].source;
-      const target = graph.edges[i].target;
-      targetEdges.push(source.id, target.id);
-    }
-
-    const nodeDataBuffer = this.device.createBuffer({
-      size: nodeData.length * 4,
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
-      mappedAtCreation: true,
-    });
-    new Float32Array(nodeDataBuffer.getMappedRange()).set(nodeData);
-    nodeDataBuffer.unmap();
-    const edgeDataBuffer = this.device.createBuffer({
-      size: edgeData.length * 4,
-      usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE,
-      mappedAtCreation: true
-    });
-    new Uint32Array(edgeDataBuffer.getMappedRange()).set(edgeData);
-    edgeDataBuffer.unmap();
-
-    const edgeLength = edgeData.length;
-    const nodeLength = nodeData.length / 4;
-
-    const sourceEdgeDataBuffer = this.device.createBuffer({
-      size: edgeData.length * 4,
-      usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE,
-      mappedAtCreation: true
-    });
-    new Uint32Array(sourceEdgeDataBuffer.getMappedRange()).set(sourceEdges);
-    sourceEdgeDataBuffer.unmap();
-    const targetEdgeDataBuffer = this.device.createBuffer({
-      size: edgeData.length * 4,
-      usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE,
-      mappedAtCreation: true
-    });
-    new Uint32Array(targetEdgeDataBuffer.getMappedRange()).set(targetEdges);
-    targetEdgeDataBuffer.unmap();
-
-    const frame = (positions: number[]) => {
-      // Assemble node data
-      for (let i = 0; i < 4 * nodeLength; i = i + 4) {
-        (graph.nodes[i / 4].data as NodeData).layoutPosition = {
-            x: positions[i + 1],
-            y: positions[i + 2]
+        const label = new PIXI.Text();
+        label.text = cluster.name;
+        label.style.fill = "white";
+        label.position = {
+          x: -label.width / 2,
+          y: -label.height / 2
         };
+        const background = new PIXI.Graphics();
+        background.zIndex = 10000;
+        background.rect(label.position.x, label.position.y, label.width, label.height);
+        background.fill("black");
+        background.addChild(label);
+        this.labelGfx.set(node.id, background);
+        this.stage.addChild(background);
       }
-
-      this.render(graph);
-    };
-
-    await this.layout.runForces(
-      nodeDataBuffer, edgeDataBuffer,
-      nodeLength, edgeLength,
-      0.5, 0.05 + Math.log(1 + this.config.layoutSettings.value.gravity / 100), 100, this.config.layoutSettings.value.gravity,
-      sourceEdgeDataBuffer, targetEdgeDataBuffer, frame, signal
-    );
-
-    // Layout finished
+    }
   }
 
-  private render(graph: EdgeList) {
-    if (this.graph == undefined) {
+  private render(graph: EdgeList, signal: AbortSignal, timestamp?: number) {
+    if (graph == undefined) {
       console.log("No graph");
       return;
     }
 
-    // Zoom and pan
-    const zoom = (e: any) => {
-      this.transform = e.transform;
-      this.stage.scale = { x: e.transform.k, y: e.transform.k };
-      this.stage.pivot = { x: -e.transform.x / e.transform.k * devicePixelRatio, y: -e.transform.y / e.transform.k * devicePixelRatio };
-    }
-    zoom({ transform: this.transform });
-
-    let zooming = d3.select(this.app.canvas as any)
-      .call(this.zoom.on('zoom', zoom));
-    
-    // Initial zoom
-    if (this.transform.x == 0 && this.transform.y == 0) {
-      zooming.call(this.zoom.transform, d3.zoomIdentity.translate(this.width / 2, this.height / 2))
+    if (signal.aborted) {
+      return;
     }
 
-    // Apply graphics settings
-    const settings = this.config.graphicsSettings.value;
+    if (timestamp != undefined) {
+      if (timestamp == this.lastRenderTime) {
+        return;
+      } else {
+        this.lastRenderTime = timestamp;
+      }
+    }
+
+    this.zoom(this.transform.value);
+
+    // Join with selectedConnections to determine alpha/highlight value
+    const anySelection = this.config.selectedConnections.value.length > 0;
+    const selectedEdges = [...this.config.configuration.value.instance.connections.entries()]
+                            .filter(([k, v]) => this.config.selectedConnections.value.indexOf(k) != -1)
+                            .flatMap(([k, v]) => v);
+
+    // Label
+    if (this.labels) {
+      for (const [id, centroid] of this.config.centroids.value) {
+        const g = this.labelGfx.get(id);
+        if (g != undefined) {
+          g.position = {
+            x: centroid.x * this.edgeScale,
+            y: centroid.y * this.edgeScale
+          };
+        }
+      }
+    }
+
+    // Set node positions
+    // Lerp for possible cluster aggregation
+    for (const node of graph.nodes) {
+      const data = node.data as NodeData;
+      if (this.config.hiddenClusters.value.has(data.clusterID)) {
+        continue;
+      }
+      const centroid = this.config.centroids.value.get(data.clusterID);
+      const gfx = this.nodeDict.get(node);
+      if (data == undefined || centroid == undefined || gfx == undefined) {
+        return;
+      }
+      data.renderPosition = Utility.lerpP(data.layoutPosition, centroid, this.centroidLerp);
+      gfx.position = {
+        x: data.renderPosition.x * this.edgeScale,
+        y: data.renderPosition.y * this.edgeScale
+      };
+    }
 
     // Render edges
-    this.edgeGraphics?.destroy();
-    this.edgeGraphics = new PIXI.Graphics();
-    this.stage.addChild(this.edgeGraphics);
-    for (const edge of this.graph.edges) {
+    this.edgeGraphics.clear();
+    for (const edge of graph.edges) {
       const data = edge.data as EdgeData;
       const source = edge.source.data as NodeData;
       const target = edge.target.data as NodeData;
+
+      if (this.config.hiddenClusters.value.has(source.clusterID) || this.config.hiddenClusters.value.has(target.clusterID)) {
+        continue;
+      }
+      
+      const hover = edge.source == this.hoveredNode || edge.target == this.hoveredNode;
+      const selected = selectedEdges.indexOf(edge) != -1;
+      const seedSource = this.config.diffusionNodeStates.value.get(edge.source) == "infected";
+      const seedTarget = this.config.diffusionNodeStates.value.get(edge.target) == "infected";
+      const diffusionSeeds = seedSource && seedTarget;
+
+      // Transparency of unselected if there is an active selection
+      const alpha = !this.edgeHighlight || hover || !anySelection || selected ? 1 : 0.2;
+
       const middle = {
-        x: (source.layoutPosition.x + target.layoutPosition.x) / 2,
-        y: (source.layoutPosition.y + target.layoutPosition.y) / 2
+        x: (source.renderPosition.x + target.renderPosition.x) / 2,
+        y: (source.renderPosition.y + target.renderPosition.y) / 2
       };
-      this.edgeGraphics.moveTo(source.layoutPosition.x * this.edgeScale, source.layoutPosition.y * this.edgeScale);
+      this.edgeGraphics.moveTo(source.renderPosition.x * this.edgeScale, source.renderPosition.y * this.edgeScale);
       this.edgeGraphics.lineTo(middle.x * this.edgeScale, middle.y * this.edgeScale);
-      this.edgeGraphics.stroke({width: 1, color: this.getNodeColor(edge.source, settings.edgeColoring) });
+      this.edgeGraphics.stroke({width: 1, color: hover || diffusionSeeds ? 0xFF00FF : this.getNodeColor(edge.source, this.edgeColor), alpha: alpha });
       this.edgeGraphics.moveTo(middle.x * this.edgeScale, middle.y * this.edgeScale);
-      this.edgeGraphics.lineTo(target.layoutPosition.x * this.edgeScale, target.layoutPosition.y * this.edgeScale);
-      this.edgeGraphics.stroke({width: 1, color: this.getNodeColor(edge.target, settings.edgeColoring) });
+      this.edgeGraphics.lineTo(target.renderPosition.x * this.edgeScale, target.renderPosition.y * this.edgeScale);
+      this.edgeGraphics.stroke({width: 1, color: hover || diffusionSeeds ? 0xFF00FF : this.getNodeColor(edge.target, this.edgeColor), alpha: alpha });
     }
     
-    // Set node positions
-    for (const node of this.graph.nodes) {
-      const data = node.data as NodeData;
-      let gfx = this.nodeDict.get(node)!;
-      gfx.position = {
-        x: data.layoutPosition.x * this.edgeScale,
-        y: data.layoutPosition.y * this.edgeScale
-      };
-
-      // Change fill/tint depending on selection
-      // Or re-create nodes in subject change subscription event
-
-      // Kind of prefer tint here tbh (less calls other than render)
-      // Or just call createNodes(), easy
-    }
-
     // Render convex hull
+    if (this.config.selectedCluster.value != undefined && !this.config.hiddenClusters.value.has(this.config.selectedCluster.value.id)) {
+      const cluster1 = this.config.configuration.value.instance.clusters.get(this.config.selectedCluster.value.id)?.nodes;
+      if (cluster1 == undefined || cluster1.length < 3) {
+        return;
+      }
+      const points: [number, number][] = cluster1.map(n => {
+        const data = n.data as NodeData;
+        return [data.renderPosition.x, data.renderPosition.y];
+      });
+      const hull = d3.polygonHull(points)!;
+      for (let i = 0; i < hull.length; i++) {
+        const point1 = hull[i];
+        const point2 = hull[i == hull.length - 1 ? 0 : (i + 1)];
+        this.edgeGraphics.moveTo(point1[0] * this.edgeScale, point1[1] * this.edgeScale);
+        this.edgeGraphics.lineTo(point2[0] * this.edgeScale, point2[1] * this.edgeScale);
+      }
+      this.edgeGraphics.stroke({ width: 4, color: 0x222222 });
+    }
+  }
 
-    // Problem: Outliers -> soft margin -> pre-filter points too far away from centroid -> hyper-parameter?
-
-    // const cluster1 = [...this.config.configuration.value.instance.clusters.values()][0].nodes;
-    // const points: [number, number][] = cluster1.map(n => {
-    //   const data = n.data as NodeData;
-    //   return [data.layoutPosition.x, data.layoutPosition.y];
-    // });
-    // const hull = d3.polygonHull(points)!;
-    // for (let i = 0; i < hull.length; i++) {
-    //   const point1 = hull[i];
-    //   const point2 = hull[i == hull.length - 1 ? 0 : (i + 1)];
-    //   this.edgeGraphics.moveTo(point1[0] * this.edgeScale, point1[1] * this.edgeScale);
-    //   this.edgeGraphics.lineTo(point2[0] * this.edgeScale, point2[1] * this.edgeScale);
-    // }
-    // this.edgeGraphics.stroke({width: 4, color: 'gray'});
+  private getNodeCluster(node: Node): Cluster {
+    const data = node.data as NodeData;
+    const clusterNode = this.config.configuration.value.definition.graph.nodeDictionary.get(data.clusterID)!;
+    const cluster = clusterNode.data as Cluster;
+    return cluster;
   }
 
   private getNodeColor(node: Node, communityColor: boolean = true): number | string {
-    if (this.config.selectedDiffusionSeeds.value.has(node)) {
-      return 0xFF00FF;
-    } else if (communityColor) {
-      const data = node.data as NodeData;
-      const clusterNode = this.config.configuration.value.definition.graph.nodeDictionary.get(data.clusterID)!;
-      const cluster = clusterNode.data as Cluster;
-      return d3.schemeCategory10[cluster.color % 10];
+    if (communityColor) {
+      return this.getNodeCluster(node).color;
     } else {
       return 0x000000
     }
   }
 
-  private ngOnDestroy() {
-    this.app.destroy();
+  private centroidInterpolation(graph: EdgeList, timestamp: number) {
+    if (this.centroidLerpTargetTime == 0) {
+      // Current time ms + remaining (depending on direction) * transition ms
+      this.centroidLerpTargetTime = timestamp + (this.combineClusters ? this.centroidLerp : 1 - this.centroidLerp) * this.centroidLerpTransitionTime;
+    }
+    const elapsed = Math.min(this.centroidLerpTransitionTime, timestamp - this.centroidLerpTargetTime); // milliseconds
+    if (this.combineClusters) {
+      this.centroidLerp = elapsed / this.centroidLerpTransitionTime;
+    } else {
+      this.centroidLerp = 1 - elapsed / this.centroidLerpTransitionTime;
+    }
+    if (this.stage != undefined) {
+      this.render(graph, this.abort.signal, timestamp); 
+    }
+    if (elapsed < this.centroidLerpTransitionTime) {
+      requestAnimationFrame(t => this.centroidInterpolation(graph, t));
+    }
   }
 
-  private ngAfterViewInit() {
+  public ngOnDestroy() {
+    this.app.destroy();
+    this.abort.abort();
+    for (const sub of this.subscriptions) {
+      sub.unsubscribe();
+    }
+    this.subscriptions = [];
+  }
+
+  public ngAfterViewInit() {
     this.app = new PIXI.Application();
     (async () => {
       await this.app.init({
-        preference: 'webgpu',
+        preference: 'webgl',
         background: 'white',
         antialias: true
       });
+      this.app.canvas.oncontextmenu = e => {
+        e.preventDefault();
+      }
       this.container.nativeElement.appendChild(this.app.canvas);
+      this.stage = new PIXI.Container({
+        isRenderGroup: true
+      });
+      this.app.stage.addChild(this.stage);
+      this.edgeGraphics = new PIXI.Graphics();
+      this.stage.addChild(this.edgeGraphics);
       this.resize();
+      this.init();
     })();
   }
 
-  @HostListener('window:resize')
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes["combineClusters"] &&
+      changes["combineClusters"].previousValue != this.combineClusters) {
+        if (this.config.forceDirectedLayout.value.nodes.length > 0) {
+          this.centroidLerpTargetTime = 0;
+          requestAnimationFrame(t => this.centroidInterpolation(this.config.forceDirectedLayout.value, t));
+        } else {
+          this.centroidLerp = this.combineClusters ? 1 : 0;
+        }
+    }
+    if (changes["transform"]) {
+      if (this.stage != undefined) {
+        clearTimeout(this.dragTimeout);
+        this.dragTimeout = setTimeout(() => {
+          this.dragging = false;
+        }, 100);
+        this.dragging = true;
+        this.zoom(this.transform.value);
+      }
+    }
+    if ((changes["nodeColor"] || changes["edgeColor"] || changes["nodeSize"] || changes["edgeHighlight"] || changes["labels"])) {
+      if (this.stage != undefined && this.config.forceDirectedLayout.value.nodes.length > 0) {
+        this.createNodes(this.config.forceDirectedLayout.value);
+        this.render(this.config.forceDirectedLayout.value, this.abort.signal);
+      }
+    }
+  }
+
   public resize(): void {
-    this.width = this.container.nativeElement.offsetWidth;
-    this.height = this.container.nativeElement.offsetHeight;
+    this.width = this.container.nativeElement.clientWidth;
+    this.height = this.container.nativeElement.clientHeight;
     this.app.renderer.resize(this.width * window.devicePixelRatio, this.height * window.devicePixelRatio);
     this.app.canvas.style!.width = `${this.width}px`;
     this.app.canvas.style!.height = `${this.height}px`;
     this.rect = (this.app.canvas as any).getBoundingClientRect();
+  }
+
+  public zoom(transform: d3.ZoomTransform) {
+    this.stage.scale = { x: transform.k, y: transform.k };
+    this.stage.pivot = { x: -transform.x / transform.k * devicePixelRatio, y: -transform.y / transform.k * devicePixelRatio };
+  }
+
+  private showTooltip(pos: Point, text: string) {
+    d3.select(this.tooltip.nativeElement)
+      .text(text)
+      .style("display", "inline-block")
+      .style("left", `${pos.x - this.rect.x + 20}px`)
+      .style("top", `${pos.y - this.rect.y + 20}px`);
+  }
+
+  private hideTooltip() {
+    d3.select(this.tooltip.nativeElement)
+      .text("")
+      .style("display", "none")
+      .style("top", "-100px")
+      .style("left", "-100px");
   }
 }

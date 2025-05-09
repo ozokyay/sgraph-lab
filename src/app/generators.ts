@@ -1,4 +1,4 @@
-import { AdjacencyList, EdgeList } from "./graph";
+import { AdjacencyList, Edge, EdgeList } from "./graph";
 import { LocalService } from "./local.service";
 import { Series } from "./series";
 import { Utility } from "./utility";
@@ -6,6 +6,31 @@ import { Utility } from "./utility";
 export interface Generator {
     name: string,
     generate: () => EdgeList
+}
+
+export class ERGenerator implements Generator {
+    public name = "ER";
+    public nodeCount: number;
+    public edgeCount: number;
+    public extractGiantComponent: boolean;
+
+    // It's probably a good idea to force the caller to provide reasonable initialization
+    constructor(nodeCount: number, edgeCount: number, extractGiantComponent: boolean) {
+        this.nodeCount = nodeCount;
+        this.edgeCount = edgeCount;
+        this.extractGiantComponent = extractGiantComponent;
+    }
+
+    public generate(): EdgeList {
+        // Run generator
+        let g = LocalService.generateErdosRenyi(this.nodeCount, this.edgeCount);
+        console.log(g);
+        if (this.extractGiantComponent) {
+            g = LocalService.extractGiantComponent(new AdjacencyList(g));
+        }
+
+        return g;
+    }
 }
 
 export class CLGenerator implements Generator {
@@ -35,11 +60,15 @@ export class CLGenerator implements Generator {
                 sum += deg;
             }
         }
+
         // Run generator
         let g = LocalService.generateChungLu(nodeDegrees);
         if (this.extractGiantComponent) {
             g = LocalService.extractGiantComponent(new AdjacencyList(g));
         }
+
+        // Extra assortativity edges
+
         return g;
     }
 }
@@ -79,6 +108,34 @@ export class CMGenerator implements Generator {
         if (this.extractGiantComponent) {
             g = LocalService.extractGiantComponent(new AdjacencyList(g));
         }
+
+        // Extra assortativity edges
+
         return g;
+    }
+}
+
+// Manual Group
+export class MGGenerator implements Generator {
+    public name = "MG";
+    public group = "group";
+
+    public generate(): EdgeList {
+        return { nodes: [], edges: [] };
+    }
+}
+
+// Automatic Group
+export class AGGenerator implements Generator {
+    public name = "AG";
+    public group = "group";
+    public numGroups: number;
+
+    constructor(numGroups: number = 2) {
+        this.numGroups = numGroups;
+    }
+
+    public generate(): EdgeList {
+        return { nodes: [], edges: [] };
     }
 }

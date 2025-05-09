@@ -4,11 +4,22 @@ import { ConfigurationService } from '../configuration.service';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSliderModule } from '@angular/material/slider';
 import { VisLineChartComponent } from '../vis-line-chart/vis-line-chart.component';
-import { Series, Uniform10 } from '../series';
+import { EmptySeries, Series, Uniform10 } from '../series';
 import { Edge } from '../graph';
 import { Utility } from '../utility';
 import { Cluster } from '../cluster';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { FormsModule } from '@angular/forms';
+import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
+
+// To make things clear once and for all:
+// - Edge count is the actual number (no intuitive range for normalization)
+// - Node count is normalized (multi-editing, want to keep for 1:N)
+// - Solution for N:N is full matrix or arrow/colors
+// - Good advantage of minimap!
 
 @Component({
   selector: 'app-tab-connections',
@@ -17,6 +28,11 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
     MatButtonModule,
     MatSliderModule,
     MatSlideToggleModule,
+    MatInputModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatTooltipModule,
+    FormsModule,
     VisLineChartComponent
   ],
   templateUrl: './tab-connections.component.html',
@@ -26,13 +42,14 @@ export class TabConnectionsComponent {
   public connections: Edge[] = [];
   public multiEditing: boolean = false;
 
-  public edgeCount: number = 0;
-  public nodeCountSource: number = 0;
-  public nodeCountTarget: number = 0;
-  public degreeAssortativity: number = 0;
+  public edgeCount = 0;
+  public nodeCountSource = 0;
+  public nodeCountTarget = 0;
+  public degreeAssortativity = 0;
+  public maxEdgeCount = 0;
 
-  public sourceName: string = "";
-  public targetsName: string = "";
+  public sourceNames: string[] = [];
+  public targetNames: string[] = [];
 
   public degreeDistributionSource?: Series = undefined;
   public degreeDistributionTarget?: Series = undefined;
@@ -45,14 +62,20 @@ export class TabConnectionsComponent {
       this.render();
     });
     config.configuration.subscribe(config => {
-      // TODO: Set preview distributions to product from measures cluster distributions
-      // Compute
-
-      // Also rerender everything from above
-      // => render()
-
       this.render();
     });
+  }
+
+  private getEffectiveDistribution(side: "source" | "target"): Series {
+    // TODO: Want to show after drawing instead??
+
+    // Effective range, scale to 1 to reflect that scale doesn't matter
+    const distributions = this.connections.map(e => this.config.configuration.value.instance.clusterMeasures.get(side == "source" ? e.source.id : e.target.id)!.degreeDistribution);
+    const avg = Utility.averageDistributions(distributions);
+    const max = avg.data.reduce((a, b) => Math.max(a, b.y), 0);
+    Utility.multiplyPointValues(avg.data, 1 / max);
+    avg.yExtent = [0, 1];
+    return avg;
   }
 
   private render() {
@@ -69,22 +92,21 @@ export class TabConnectionsComponent {
     const firstConn = first.data as ClusterConnection;
 
     // Get involved cluster measures
-    const clusterSource = this.config.configuration.value.instance.clusterMeasures.get(first.source.data as Cluster)!;
-    const clusterTargets = this.connections.map(c =>
-      this.config.configuration.value.instance.clusterMeasures.get(c.target.data as Cluster)!
+    const measuresSource = this.connections.map(c =>
+      this.config.configuration.value.instance.clusterMeasures.get(c.source.id)!
+    );
+    const measuresTarget = this.connections.map(c =>
+      this.config.configuration.value.instance.clusterMeasures.get(c.target.id)!
     );
 
-    // Set values
-    this.nodeCountSource = firstConn.nodeCountSource * clusterSource.nodeCount;
-    this.nodeCountTarget = clusterTargets.map(c => c.nodeCount).reduce((a, b) => a + b);
-    const edgeCountTargets = clusterTargets.map(c => c.edgeCount).reduce((a, b) => a + b);
-    const edgeCount = firstConn.edgeCount * Math.min(clusterSource.edgeCount, edgeCountTargets, this.nodeCountSource * this.nodeCountTarget);
-    this.edgeCount = edgeCount;
+    // Clamp and apply
+    const maxNodeCountSource = measuresSource.reduce((v, m) => Math.min(v, m.nodeCount), Number.MAX_SAFE_INTEGER);
+    const maxNodeCountTarget = measuresTarget.reduce((v, m) => Math.min(v, m.nodeCount), Number.MAX_SAFE_INTEGER);
+    this.maxEdgeCount = maxNodeCountSource * maxNodeCountTarget;
+    this.edgeCount = Math.min(firstConn.edgeCount, this.maxEdgeCount);
+    this.nodeCountSource = firstConn.sourceNodeCount * 100;
+    this.nodeCountTarget = firstConn.targetNodeCount * 100;
     this.degreeAssortativity = firstConn.degreeAssortativity;
-
-    // Set string labels
-    this.sourceName = (first.source.data as Cluster).name;
-    this.targetsName = "";
 
     // Compute distributions
 
@@ -95,8 +117,11 @@ export class TabConnectionsComponent {
     // Compute preview from sum
 
     // Update linechart (don't even clone - direct modifications)
-    this.degreeDistributionSource = firstConn.degreeDistributionSource;
-    this.degreeDistributionTarget = firstConn.degreeDistributionTarget;
+    this.degreeDistributionSource = firstConn.sourceDegreeDistribution;
+    this.degreeDistributionTarget = firstConn.targetDegreeDistribution;
+
+    this.actualDistributionSource = this.getEffectiveDistribution("source");
+    this.actualDistributionTarget = this.getEffectiveDistribution("target");
 
     // On enabled: copy measured distribution, show
     // But this is still stupid when changing clusters...
@@ -105,30 +130,26 @@ export class TabConnectionsComponent {
     // How to show actual? => from final graph
     // preview -> actual
     
+    this.sourceNames = [];
+    this.targetNames = [];
 
     // Check consistency and multi-editing
     for (const edge of this.connections) {
-      if (edge.source != first.source) {
-        console.log("Error: Inconsistent source on current edge selection");
-        break;
-      }
-
       const conn = edge.data as ClusterConnection;
       if (conn.edgeCount != firstConn.edgeCount ||
-        conn.nodeCountSource != firstConn.nodeCountSource ||
-        conn.nodeCountTarget != firstConn.nodeCountTarget ||
+        conn.sourceNodeCount != firstConn.sourceNodeCount ||
+        conn.targetNodeCount != firstConn.targetNodeCount ||
         conn.degreeAssortativity != firstConn.degreeAssortativity ||
-        (conn.degreeDistributionSource && !firstConn.degreeDistributionSource) || // Stooopid
-        (conn.degreeDistributionTarget && !firstConn.degreeDistributionTarget) ||
-        (!conn.degreeDistributionSource && firstConn.degreeDistributionSource) ||
-        (!conn.degreeDistributionTarget && firstConn.degreeDistributionTarget) ||
-        conn.degreeDistributionSource && firstConn.degreeDistributionSource && !Utility.arraysEqual(conn.degreeDistributionSource!.data, firstConn.degreeDistributionSource!.data) ||
-        conn.degreeDistributionTarget && firstConn.degreeDistributionTarget && !Utility.arraysEqual(conn.degreeDistributionTarget!.data, firstConn.degreeDistributionTarget!.data)
+        (!conn.sourceDegreeDistribution != !firstConn.sourceDegreeDistribution) ||
+        (!conn.targetDegreeDistribution != !firstConn.targetDegreeDistribution) ||
+        conn.sourceDegreeDistribution && firstConn.sourceDegreeDistribution && !Utility.arraysEqual(conn.sourceDegreeDistribution!.data, firstConn.sourceDegreeDistribution!.data) ||
+        conn.targetDegreeDistribution && firstConn.targetDegreeDistribution && !Utility.arraysEqual(conn.targetDegreeDistribution!.data, firstConn.targetDegreeDistribution!.data)
       ) {
         this.multiEditing = false;
       }
 
-      this.targetsName += (edge.target.data as Cluster).name + " ";
+      this.sourceNames.push((edge.source.data as Cluster).name);
+      this.targetNames.push((edge.target.data as Cluster).name);
     }
   }
 
@@ -138,21 +159,21 @@ export class TabConnectionsComponent {
       return;
     }
 
-    // Set all variables to 0
+    // Set all variables to default values
     this.edgeCount = 0;
-    this.nodeCountSource = 0;
-    this.nodeCountTarget = 0;
+    this.nodeCountSource = 100;
+    this.nodeCountTarget = 100;
     this.degreeAssortativity = 0;
     this.degreeDistributionSource = undefined;
     this.degreeDistributionTarget = undefined;
     for (const edge of this.connections) {
       const conn = edge.data as ClusterConnection;
       conn.edgeCount = this.edgeCount;
-      conn.nodeCountSource = this.nodeCountSource;
-      conn.nodeCountTarget = this.nodeCountTarget;
+      conn.sourceNodeCount = this.nodeCountSource / 100;
+      conn.targetNodeCount = this.nodeCountTarget / 100;
       conn.degreeAssortativity = this.degreeAssortativity;
-      conn.degreeDistributionSource = undefined;
-      conn.degreeDistributionTarget = undefined;
+      conn.sourceDegreeDistribution = undefined;
+      conn.targetDegreeDistribution = undefined;
     }
     this.multiEditing = true;
     this.onChange();
@@ -168,22 +189,78 @@ export class TabConnectionsComponent {
     for (const edge of this.connections) {
       const conn = edge.data as ClusterConnection;
       conn.edgeCount = this.edgeCount;
-      conn.nodeCountSource = this.nodeCountSource;
-      conn.nodeCountTarget = this.nodeCountTarget;
+      conn.sourceNodeCount = this.nodeCountSource / 100;
+      conn.targetNodeCount = this.nodeCountTarget / 100;
       conn.degreeAssortativity = this.degreeAssortativity;
-      conn.degreeDistributionSource = structuredClone(this.degreeDistributionSource);
-      conn.degreeDistributionTarget = structuredClone(this.degreeDistributionTarget);
+      conn.sourceDegreeDistribution = structuredClone(this.degreeDistributionSource);
+      conn.targetDegreeDistribution = structuredClone(this.degreeDistributionTarget);
+
+      // Must apply to graph because selection doesn't do it (handle deletion, also there are multiple selection UIs)
+      this.config.configuration.value.definition.graph.removeEdge(edge);
+      this.config.configuration.value.definition.graph.addEdge(edge);
+
+      // Could even delete, but don't want to lose other properties
     }
 
     this.config.update("Changed connections");
   }
 
   public onChangeDistributionSource(value: boolean) {
-    console.log("changed on render()");
-    // if value then set to uniform with correct extent else set to undefined
+    // A) Uniform distribution
+    // B) Actual distribution (preferred)
+
+    // Pros and Cons
+    // A) Simple, no problems with multi, does not really matter anyway
+    // B) A bit nicer, more user-friendly (bonus), BUT too many handles
+
+    let distribution: Series | undefined = undefined;
+    if (value) {
+      // Effective range, scale to 1 to reflect that scale doesn't matter
+      distribution = {
+        data: [
+          { x: 1, y: 0.5 },
+          { x: 1, y: 0.5 }
+        ],
+        xExtent: [1, 1],
+        yExtent: [0, 1]
+      };
+      for (const edge of this.connections) {
+        const dist = this.config.configuration.value.instance.clusterMeasures.get(edge.source.id)!.degreeDistribution;
+        // distribution = Utility.addDistributions(distribution, dist);
+        distribution.xExtent[1] = Math.max(distribution.xExtent[1], dist.xExtent[1]);
+      }
+      distribution.data[1].x = distribution.xExtent[1];
+      // const max = distribution.data.reduce((a, b) => Math.max(a, b.y), 0);
+      // Utility.multiplyPointValues(distribution.data, 1 / max);
+      // distribution.yExtent = [0, 1];
+    }
+    this.degreeDistributionSource = distribution;
+    this.onChange();
   }
 
   public onChangeDistributionTarget(value: boolean) {
+    let distribution: Series | undefined = undefined;
+    if (value) {
+      distribution = {
+        data: [
+          { x: 1, y: 0.5 },
+          { x: 1, y: 0.5 }
+        ],
+        xExtent: [1, 1],
+        yExtent: [0, 1]
+      };
+      for (const edge of this.connections) {
+        const dist = this.config.configuration.value.instance.clusterMeasures.get(edge.target.id)!.degreeDistribution;
+        distribution.xExtent[1] = Math.max(distribution.xExtent[1], dist.xExtent[1]);
+      }
+      distribution.data[1].x = distribution.xExtent[1];
+    }
+    this.degreeDistributionTarget = distribution;
+    this.onChange();
+  }
 
+  public onClear() {
+    this.config.selectedConnections.next([]);
+    // this.config.activeTab.next(1); // Ideally previous tab
   }
 }

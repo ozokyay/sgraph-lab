@@ -206,7 +206,7 @@ export class ForceDirected {
         gravity = this.gravity,
         sourceEdgeBuffer: GPUBuffer | null,
         targetEdgeBuffer: GPUBuffer | null,
-        frame: (positions: number[]) => void,
+        frame: (positions: number[], timestamp: number) => void,
         signal: AbortSignal
     ) {
         // coolingFactor = 0.995;
@@ -751,7 +751,7 @@ export class ForceDirected {
             await this.device.queue.onSubmittedWorkDone();
             positionReadBuffer.unmap();
 
-            requestAnimationFrame(() => frame(positionList));
+            requestAnimationFrame(t => frame(positionList, t));
         }
         // await positionReadBuffer.mapAsync(GPUMapMode.READ);
         // let positionArrayBuffer = positionReadBuffer.getMappedRange();

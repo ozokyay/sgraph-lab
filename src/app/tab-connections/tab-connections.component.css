@@ -1,7 +1,3 @@
-mat-slider {
-    width: 250px
-}
-
 p {
     margin-top: 10px;
 }
@@ -10,11 +6,72 @@ input {
     width: 60px;
 }
 
+.left-margin {
+    margin-left: 2em;
+}
+
+.left-margin2 {
+    margin-left: 10px;
+}
+
 .label {
     margin-left: 10px;
     font-size: large;
 }
 
 .vertical-item {
-    margin-top: 20px;
+    margin-top: 10px;
+}
+
+.button-clear {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    min-width: 40px;
+    padding-left: 16px;
+    padding-right: 0;
+    width: 48px;
+}
+
+.button-reset {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+}
+
+.center-vertical {
+    align-self: center;
+}
+
+.short {
+    min-width: 90px;
+    width: 90px;
+}
+
+mat-slider {
+    flex-grow: 1;
+}
+
+table {
+    width: 99%;
+    border-collapse: collapse;
+}
+
+.cell {
+    display: flex;
+    flex-wrap: nowrap;
+}
+
+table tr td:first-child {
+    border-right: 2px solid #cccccc;
+}
+
+img {
+    width: 16px;
+    height: 16px;
+    align-self: center;
+}
+
+.pad-image {
+    padding-bottom: 4px;
 }

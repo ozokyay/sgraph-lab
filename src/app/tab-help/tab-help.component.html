@@ -1,0 +1,74 @@
+<div class="header">
+    <h1 class="mat-display-1">
+        CluNeD
+    </h1>
+    <img src="assets/logo.png" title="Application Logo">
+</div>
+<mat-divider></mat-divider>
+<br>
+<h2 class="mat-headline-medium">Overview</h2>
+<p>This tool allows you to create a clustered network with lots of control over its structure. You configure generators to generate communities from edge counts or node degree distributions. Then, you configure how these communities are interconnected. You can make use of community groups and replication to quickly build a hierarchical structure of many communities. Various graph statistics help you gain insight into network properties. Finally, you can simulate an information diffusion process on the graph and export the graph or the configuration that generates it.</p>
+<br>
+<button mat-raised-button class="center-margin" (click)="startTutorial()">Begin Tutorial</button>
+<br>
+<h2 class="mat-headline-medium">User interface</h2>
+<h3 class="mat-title-medium">Community list</h3>
+<p>The community list provides an overview of the communities. It allows to browse the hierarchical structure and to select, to add and to delete communities. You can also set the visibility of communities.</p>
+<h3 class="mat-title-medium">Network visualizations</h3>
+<p>
+    There are two visualizations for the connections between communities: The node-link diagram and the adjacency matrix. These visualizations can show different levels of the community hierarchy. The node-link diagram can show the network at the node level "N". In the matrix, cells show the edge counts of connections between communities. Cells on the diagonal show the edge count within a community.
+</p>
+<p>
+    The toolbar in the upper left corner provides options to configure the node-link diagram.
+</p>
+<ul>
+    <li>The node radius can be scaled with the community size or with the node degree at the result level.</li>
+    <li>Community labels can be shown in the visualization.</li>
+    <li>Egocentric layout arranges all nodes around the currently selected community and hides connections between the other communities (community level only).</li>
+    <li>The ratio of the node fractions of community connections can be encoded in the widths of edge endpoints (community level only).</li>
+    <li>Node coloring and edge coloring apply the community color to nodes and edges (node level only).</li>
+</ul>
+<h3 class="mat-title-medium">Tabs</h3>
+<p>Community Properties: Configure a generator or group that defines a community. Replication factors higher than 1 create more instances with the same parameters. Degree distributions can be generated with a curve generator, drawn in the line chart, and by editing the list of points.</p>
+<p>Community Connections: Configure the selected connections by setting edge count, node sampling fractions, degree assortativity and degree distributions.</p>
+<p>Graph Measures: Measures of the selected community or entire graph.</p>
+<p>Layout Settings: Tuning the force-directed layout of the resulting graph. Sampling helps with performance and overlap, higher gravity leads to more equally-spaced nodes and prevents stretching of sparse communities, and more layout iterations can help with unfolding of large networks.</p>
+<p>Diffusion Simulation: Simulate information diffusion processes with manually placed seed nodes.</p>
+<p>Import/Export: Import or export a configuration or export the graph.</p>
+<h2 class="mat-headline-medium">Controls</h2>
+<h3 class="mat-title-medium">Node-Link diagram</h3>
+<p>
+    Shift + Scroll: Go through levels
+    <br>
+    Scroll: Zoom
+    <br>
+    Drag: Pan view
+    <br>
+    Click: Select community
+    <br>
+    Right-click if a node is selected: Select/deselect connection
+    <br>
+    Shift + right-click: Swap connection endpoints
+    <br>
+    Drag from node: Select new connection
+    <br>
+    Click on edge: Toggle selection
+    <br>
+    Right-click on edge: Swap connection endpoints
+</p>
+<h3 class="mat-title-medium">Adjacency matrix</h3>
+<p>
+    Shift + Scroll: Go through levels
+    <br>
+    Click: Select connection (on diagonal to select all)
+    <br>
+    Shift + Click: Toggle connection direction
+</p>
+<h3 class="mat-title-medium">Line Chart</h3>
+<p>
+    Click: Create point or set point position
+    <br>
+    Right-click: Delete a point
+    <br>
+    Drag: Move a point
+</p>

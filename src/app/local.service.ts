@@ -18,10 +18,31 @@ import { Utility } from './utility';
 })
 export class LocalService {
 
+  // Advantages over PythonService: Faster and direct access to random state
 
-  // Advantages: Faster and direct access to random state
+  public static generateErdosRenyi(n: number, e: number): EdgeList {
+    const G: EdgeList = { nodes: [], edges: [] };
+    for (let i = 0; i < n; i++) {
+      G.nodes.push({ id: i });
+    }
 
-  constructor() { }
+    const edges: Edge[] = [];
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < i; j++) {
+        if (j == i) {
+          continue;
+        }
+        edges.push({
+          source: G.nodes[i],
+          target: G.nodes[j]
+        });
+      }
+    }
+    Utility.shuffleArray(edges);
+    G.edges = edges.slice(0, e);
+
+    return G;
+  }
 
   public static generateChungLu(w: number[], selfLoops: boolean = false): EdgeList {
     const n: number = w.length;

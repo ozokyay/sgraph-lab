@@ -3,27 +3,74 @@
     <div #controls class="flexi">
         @if (allowAxisScaling) {
             <div class="flex-element">
-                <mat-form-field class="small">
-                    <mat-label>Max. x value</mat-label>
+                <mat-form-field class="small" subscriptSizing="dynamic">
+                    <mat-label>X-axis scale</mat-label>
                     <input matNativeControl #xMaxInput type="number" min="2" (change)="changeXAxis($event)" [value]="this.series ? this.series.xExtent[1] : 10" />
                 </mat-form-field>
             </div>
         }
         @if (allowAxisScaling) {
             <div class="flex-element">
-                <mat-form-field class="small">
-                    <mat-label>Max. y value</mat-label>
+                <mat-form-field class="small" subscriptSizing="dynamic">
+                    <mat-label>Y-axis scale</mat-label>
                     <input matNativeControl #yMaxInput type="number" min="2" (change)="changeYAxis($event)" [value]="this.series ? this.series.yExtent[1] : 100" />
                 </mat-form-field>
             </div>
         }
         @if (allowLogToggles) {
             <div class="flex-element">
-                <mat-slide-toggle class="flex-element space-vert block" (change)="rescaleCoordinatesX($event)">Log. x-axis</mat-slide-toggle>
+                <mat-slide-toggle class="flex-element block" (change)="rescaleCoordinatesX($event)">Log. x-axis</mat-slide-toggle>
             </div>
             <div class="flex-element">
-                <mat-slide-toggle class="flex-element space-vert block" (change)="rescaleCoordinatesY($event)">Log. y-axis</mat-slide-toggle>
+                <mat-slide-toggle class="flex-element block" (change)="rescaleCoordinatesY($event)">Log. y-axis</mat-slide-toggle>
             </div>
         }
     </div>
+    @if (series && editMode) {
+        <mat-expansion-panel class="space-vert-top">
+            <mat-expansion-panel-header>
+                <mat-panel-title>Curve generator</mat-panel-title>
+            </mat-expansion-panel-header>
+            <div>
+                <mat-form-field>
+                    <mat-label>Type</mat-label>
+                    <mat-select #type [(ngModel)]="distributionType">
+                      <mat-option value="power-law">Power-Law</mat-option>
+                      <mat-option value="linear-growing">Linear (growing)</mat-option>
+                      <mat-option value="linear-shrinking">Linear (shrinking)</mat-option>
+                      <mat-option value="uniform">Uniform</mat-option>
+                    </mat-select>
+                </mat-form-field>
+                @if (type.value == "power-law") {
+                <mat-form-field style="margin-left: 10px;">
+                    <mat-label>Exponent</mat-label>
+                    <input matInput type="number" max="0" [(ngModel)]="exponent">
+                </mat-form-field>
+                }
+                <br>
+                <button mat-stroked-button (click)="onGenerate()">Generate</button>
+            </div>
+        </mat-expansion-panel>
+        <mat-expansion-panel class="space-vert-top">
+            <mat-expansion-panel-header>
+              <mat-panel-title>Data points</mat-panel-title>
+              <!-- <mat-panel-description> This is a summary of the content </mat-panel-description> -->
+            </mat-expansion-panel-header>
+            <div>
+                @for (point of series.data; track $index) {
+                    <div style="display: flex; margin-bottom: 10px;">
+                        <input class="cell" type="number" placeholder="X" [ngModel]="point.x | number" (change)="validateXChange(point, $event)">
+                        <input class="cell" type="number" placeholder="Y" [ngModel]="point.y | number" (ngModelChange)="point.y = validateYChange($event)" (change)="onChange()">
+                        <button mat-raised-button type="button" class="button-plus" (click)="deletePoint(point)" [disabled]="series.data.length <= 2">
+                            <mat-icon>delete</mat-icon>
+                        </button>
+                    </div>
+                }
+                <!-- Simply append something within range to end, adjust extent -->
+                <button mat-raised-button type="button" class="button-plus" (click)="addPoint()">
+                    <mat-icon>add</mat-icon>
+                </button>   
+            </div>
+        </mat-expansion-panel>
+    }
 </div>

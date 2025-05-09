@@ -2,7 +2,6 @@ import { Component } from '@angular/core';
 import { ConfigurationService } from '../configuration.service';
 import { DegreesDefault, Series } from '../series';
 import { Cluster } from '../cluster';
-import * as d3 from 'd3';
 import { MatButtonModule } from '@angular/material/button';
 import { MatListModule } from '@angular/material/list';
 import { NestedTreeControl } from '@angular/cdk/tree';
@@ -10,7 +9,9 @@ import { MatTreeNestedDataSource, MatTreeModule } from '@angular/material/tree';
 import { MatIconModule } from '@angular/material/icon';
 import { NgClass, NgFor } from '@angular/common';
 import { Node } from '../graph';
-import { CLGenerator } from '../generators';
+import { CLGenerator, CMGenerator, MGGenerator } from '../generators';
+import { Utility } from '../utility';
+import { TutorialService } from '../tutorial.service';
 
 @Component({
   selector: 'app-tab-cluster-list',
@@ -27,193 +28,168 @@ import { CLGenerator } from '../generators';
   styleUrl: './tab-cluster-list.component.css'
 })
 export class TabClusterListComponent {
+  public edit: boolean = true;
+  public deselect: boolean = true;
 
-  public treeControl = new NestedTreeControl<Cluster>(c => c.children);
+  public treeControl = new NestedTreeControl<Cluster>(c => Utility.getChildren(c));
   public dataSource = new MatTreeNestedDataSource<Cluster>();
   public hasChild = (_: number, node: Cluster) => node.children && node.children.length > 0;
 
   public clusters: Cluster[] = [];
   public selectedCluster?: Cluster = undefined;
+  public highlight = new Map<Cluster, boolean>();
+  public hidden = new Set<number>();
 
-  constructor(private config: ConfigurationService) {
-    // config.configuration.subscribe(configuration => {
-    //   this.clusters = configuration.definition.graph.getNodes().map(n => n.data as Cluster);
-    //   this.dataSource.data = this.clusters;
-    // });
-
-    // - Implement adding/deleting children
-    // - Color algorithm => hierarchical color scale oh god recursive oklch
-    // (- Color picker)
-    // - generate children
-
-    this.clusters = [
-      {
-        id: 0,
-        name: "Cluster A",
-        color: 0,
-        children: [
-          {
-            id: 1,
-            name: "Cluster A.1",
-            color: 1,
-            children: [],
-            generator: new CLGenerator(DegreesDefault, true)
-          },
-          {
-            id: 2,
-            name: "Cluster A.2",
-            color: 2,
-            children: [],
-            generator: new CLGenerator(DegreesDefault, true)
-          }
-        ],
-        generator: new CLGenerator(DegreesDefault, true)
+  constructor(private config: ConfigurationService, public tutorial: TutorialService) {
+    Utility.config = config;
+    config.configuration.subscribe(configuration => {
+      this.clusters = configuration.definition.graph.getNodes().map(n => n.data as Cluster).filter(c => c.parent == -1); // Only root level nodes
+      this.dataSource.data = [];
+      this.dataSource.data = this.clusters;
+      this.highlight.clear();
+      for (const c of this.clusters) {
+        this.highlight.set(c, false); // Selected connections will always be clear when adding
       }
-    ];
-    this.dataSource.data = this.clusters;
+    });
     config.selectedCluster.subscribe(cluster => this.selectedCluster = cluster);
+    config.hiddenClusters.subscribe(clusters => {
+      this.hidden.clear();
+      for (const c of clusters) {
+        this.hidden.add(c);
+      }
+    });
+    // config.activeTab.subscribe(t => {
+    //   this.edit = t != 1;
+    // });
+    config.selectedConnections.subscribe(connections => {
+      for (const c of this.highlight.keys()) {
+        this.highlight.set(c, false);
+      }
+      for (const c of connections) {
+        this.highlight.set(c.source.data as Cluster, true);
+        this.highlight.set(c.target.data as Cluster, true);
+      }
+    });
+    tutorial.start.subscribe(() => {
+      for (const c of this.clusters) {
+        if (c.parent == -1) {
+          this.treeControl.expand(c);
+        }
+      }
+    });
   }
 
   public getColor(cluster: Cluster) {
-    return d3.schemeCategory10[cluster.color % 10];
-  }
-
-  // https://bottosson.github.io/posts/oklab/
-  // Call with fake root cluster
-  private assignColor(v: Cluster, [lb, ub]: [number, number], f: number, perm: boolean, rev: boolean, prop: boolean) {
-    const hue = (lb + ub) / 2;
-    v.color = hue;
-    // C, L local interpolation in suggested ranges
-    // Need current and max depth information
-
-    if (v.children.length > 0) {
-      // Divide r in to N parts (proportionally flag)
-      // Need subtree child counts
-      const ri: [number, number][] = [];
-
-      // [[ub, lb], [ub, lb]]
-      const range = Array.from({ length: v.children.length }, (_, i) => [lb + (ub - lb) * (i / v.children.length), i]);
-
-      // Reduce to middle fraction f
-
-      // if perm then permute ris
-
-      // if rev then reverse even ris
-
-      for (let i = 0; i < v.children.length; i++) {
-        this.assignColor(v.children[i], ri[i], f, perm, rev, prop);
-      }
-    }
-  }
-
-  // This does one step of hue division
-  // 
-  private addRange(
-    x: [number[], number[], number[]],
-    depth: number,
-    frc: number = 0.5,
-    huePerm: boolean = true,
-    hueRev: boolean = true
-): { lb: number[], ub: number[], rev: boolean[] } {
-    
-    const LB = x[0][0];
-    const UB = x[1][0];
-    const REV = x[2][0];
-    
-    const nr = x[0].length;
-    
-    const sq = Array.from({ length: nr + 1 }, (_, i) => LB + (UB - LB) * (i / nr));
-    const spacer = (sq[1] - sq[0]) * (1 - frc) * 0.5;
-    
-    let s: number[];
-    
-    if (huePerm) {
-        s = this.spread(nr);
-    } else {
-        s = Array.from({ length: nr }, (_, i) => i + 1);
-    }
-    
-    if (hueRev && REV) {
-        s = s.reverse();
-    }
-    
-    const start = sq.slice(0, nr).sort((a, b) => s.indexOf(a) - s.indexOf(b));
-    const end = sq.slice(1, nr + 1).sort((a, b) => s.indexOf(a) - s.indexOf(b));
-    
-    return {
-        lb: start.map(v => Math.floor(v + spacer)),
-        ub: end.map(v => Math.floor(v - spacer)),
-        rev: Array.from({ length: nr }, (_, i) => i % 2 === 1)
-    };
-}
-
-  private spread(n: number) {
-    let s: number[];
-
-    if (n < 5) {
-        s = Array.from({ length: n }, (_, i) => i + 1);
-        if (n > 2) {
-            [s[1], s[2]] = [3, 2];
-        }
-    } else {
-        const sStep = Math.floor(n / 2.5);
-        s = Array.from({ length: n }, (_, i) => ((1 + i * sStep) % n) || n);
-
-        // Find the index of the first duplicate
-        const dupIndex = s.findIndex((value, index, array) => array.indexOf(value) !== index);
-
-        // If exists
-        if (dupIndex !== -1) {
-            let adjustment = Array.from({ length: n }, (_, i) => Math.floor(i / dupIndex));
-            s = s.map((value, index) => value + adjustment[index]);
-        }
-    }
-
-    return s;
+    return cluster.color;
   }
 
   public onAddCluster(event: MouseEvent, parent?: Cluster) {
     event.stopPropagation();
 
-    // Use colors like ids, but reorder to quickly find next
-    const colors = [...this.clusters.map(c => c.color)]
-    colors.sort();
-    let col: number = 0;
-    for (const c of colors) {
-      if (c == col) {
-        col++;
+    if (this.clusters.length == 0 && this.config.activeTab.value == 0) {
+      this.config.activeTab.next(1);
+    }
+
+    let id = 0;
+    if (this.clusters.length > 0) {
+      const nodes = [...this.config.configuration.value.definition.graph.nodeDictionary.values()]
+      const latestNode = nodes[nodes.length - 1];
+      const latestCluster = latestNode.data as Cluster;
+      id = latestCluster.id + 1;
+    }
+
+    let sIndex;
+    if (parent !== undefined) {
+      if (parent.children.length > 0) {
+        sIndex = Utility.getCluster(parent.children[parent.children.length - 1]).siblingIndex + 1;
       } else {
-        break;
+        sIndex = 0;
+      }
+    } else {
+      if (this.clusters.length == 0) {
+        sIndex = 0;
+      } else {
+        sIndex = this.clusters[this.clusters.length - 1].siblingIndex + 1;
       }
     }
 
-    const id = this.clusters.length > 0 ? this.clusters[this.clusters.length - 1].id + 1 : 0;
-
     const cluster: Cluster = {
       id: id,
-      color: col,
-      name: "Cluster " + this.numberToLetters(id + 1),
-      generator: new CLGenerator(DegreesDefault, true),
-      children: []
+      parent: parent !== undefined ? parent.id : -1,
+      color: "black",
+      name: parent === undefined ? "Comm. " + this.numberToLetters(sIndex + 1) : parent.name + "." + (sIndex + 1),
+      generator: new CMGenerator(structuredClone(DegreesDefault), true),
+      children: [],
+      changeUUID: crypto.randomUUID(),
+      siblingIndex: sIndex,
+      replication: 1,
+      immutable: false
     };
+
     const node: Node = { id: id, data: cluster };
     this.config.configuration.value.definition.graph.addNode(node);
+    if (parent) {
+      parent.children.push(cluster.id);
+      this.treeControl.expand(parent);
+    }
+
+    const topLevel = this.config.configuration.value.definition.graph.getNodes().map(n => n.data as Cluster).filter(c => c.parent == -1);
+    Utility.updateColors(topLevel);
+
     this.config.selectedCluster.next(cluster);
     this.config.update("Add cluster " + id);
   }
 
-  public onRemoveCluster(event: MouseEvent, cluster: Cluster) {
+  public onRemoveCluster(event: MouseEvent, cluster: Cluster, update: boolean = true) {
     event.stopPropagation();
     if (cluster == this.selectedCluster) {
       this.config.selectedCluster.next(undefined);
     }
+    this.config.hiddenClusters.value.delete(cluster.id);
+    for (const i of [...cluster.children]) {
+      this.onRemoveCluster(event, Utility.getCluster(i), false);
+    }
+    if (cluster.parent != -1) {
+      const p = Utility.getCluster(cluster.parent);
+      p.children.splice(p.children.indexOf(cluster.id), 1);
+    }
     const node = this.config.configuration.value.definition.graph.nodeDictionary.get(cluster.id)!;
     this.config.configuration.value.definition.graph.removeNode(node);
-    this.config.update("Remove cluster " + node.id);
+    if (update) {
+      this.clusters = this.config.configuration.value.definition.graph.getNodes().map(n => n.data as Cluster).filter(c => c.parent == -1);
+      Utility.updateColors(this.clusters);
+      this.config.update("Remove cluster " + node.id);
+    }
   }
 
   public onSelectCluster(cluster: Cluster) {
+    if (this.config.selectedCluster.value == cluster && this.deselect) {
+      this.config.selectedCluster.next(undefined);
+      return;
+    }
     this.config.selectedCluster.next(cluster);
+  }
+
+  public onToggleVisibility(event: MouseEvent, cluster: Cluster) {
+    event.stopPropagation();
+    this.setVisibility(cluster, this.config.hiddenClusters.value.has(cluster.id));
+    this.config.hiddenClusters.next(this.config.hiddenClusters.value);
+  }
+
+  private setVisibility(cluster: Cluster, visible: boolean) {
+    if (visible) {
+      this.config.hiddenClusters.value.delete(cluster.id);
+    } else {
+      this.config.hiddenClusters.value.add(cluster.id);
+    }
+    for (const c of cluster.children) {
+      const node = this.config.configuration.value.definition.graph.nodeDictionary.get(c)!;
+      this.setVisibility(node.data as Cluster, visible);
+    }
+  }
+
+  public onHoverCluster(cluster?: Cluster) {
+    this.config.hoveredCluster.next(cluster);
   }
 
   private numberToLetters(value: number): string {

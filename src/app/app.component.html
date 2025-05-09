@@ -2,49 +2,58 @@
   <h3 class="center">Loading Pyodide...</h3>
 </div>
 <div id="container">
-  <as-split #vertical unit="percent" direction="horizontal" (dragStart)="onDragStart()" (dragEnd)="onDragEnd()" restrictMove="true">
+  <as-split #vertical unit="percent" direction="horizontal" (dragStart)="dragging[0] = true" (dragEnd)="dragging[0] = false" restrictMove="true">
     <as-split-area size="20">
-      <div class="padded">
-        <h3>Cluster Connections</h3>
-        <app-tab-cluster-list />
-      </div>
+      <as-split unit="percent" direction="vertical" restrictMove="true" (dragStart)="dragging[1] = true" (dragStop)="dragging[1] = false">
+        <as-split-area size="50">
+          <div class="flex-parent" style="height: calc(100% - 20px);">
+            <app-vis-container #containerSecondary class="flex-parent" style="flex: 1;" [initialZoom]="0.25" />
+          </div>
+        </as-split-area>
+        <as-split-area size="50">
+          <div class="padded" [class.highlight-border]="tutorial.highlightClusterList">
+            <app-tab-cluster-list #tabClusterList />
+          </div>
+        </as-split-area>
+      </as-split>
     </as-split-area>
     <as-split-area size="50">
-      <app-vis-node-link #nodeLinkDiagram></app-vis-node-link>
-      <!-- <div class="settings-container"> -->
-        <!-- Settings panel -->
-        <!-- Node link diagram -->
-      <!-- </div> -->
+      <app-vis-container #containerPrimary class="flex-parent" [visualization]="'node-link'" [initialZoom]="0.5"></app-vis-container>
     </as-split-area>
     <as-split-area size="*" class="noscroll">
-      <mat-tab-group class="scroll" (selectedTabChange)="onSelectedTabChange()" [(selectedIndex)]="selectedTabIndex">
-        <mat-tab label="Cluster Properties">
-          <div class="padded">
+      <mat-tab-group #tabs class="scroll" (selectedTabChange)="onSelectedTabChange($event.index)" [(selectedIndex)]="selectedTabIndex">
+        <mat-tab label="Welcome">
+          <div class="padded" [class.highlight-border]="tutorial.highlightTabs">
+            <app-tab-help />
+          </div>          
+        </mat-tab>
+        <mat-tab label="Community Properties">
+          <div class="padded" [class.highlight-border]="tutorial.highlightTabs">
             <app-tab-cluster />
           </div>
         </mat-tab>
-        <mat-tab label="Cluster Connections">
-          <div class="padded">
+        <mat-tab label="Comunity Connections">
+          <div class="padded" [class.highlight-border]="tutorial.highlightTabs">
             <app-tab-connections />
           </div>
         </mat-tab>
         <mat-tab label="Graph Measures">
-          <div class="padded">
+          <div class="padded" [class.highlight-border]="tutorial.highlightTabs">
             <app-tab-statistics />
           </div>
         </mat-tab>
-        <mat-tab label="Diagram Settings">
-          <div class="padded">
+        <mat-tab label="Layout Settings">
+          <div class="padded" [class.highlight-border]="tutorial.highlightTabs">
             <app-tab-nl-settings />
           </div>
         </mat-tab>
-        <mat-tab label="Diffusion Models">
-          <div class="padded">
+        <mat-tab label="Diffusion Simulation">
+          <div class="padded" [class.highlight-border]="tutorial.highlightTabs">
             <app-tab-information-diffusion />
           </div>
         </mat-tab>
         <mat-tab label="Import/Export">
-          <div class="padded">
+          <div class="padded" [class.highlight-border]="tutorial.highlightTabs">
             <app-tab-import-export />
           </div>
         </mat-tab>

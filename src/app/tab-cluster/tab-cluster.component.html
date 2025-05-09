@@ -1,31 +1,64 @@
-<h3>Cluster Properties</h3>
 @if (cluster) {
   <mat-form-field>
-    <mat-label>Cluster name</mat-label>
+    <mat-label>Community name</mat-label>
     <input matInput placeholder="Enter a name" [(ngModel)]="cluster.name" (change)="onChangeName()">
   </mat-form-field>
   <br>
   <mat-form-field>
     <mat-label>Graph Generator</mat-label>
-    <mat-select [ngModel]="generator.name" (valueChange)="onChangeGenerator($event)">
+    <mat-select [ngModel]="generator.name" (valueChange)="onChangeGenerator($event)" [disabled]="cluster.immutable">
+        <mat-option value="ER">Erdös-Renyi Model</mat-option>
         <mat-option value="CL">Chung-Lu Model</mat-option>
         <mat-option value="CM">Configuration Model</mat-option>
+        <mat-option value="MG">Community Group</mat-option>
     </mat-select>
   </mat-form-field>
-  @if (cluster.generator.name == "CL") {
-    <app-vis-line-chart [series]="generator.degreeDistribution" [series2]="clusterMeasures?.degreeDistribution" (seriesChange)="onChange()"></app-vis-line-chart>
-    <mat-slide-toggle [(ngModel)]="generator.extractGiantComponent" (change)="onChange()">
+  @if (cluster.generator.name != "MG") {
+    <br>
+    <mat-form-field>
+      <mat-label>Replication</mat-label>
+      <input type="number" matInput [(ngModel)]="cluster.replication" value="1" min="1" oninput="this.value = Math.max(1, Math.round(this.value));" (change)="onChange()" [disabled]="cluster.immutable">
+    </mat-form-field>
+  }
+  @if (cluster.generator.name == "CL" || cluster.generator.name == "CM") {
+    <br>
+    <mat-form-field>
+      <mat-label>Desired node count</mat-label>
+      <input matInput type="number" min="0" [value]="theoreticalNodeCount" (change)="onChangeNodeCount($event.target)" [disabled]="cluster.immutable">
+    </mat-form-field>
+  }
+  @if (cluster.generator.name != "MG") {
+    <br>
+    <mat-slide-toggle [(ngModel)]="generator.extractGiantComponent" (change)="onChange()" [disabled]="cluster.immutable">
       Keep only largest connected component
     </mat-slide-toggle>
+    <br>
+  }
+  <br>
+  <span class="top-margin">Resulting node count: {{clusterMeasures?.nodeCount}}</span>
+  <br>
+  <span>Resulting edge count: {{clusterMeasures?.edgeCount}}</span>
+  <br>
+  @if (cluster.generator.name == "ER") {
+    <mat-form-field>
+      <mat-label>Node count</mat-label>
+      <input matInput type="number" min="0" [(ngModel)]="generator.nodeCount" [disabled]="cluster.immutable" (change)="onChange()">
+    </mat-form-field>
+    <br>
+    <mat-form-field>
+      <mat-label>Edge count</mat-label>
+      <input matInput type="number" min="0" [(ngModel)]="generator.edgeCount" [disabled]="cluster.immutable" (change)="onChange()">
+    </mat-form-field>
+  } @else if (cluster.generator.name == "CL") {
+    <app-vis-line-chart [showLegend]="true" [series]="generator.degreeDistribution" [series2]="measuredDistribution" (seriesChange)="onChange()" [editMode]="!cluster.immutable" [allowAxisScaling]="!cluster.immutable" [allowLogToggles]="!cluster.immutable"></app-vis-line-chart>
   } @else if (cluster.generator.name == "CM") {
-    <app-vis-line-chart [series]="generator.degreeDistribution" [series2]="clusterMeasures?.degreeDistribution" (seriesChange)="onChange()"></app-vis-line-chart>
-    <mat-slide-toggle [(ngModel)]="generator.extractGiantComponent" (change)="onChange()">
-      Keep only largest connected component
-    </mat-slide-toggle>
+    <app-vis-line-chart [showLegend]="true" [series]="generator.degreeDistribution" [series2]="measuredDistribution" (seriesChange)="onChange()" [editMode]="!cluster.immutable" [allowAxisScaling]="!cluster.immutable" [allowLogToggles]="!cluster.immutable"></app-vis-line-chart>
+  } @else if (cluster.generator.name == "MG") {
+    <span>Add child communities in the community list</span>
+    <br>
   } @else {
     <span>unknown</span>
   }
-  <br>
-  <p class="label top-margin">Nodes: {{clusterMeasures?.nodeCount}}</p>
-  <p class="label">Edges: {{clusterMeasures?.edgeCount}}</p>
+} @else {
+  <p class="center-text">Select a community to edit</p>
 }

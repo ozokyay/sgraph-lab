@@ -1,4 +1,4 @@
-import { Component, HostListener, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, HostListener, OnInit, ViewChild } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle'
 import { MatTabsModule } from '@angular/material/tabs';
@@ -16,6 +16,12 @@ import { VisNodeLinkComponent } from './vis-node-link/vis-node-link.component';
 import { TabNlSettingsComponent } from './tab-nl-settings/tab-nl-settings.component';
 import { TabStatisticsComponent } from './tab-statistics/tab-statistics.component';
 import { TabInformationDiffusionComponent } from "./tab-information-diffusion/tab-information-diffusion.component";
+import { VisMatrixComponent } from "./vis-matrix/vis-matrix.component";
+import { VisLevelComponent } from "./vis-level/vis-level.component";
+import { VisNodeLink2Component } from './vis-node-link-2/vis-node-link-2.component';
+import { VisContainerComponent } from "./vis-container/vis-container.component";
+import { TabHelpComponent } from './tab-help/tab-help.component';
+import { TutorialService } from './tutorial.service';
 
 @Component({
     selector: 'app-root',
@@ -29,6 +35,7 @@ import { TabInformationDiffusionComponent } from "./tab-information-diffusion/ta
     MatFormFieldModule,
     MatSelectModule,
     MatSlideToggleModule,
+    TabHelpComponent,
     TabImportExportComponent,
     TabClusterComponent,
     TabClusterListComponent,
@@ -36,24 +43,77 @@ import { TabInformationDiffusionComponent } from "./tab-information-diffusion/ta
     TabNlSettingsComponent,
     TabStatisticsComponent,
     VisNodeLinkComponent,
-    TabInformationDiffusionComponent
+    VisNodeLink2Component,
+    TabInformationDiffusionComponent,
+    VisMatrixComponent,
+    VisLevelComponent,
+    VisContainerComponent
 ]
 })
-export class AppComponent implements OnInit {
+export class AppComponent implements OnInit, AfterViewInit {
 
   public pyodideReady = false;
   public selectedTabIndex = 0;
-  public dragging = false;
-
-  @ViewChild('nodeLinkDiagram')
-  private nodeLinkDiagram!: VisNodeLinkComponent;
+  public dragging: boolean[] = [false, false];
   
-  constructor(public python: PythonService) {
-    
+  @ViewChild('containerPrimary')
+  private containerPrimary!: VisContainerComponent;
+
+  @ViewChild('containerSecondary')
+  private containerSecondary!: VisContainerComponent;
+
+  @ViewChild('containerPrimary', { read: ElementRef })
+  private containerPrimaryRef!: ElementRef;
+
+  @ViewChild('containerSecondary', { read: ElementRef })
+  private containerSecondaryRef!: ElementRef;
+
+  @ViewChild('tabs', { read: ElementRef })
+  private tabsRef!: ElementRef;
+
+  @ViewChild('tabClusterList', { read: ElementRef })
+  private tabClusterList!: ElementRef;
+  
+  constructor(public python: PythonService, private config: ConfigurationService, public tutorial: TutorialService) {
+    config.selectedConnections.subscribe(connections => {
+      if (connections.length > 0) {
+        this.selectedTabIndex = 2;
+      }
+    });
+    this.config.activeTab.subscribe(t => {
+      if (this.selectedTabIndex != t) {
+        this.selectedTabIndex = t;
+      }
+    });
+    this.tutorial.start.subscribe(() => {
+      this.containerPrimary.visualization = "node-link";
+      this.containerSecondary.visualization = "matrix";
+      this.containerPrimary.changeLevel(1);
+      this.containerSecondary.changeLevel(1);
+    });
+    this.tutorial.primaryVisLevel.subscribe(l => {
+      this.containerPrimary.changeLevel(l);
+    });
+    this.tutorial.secondaryVisLevel.subscribe(l => {
+      this.containerSecondary.changeLevel(l);
+    });
+    this.tutorial.primaryCircular.subscribe(b => {
+      this.containerPrimary.toggleCircular.checked = b;
+    });
+    this.tutorial.primaryDiffusionMode.subscribe(b => {
+      this.containerPrimary.toggleNodeColor.checked = b;
+      this.containerPrimary.toggleEdgeColor.checked = b;
+    });
+    this.tutorial.secondaryVisType.subscribe(t => {
+      this.containerSecondary.visualization = t;
+    });
   }
 
-  public onSelectedTabChange() {
-
+  public onSelectedTabChange(index: number) {
+    // if (index != 2) {
+    //   this.config.selectedConnections.next([]); // Really?
+    // }
+    this.config.activeTab.next(index);
   }
 
   public async ngOnInit() {
@@ -61,18 +121,44 @@ export class AppComponent implements OnInit {
     this.pyodideReady = true;
   }
 
-  public onDragStart() {
-    this.dragging = true;
+  public ngAfterViewInit() {
+    this.tutorial.visPrimary = this.containerPrimaryRef.nativeElement;
+    this.tutorial.visSecondary = this.containerSecondaryRef.nativeElement;
+    this.tutorial.tabClusterList = this.tabClusterList.nativeElement;
+    this.tutorial.tabs = this.tabsRef.nativeElement;
   }
 
-  public onDragEnd() {
-    this.dragging = false;
-  }
-
-  @HostListener('document:mousemove')
-  onMouseMove() {
-    if (this.dragging) {
-      this.nodeLinkDiagram.resize();
+  @HostListener('document:mousemove', ['$event'])
+  onMouseMove(event: MouseEvent) {
+    if (this.dragging[0]) {
+      this.containerPrimary.resize();
+      this.containerSecondary.resize();
     }
+    if (this.dragging[1]) {
+      this.containerSecondary.resize();
+    }
+    this.containerPrimary.mouseMove(event);
+    this.containerSecondary.mouseMove(event);
+  }
+
+  @HostListener('window:resize')
+  resize() {
+    this.containerPrimary.resize();
+    this.containerSecondary.resize();
+  }
+
+  @HostListener('window:beforeunload', ['$event'])
+  windowBeforeUnload(event: BeforeUnloadEvent) {
+    return this.config.configuration.value.definition.graph.nodes.size == 0;
+  }
+
+  // @HostListener('pointerdown')
+  // onClick() {
+  //   this.config.countClick();
+  // }
+
+  @HostListener('pointerup')
+  onPointerUp() {
+    this.config.pointerUp.next();
   }
 }

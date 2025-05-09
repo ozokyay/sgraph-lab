@@ -1,0 +1,12 @@
+<div style="display: flex; flex-direction: column;">
+    <span style="justify-content: center; margin-left: auto; margin-right: auto;">Level</span>
+    <div class="buttons" style="justify-content: center;">
+        <button mat-raised-button class="button" (click)="onDecrement()" [disabled]="level == 1">
+            <mat-icon>remove</mat-icon>
+        </button>
+        <span class="label mat-title-large">{{levelText}}</span>
+        <button mat-raised-button class="button" (click)="onIncrement()" [disabled]="level == (allowNodeLevel ? 0 : maxLevel)">
+            <mat-icon>add</mat-icon>
+        </button>
+    </div>
+</div>

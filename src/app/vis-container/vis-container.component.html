@@ -1,0 +1,61 @@
+<div style="flex: 0; margin: 10px 10px 0px 10px; display: flex; align-items: center;">
+    <mat-form-field style="margin: 5px auto 0 0;" subscriptSizing="dynamic">
+        <mat-label>Visualization</mat-label>
+        <mat-select #selectVis [(value)]="this.visualization" (valueChange)="changeLevel(level)">
+            <mat-option value="matrix">Adjacency Matrix</mat-option>
+            <mat-option value="node-link">Node-Link Diagram</mat-option>
+        </mat-select>
+    </mat-form-field>
+    <app-vis-level #visLevel [class.highlight-border]="tutorial.highlightPrimaryLevelVis" style="align-self: right;" [allowNodeLevel]="visualization == 'node-link'" (levelChange)="changeLevel($event)"></app-vis-level>
+</div>
+<br>
+<div #container class="fit-height" [class.highlight-border]="tutorial.highlightSecondaryVis && visualization == 'matrix'" (wheel)="visLevel.onChange($event)">
+    @if (visualization == "matrix") {
+        <app-vis-matrix #matrix style="height: 100%;" [level]="level"></app-vis-matrix>
+    } @else if (visualization == "node-link") {
+        @if (nl1) {
+            <app-vis-node-link #nodeLink
+                class="absolute"
+                [class.highlight-border]="tutorial.highlightPrimaryVis"
+                [@showHide]="combineClusters ? 'hidden' : 'shown'"
+                [class.ignore-pointer]="combineClusters"
+                [combineClusters]="combineClustersImmediate"
+                [transform]="transform"
+                [nodeColor]="toggleNodeColor.checked"
+                [edgeColor]="toggleEdgeColor.checked"
+                [nodeSize]="toggleNodeSize.checked"
+                [labels]="toggleLabels.checked"
+                [edgeHighlight]="true">
+            </app-vis-node-link>
+        }
+        @if (nl2) {
+            <app-vis-node-link-2 #nodeLink2
+                class="absolute"
+                [class.highlight-border]="tutorial.highlightPrimaryVis"
+                [@showHide]="combineClusters ? 'shown' : 'hidden'"
+                [class.ignore-pointer]="!combineClusters"
+                [transform]="transform"
+                [level]="level"
+                [circularLayout]="toggleCircular.checked"
+                [nodeColor]="toggleNodeColor.checked"
+                [edgeColor]="toggleEdgeColor.checked"
+                [nodeSize]="toggleNodeSize.checked"
+                [edgeRatio]="toggleEdgeRatio.checked"
+                [labels]="toggleLabels.checked">
+            </app-vis-node-link-2>
+        }
+        <mat-button-toggle-group multiple hideMultipleSelectionIndicator class="button-toggles" [class.highlight-border]="tutorial.highlightPrimaryOptions">
+            <mat-button-toggle #toggleNodeSize matTooltip="Scale nodes with degree / community size"><img src="assets/node_radius.png" width="32px" height="32px"></mat-button-toggle>
+            <mat-button-toggle #toggleLabels matTooltip="Show community names on nodes"><img src="assets/node_label.png" width="32px" height="32px"></mat-button-toggle>
+        
+            <mat-button-toggle #toggleCircular [class.hidden]="level == 0" [matTooltip]="level != 0 ? 'Egocentric layout' : 'Egocentric layout (only on higher levels)'"><img src="assets/circular.png" width="32px" height="32px"></mat-button-toggle>
+            <mat-button-toggle #toggleEdgeRatio [class.hidden]="level == 0" [matTooltip]="level != 0 ? ' Show node ratio on edges' : ' Show node ratio on edges (only on higher levels)'" checked><img src="assets/wedge.png" width="32px" height="32px"></mat-button-toggle>
+        
+            <mat-button-toggle #toggleNodeColor [class.hidden]="level > 0" [matTooltip]="level == 0 ? 'Node coloring' : 'Node coloring (only on lowest level)'" checked><img src="assets/color_nodes.png" width="32px" height="32px"></mat-button-toggle>
+            <mat-button-toggle #toggleEdgeColor [class.hidden]="level > 0" [matTooltip]="level == 0 ? 'Edge coloring' : 'Edge coloring (only on lowest level)'" checked><img src="assets/color_edges.png" width="32px" height="32px"></mat-button-toggle>
+            <!-- <mat-button-toggle #toggleEdgeHighlight [matTooltip]="level == 0 ? 'Highight selected edges' : 'Highight selected edges (only on lowest level)'" checked><img src="assets/highlight_edge.png" width="32px" height="32px"></mat-button-toggle> -->
+        
+            <!-- <mat-button-toggle #toggleCreateEdges [matTooltip]="level != 0 ? 'Create edges' : 'Create edges (only on higher levels)'" checked><img src="assets/dashed_edge.png" width="32px" height="32px"></mat-button-toggle> -->
+        </mat-button-toggle-group>
+    }
+</div>

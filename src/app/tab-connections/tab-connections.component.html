@@ -1,55 +1,97 @@
-<h3>Cluster Connections</h3>
 @if (connections && connections.length > 0) {
+    <button mat-raised-button class="button-clear" matTooltip="Clear selection" (click)="onClear()"><mat-icon>close</mat-icon></button>
     @if (connections.length == 1 || multiEditing) {
-        <h4>Edges</h4>
         <span>
-            <mat-slider #sliderEdges discrete min="0" max="1" step="0.01">
-                <input matSliderThumb [(value)]="edgeCount" (valueChange)="onChange()">
-            </mat-slider>
-            <span class="label">{{edgeCount}}</span>
+            <mat-form-field>
+                <mat-label>Edge count</mat-label>
+                <input type="number" matInput [(ngModel)]="edgeCount" min="0" [max]="maxEdgeCount" oninput="this.value = Math.floor(this.value);" (change)="onChange()">
+            </mat-form-field>
         </span>
-        
-        <h4 class="vertical-item">Nodes from {{sourceName}}</h4>
-        <span>
-            <mat-slider discrete min="0" max="1" step="0.01">
-                <input matSliderThumb [(value)]="nodeCountSource" (valueChange)="onChange()">
-            </mat-slider>
-            <span class="label">{{nodeCountSource}}</span>
-        </span>
-    
-        <h4 class="vertical-item">Nodes from {{targetsName}}</h4>
-        <span>
-            <mat-slider discrete min="0" max="1" step="0.01">
-                <input matSliderThumb [(value)]="nodeCountTarget" (valueChange)="onChange()">
-            </mat-slider>
-            <span class="label">{{nodeCountTarget}}</span>
-        </span>
-    
-        <h4 class="vertical-item">Degree Assortativity</h4>
-        <span>
-            -1
+        <br>
+        <span style="display: flex; align-content: center;">
+            <span class="center-vertical">Degree Assortativity:&nbsp;&nbsp;&nbsp;</span>
+            <span class="center-vertical">-1</span>
             <mat-slider discrete min="-1" max="1" step="0.01">
                 <input matSliderThumb [(value)]="degreeAssortativity" (valueChange)="onChange()">
             </mat-slider>
-            1
+            <span class="center-vertical">&nbsp;1</span>
         </span>
-        
-        <mat-slide-toggle [checked]="degreeDistributionTarget != undefined" (change)="onChangeDistributionSource($event.checked)">
-            Custom degree distribution for nodes from {{sourceName}}
+        <br>
+        <mat-slide-toggle [checked]="degreeDistributionSource != undefined" (change)="onChangeDistributionSource($event.checked)">
+            <div style="display: flex;">
+                Custom degree distribution for nodes from&nbsp;&nbsp;<img src="assets/circle.png">
+            </div>
         </mat-slide-toggle>
         @if (degreeDistributionSource != undefined) {
-            <app-vis-line-chart yLabel="Node frequency" [(series)]="degreeDistributionSource" [series2]="actualDistributionSource" (seriesChange)="onChange()"></app-vis-line-chart>
+            <app-vis-line-chart [showLegend]="true" [legendWidth]="134" legend1="Selection" legend2="Community" yLabel="Node frequency" [(series)]="degreeDistributionSource" [series2]="actualDistributionSource" [allowAxisScaling]="false" (seriesChange)="onChange()"></app-vis-line-chart>
         }
-        <mat-slide-toggle [checked]="degreeDistributionSource != undefined" (change)="onChangeDistributionTarget($event.checked)">
-            Custom degree distribution for nodes from {{targetsName}}
+        <br>
+        <mat-slide-toggle class="vertical-item" [checked]="degreeDistributionTarget != undefined" (change)="onChangeDistributionTarget($event.checked)">
+            <div style="display: flex;">
+                Custom degree distribution for nodes from&nbsp;&nbsp;<img src="assets/circle_open.png">
+            </div>
         </mat-slide-toggle>
         @if (degreeDistributionTarget != undefined) {
-            <app-vis-line-chart yLabel="Node frequency" [(series)]="degreeDistributionTarget" [series2]="actualDistributionTarget" (seriesChange)="onChange()"></app-vis-line-chart>
+            <app-vis-line-chart [showLegend]="true" [legendWidth]="134" legend1="Selection" legend2="Community" yLabel="Node frequency" [(series)]="degreeDistributionTarget" [series2]="actualDistributionTarget" [allowAxisScaling]="false" (seriesChange)="onChange()"></app-vis-line-chart>
         }
+        <br><br>
+        <table>
+            <tr>
+                <td>
+                    <div style="display: flex; align-content: center;">
+                        <img src="assets/circle.png"><span class="mat-title-medium">&nbsp;&nbsp;Communities</span>
+                    </div>
+                </td>
+                <td>
+                    <div style="display: flex; align-content: center;">
+                        <img class="left-margin2" src="assets/circle_open.png"><span class="mat-title-medium">&nbsp;&nbsp;Communities</span>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <div class="cell" style="padding-right: 10px;">
+                        <mat-form-field class="short">
+                            <mat-label>Nodes (%)</mat-label>
+                            <input type="number" matInput [(ngModel)]="nodeCountSource" min="0" max="100" (change)="onChange()">
+                        </mat-form-field>
+                        <mat-slider discrete min="0" max="100">
+                            <input matSliderThumb [(value)]="nodeCountSource" (valueChange)="onChange()">
+                        </mat-slider>
+                    </div>
+                </td>
+                <td>
+                    <div class="cell" style="padding-left: 10px;">
+                        <mat-form-field class="short">
+                            <mat-label>Nodes (%)</mat-label>
+                            <input type="number" matInput [(ngModel)]="nodeCountTarget" min="0" max="100" (change)="onChange()">
+                        </mat-form-field>
+                        <mat-slider discrete min="0" max="100">
+                            <input matSliderThumb [(value)]="nodeCountTarget" (valueChange)="onChange()">
+                        </mat-slider>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    @for (source of sourceNames; track $index) {
+                        <p>{{source}}</p>
+                    }
+                </td>
+                <td>
+                    @for (target of targetNames; track $index) {
+                        <p class="left-margin2">{{target}}</p>
+                    }
+                </td>
+            </tr>
+        </table>
     } @else {
-        <p>The selected connections are inconsistent. You can reset them for multi-editing.</p>
-        <button mat-button (click)="onReset()">Reset</button>
+        <br><br>
+        <p class="center-text">The selected connections are inconsistent. You can delete them for multi-editing.</p>
+        <button mat-raised-button class="button-reset" matTooltip="Delete selected edges" (click)="onReset()">Delete</button>
     }
 } @else {
-    <!-- Nothing -->
+    <p class="center-text">Select community connections to edit</p>
 }
+
+<!-- Two-column layout could work nicely -->

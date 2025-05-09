@@ -5,6 +5,14 @@ import { Series } from '../series';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatInputModule } from '@angular/material/input';
+import { FormsModule } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { DecimalPipe } from '@angular/common';
+import { MatSelectModule } from '@angular/material/select';
+
+export type Distribution = "power-law" | "linear-growing" | "linear-shrinking" | "uniform" | "custom";
 
 @Component({
   selector: 'app-vis-line-chart',
@@ -12,7 +20,13 @@ import { MatInputModule } from '@angular/material/input';
   imports: [
     MatInputModule,
     MatFormFieldModule,
-    MatSlideToggleModule
+    MatSlideToggleModule,
+    MatButtonModule,
+    MatIconModule,
+    MatSelectModule,
+    MatExpansionModule,
+    FormsModule,
+    DecimalPipe
   ],
   templateUrl: './vis-line-chart.component.html',
   styleUrl: './vis-line-chart.component.css'
@@ -23,6 +37,9 @@ export class VisLineChartComponent implements AfterViewInit, OnChanges {
 
   @Input()
   series2?: Series;
+
+  @Input()
+  seriesList?: Map<number, [Series, string]>;
 
   @Output()
   seriesChange = new EventEmitter<Series>();
@@ -43,7 +60,22 @@ export class VisLineChartComponent implements AfterViewInit, OnChanges {
   yFormat?: string;
 
   @Input()
+  legend1 = "Input";
+
+  @Input()
+  legend2 = "Actual";
+
+  @Input()
+  legendWidth = 100;
+
+  @Input()
+  showLegend = false;
+
+  @Input()
   editMode = true;
+
+  @Input()
+  lineColor = "steelblue";
 
   @ViewChild('svg')
   container!: ElementRef;
@@ -62,12 +94,19 @@ export class VisLineChartComponent implements AfterViewInit, OnChanges {
   yAxis!: d3.Selection<any, unknown, null, undefined>;
   line!: d3.Selection<any, unknown, null, undefined>;
   line2!: d3.Selection<any, unknown, null, undefined>;
+  listLines!: d3.Selection<any, unknown, null, undefined>;
   handles!: d3.Selection<any, unknown, null, undefined>;
+  legend!: d3.Selection<any, unknown, null, undefined>;
 
   // Margin and aspect ratio
+  @Input()
   margin = { top: 30, right: 10, bottom: 50, left: 50 };
+  
   width = 550 - this.margin.left - this.margin.right;
   height = 300 - this.margin.top - this.margin.bottom;
+
+  public distributionType: Distribution = "power-law";
+  public exponent = -1;
 
   rescaleCoordinatesX(e: any) {
     const dom = this.xScale.domain();
@@ -260,9 +299,46 @@ export class VisLineChartComponent implements AfterViewInit, OnChanges {
       .append("path");
     this.line = this.svg.append("g")
       .append("path");
+    this.listLines = this.svg.append("g");
     
 
     this.handles = this.svg.append("g");
+    this.legend = this.svg.append("g");
+    const legendHeight = 50;
+    this.legend.attr("transform", `translate(${this.width - this.legendWidth},${0})`)
+      .attr("visibility", this.showLegend ? "visible" : "hidden")
+      .style("pointer-events", "none");
+    this.legend.append("rect")
+      .attr("x", 0)
+      .attr("y", 0)
+      .attr("width", this.legendWidth)
+      .attr("height", legendHeight)
+      .attr("fill", "none")
+      .attr("stroke", "black")
+      .attr("stroke-width", 1);
+    this.legend.append("line")
+      .attr("x1", 10)
+      .attr("y1", 15)
+      .attr("x2", 30)
+      .attr("y2", 15)
+      .attr("stroke", this.seriesList ? "black" : "steelblue")
+      .attr("stroke-width", 2);
+    this.legend.append("line")
+      .attr("x1", 10)
+      .attr("y1", 35)
+      .attr("x2", 30)
+      .attr("y2", 35)
+      .attr("stroke", this.seriesList ? "black" : "orange")
+      .attr("stroke-width", 2)
+      .attr("stroke-dasharray", this.seriesList ? "4,4" : "");
+    this.legend.append("text")
+      .attr("x", 40)
+      .attr("y", 20)
+      .text(this.legend1);
+    this.legend.append("text")
+      .attr("x", 40)
+      .attr("y", 40)
+      .text(this.legend2);
 
     if (this.initialized) {
       this.render();
@@ -295,7 +371,7 @@ export class VisLineChartComponent implements AfterViewInit, OnChanges {
     }
     dataLine.attr("class", "line")
       .attr("fill", "none")
-      .attr("stroke", "steelblue")
+      .attr("stroke", this.lineColor)
       .attr("stroke-width", 2)
       .attr("d", line)
     
@@ -308,7 +384,7 @@ export class VisLineChartComponent implements AfterViewInit, OnChanges {
         .curve(d3.curveLinear)
         .x(d => this.xScale(d.x))
         .y(d => this.yScale(d.y));
-      let dataLine2: any = this.line2.datum(this.series2.data);
+      let dataLine2: any = this.line2.datum(this.series2.data.filter(p => p.x <= this.series.xExtent[1]));
       if (useTransition) {
         dataLine2 = dataLine2.transition();
       }
@@ -320,7 +396,34 @@ export class VisLineChartComponent implements AfterViewInit, OnChanges {
         .attr("d", line2)
     }
     
+    // Clear listLines in onchanges
+    const tSeries = this.series;
+    const txScale = this.xScale;
+    const tyScale = this.yScale;
+    if (this.seriesList && this.seriesList.size > 0) {
+      this.listLines.selectAll("path")
+        .data(this.seriesList.values())
+        .join("path")
+        .each(function(d, i, t) {
+          const [series, color] = d;
+          let dLine = d3.select(this).datum(series.data.filter(p => p.x <= tSeries.xExtent[1]));
+          const l = d3.line<Point>()
+            .curve(d3.curveLinear)
+            .x(d => txScale(d.x))
+            .y(d => tyScale(d.y));
+          dLine.attr("class", "line")
+            .attr("fill", "none")
+            .attr("stroke", color)
+            .attr("stroke-width", 2)
+            .attr("stroke-dasharray", "4,4")
+            .attr("d", l);
+        });
+    }
+    
+    // Edit mode
     if (!this.editMode) {
+      this.handles.selectAll("circle")
+        .remove();
       return;
     }
 
@@ -366,5 +469,87 @@ export class VisLineChartComponent implements AfterViewInit, OnChanges {
         .attr("cx", d => this.xScale(d.d.x))
         .attr("cy", d => this.yScale(d.d.y))
     }
+  }
+
+  public onChange() {
+    this.render(true);
+    this.seriesChange.emit(this.series);
+  }
+
+  public validateXChange(point: Point, event: any) {
+    const value = event.target.value;
+    if (value > this.series.xExtent[1]) {
+      this.series.xExtent[1] = value;
+    } else if (value < 1) {
+      event.target.setCustomValidity("The x-coordinate must be at least 1");
+      event.target.reportValidity();
+      event.target.value = point.x;
+      return;
+    } else if (this.series.data.find(p => p.x == value)) {
+      event.target.setCustomValidity("A point with this x-coordinate already exists");
+      event.target.reportValidity();
+      event.target.value = point.x;
+      return;
+    }
+    event.target.setCustomValidity("");
+    point.x = value;
+    this.series.data.sort((a, b) => a.x - b.x);
+    this.onChange();
+  }
+
+  public validateYChange(value: number): number {
+    return Math.min(this.series.yExtent[1], Math.max(this.series.yExtent[0], value));
+  }
+
+  public addPoint() {
+    const p = {
+      x: this.series.data.at(-1)!.x + 1,
+      y: 0
+    };
+    this.series.data.push(p);
+    this.series.xExtent[1] = Math.max(p.x, this.series.xExtent[1]);
+    this.onChange();
+  }
+
+  public deletePoint(point: Point) {
+    this.series.data.splice(this.series.data.indexOf(point), 1);
+    this.onChange();
+  }
+
+  public onGenerate() {
+    const maxX = Math.max(1, this.series.xExtent[1]);
+    const maxY = this.series.yExtent[1];
+    this.series.data.splice(0, this.series.data.length);
+
+    // Here, both axis take priority (only one would be weird)
+    // Therefore, ignore node count
+    switch (this.distributionType) {
+      case "power-law":
+        for (let x = 1; x < maxX; x = Math.ceil(x + x / 10)) {
+          this.series.data.push({ x: x, y: maxY * Math.pow(x, this.exponent) });
+        }
+        this.series.data.push({ x: maxX, y: maxY * Math.pow(maxX, this.exponent) });
+        break;
+      
+      case "linear-growing":
+        this.series.data.push({ x: 1, y: 0 });
+        this.series.data.push({ x: maxX, y: maxY });
+        break;
+        
+      case "linear-shrinking":
+        this.series.data.push({ x: 1, y: maxY } );
+        this.series.data.push({ x: maxX, y: 0 });
+        break;      
+    
+      case "uniform":
+        this.series.data.push({ x: 1, y: maxY / 2 });
+        this.series.data.push({ x: maxX, y: maxY / 2 });
+        break;
+    
+      default:
+        break;
+    }
+
+    this.onChange();
   }
 }

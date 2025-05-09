@@ -1,5 +1,6 @@
 .flexi {
     display: flex;
+    align-content: center;
 }
 
 .block {
@@ -8,10 +9,16 @@
 
 .flex-element {
     margin-right: 1em;
+    margin-top: auto;
+    margin-bottom: auto;
 }
 
 .space-vert {
     margin-bottom: 0.5em;
+}
+
+.space-vert-top {
+    margin-top: 16px;
 }
 
 .small {
@@ -20,4 +27,15 @@
 
 .hide {
     visibility: collapse;
+}
+
+.button-plus {
+    min-width: 45px;
+    width: 45px;
+    padding: 0;
+    padding-left: 16px;
+}
+
+.cell {
+    margin-right: 10px;
 }

@@ -110,20 +110,24 @@ function getSimpleMeasure(measure: "degree_assortativity_coefficient" | "degree_
 }
 
 function getGraphMeasure(measure: "clustering" | "pagerank" | "eigenvector_centrality" | "betweenness_centrality", bins: number): Series {
-  const obj = pyodide.runPython(`
-  import networkx as nx
-  import numpy as np
-
-  measure = nx.${measure}(G)
-  data = list(measure.values())
-  hist = np.histogram(data, ${bins})
-  list(zip(hist[1][1:], hist[0].tolist()))`);
-  const list: any[] = obj.toJs();
-  const points: Point[] = list.map(e => ({ x: e[0], y: e[1] }));
-  return {
-    data: points,
-    xExtent: d3.extent(points, p => p.x) as [number, number],
-    yExtent: d3.extent(points, p => p.y) as [number, number]
+  try {
+    const obj = pyodide.runPython(`
+      import networkx as nx
+      import numpy as np
+    
+      measure = nx.${measure}(G)
+      data = list(measure.values())
+      hist = np.histogram(data, ${bins})
+      list(zip(hist[1][1:], hist[0].tolist()))`);
+      const list: any[] = obj.toJs();
+      const points: Point[] = list.map(e => ({ x: e[0], y: e[1] }));
+      return {
+        data: points,
+        xExtent: d3.extent(points, p => p.x) as [number, number],
+        yExtent: d3.extent(points, p => p.y) as [number, number]
+      } 
+  } catch (error) {
+    return EmptySeries();
   }
 }
 
@@ -138,7 +142,7 @@ function getClusteringCoefficientDistribution2(): Series {
   const arrays = obj.toJs();
   const maxDeg = d3.max(arrays[1], (a: number[]) => a[1])! + 1;
   if (Number.isNaN(maxDeg)) {
-    return EmptySeries;
+    return EmptySeries();
   }
   const degToCC: number[] = new Array(maxDeg);
   const degToCount: number[] = new Array(maxDeg);
