@@ -1,22 +1,29 @@
 .header {
-    display: flex;
+  display: flex;
 }
 
-h1 {
-    align-content: center;
-    text-align: center;
-    font-size: 60px;
-    margin-top: auto;
-    margin-bottom: auto;
-    margin-left: auto;
-    margin-right: auto;
-    padding-left: 20px;
+.left {
+  margin-top: auto;
+  margin-bottom: auto;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 20px;
+  align-content: center;
+}
+
+h2 {
+  text-align: center;
+}
+
+h5 {
+  text-align: center;
 }
 
 img {
-    min-width: 0;
-    max-height: 15rem;
-    margin-left: auto;
-    margin-right: auto;
-    padding-right: 20px;
+  min-width: 0;
+  max-height: 15rem;
+  margin-left: auto;
+  margin-right: auto;
+  padding-right: 20px;
+  object-fit: contain;
 }
